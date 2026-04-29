@@ -28,7 +28,16 @@ fi
 
 MODEL="${PERPLEXITY_MODEL:-sonar}"
 
-payload="$(python -c "
+if command -v python3 >/dev/null 2>&1; then
+  PY=python3
+elif command -v python >/dev/null 2>&1; then
+  PY=python
+else
+  echo "ERROR: python or python3 is required to JSON-encode the payload" >&2
+  exit 1
+fi
+
+payload="$($PY -c "
 import json, sys
 print(json.dumps({
     'model': sys.argv[1],

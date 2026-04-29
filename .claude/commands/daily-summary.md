@@ -1,5 +1,5 @@
 ---
-description: Local end-of-day summary. Computes day P&L, appends EOD snapshot to TRADE-LOG, sends one ClickUp recap.
+description: Local end-of-day summary. Computes day P&L, appends EOD snapshot to TRADE-LOG, sends one Discord recap.
 ---
 
 You are running the daily summary workflow LOCALLY. Resolve today's date via:
@@ -30,8 +30,8 @@ STEP 4 — Append EOD snapshot to memory/TRADE-LOG.md:
 | Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
 **Notes:** one-paragraph plain-english summary.
 
-STEP 5 — Send ONE ClickUp message (always, even on no-trade days). <= 15 lines:
-  bash scripts/clickup.sh "EOD MMM DD
+STEP 5 — Send ONE Discord message (always, even on no-trade days). <= 15 lines:
+  bash scripts/discord.sh "EOD MMM DD
   Portfolio: \$X (±X% day, ±X% phase)
   Cash: \$X
   Trades today: <list or none>

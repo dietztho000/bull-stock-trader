@@ -6,15 +6,14 @@ DATE=$(date +%Y-%m-%d).
 IMPORTANT — ENVIRONMENT VARIABLES:
 - Every API key is ALREADY exported as a process env var: ALPACA_API_KEY,
   ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, CLICKUP_API_KEY,
-  CLICKUP_WORKSPACE_ID, CLICKUP_CHANNEL_ID.
+  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, DISCORD_WEBHOOK_URL.
 - There is NO .env file in this repo and you MUST NOT create, write, or
   source one. The wrapper scripts read directly from the process env.
 - If a wrapper prints "KEY not set in environment" -> STOP, send one
-  ClickUp alert naming the missing var, and exit.
+  Discord alert naming the missing var, and exit.
 - Verify env vars BEFORE any wrapper call:
     for v in ALPACA_API_KEY ALPACA_SECRET_KEY \
-             CLICKUP_API_KEY CLICKUP_WORKSPACE_ID CLICKUP_CHANNEL_ID; do
+             DISCORD_WEBHOOK_URL; do
       [[ -n "${!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
     done
 
@@ -45,8 +44,8 @@ STEP 4 — Append EOD snapshot to memory/TRADE-LOG.md:
 | Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
 **Notes:** one-paragraph plain-english summary.
 
-STEP 5 — Send ONE ClickUp message (always, even on no-trade days). <= 15 lines:
-  bash scripts/clickup.sh "EOD MMM DD
+STEP 5 — Send ONE Discord message (always, even on no-trade days). <= 15 lines:
+  bash scripts/discord.sh "EOD MMM DD
   Portfolio: \$X (±X% day, ±X% phase)
   Cash: \$X
   Trades today: <list or none>

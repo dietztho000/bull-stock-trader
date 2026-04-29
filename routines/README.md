@@ -25,7 +25,7 @@ load-bearing.
    - `ALPACA_ENDPOINT`, `ALPACA_DATA_ENDPOINT` (optional, defaults to live URLs)
    - `PERPLEXITY_API_KEY` (required for research)
    - `PERPLEXITY_MODEL` (optional, defaults to `sonar`)
-   - `CLICKUP_API_KEY`, `CLICKUP_WORKSPACE_ID`, `CLICKUP_CHANNEL_ID` (notifications)
+   - `DISCORD_WEBHOOK_URL` (notifications — Discord server settings → Integrations → Webhooks)
 
 ## Creating a routine
 

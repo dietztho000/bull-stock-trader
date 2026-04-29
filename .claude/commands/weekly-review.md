@@ -42,8 +42,8 @@ STEP 5 — If a rule needs to change (proven out for 2+ weeks, or failed
 badly), also update memory/TRADING-STRATEGY.md and call out the change
 in the review.
 
-STEP 6 — Send ONE ClickUp message. <= 15 lines:
-  bash scripts/clickup.sh "Week ending MMM DD
+STEP 6 — Send ONE Discord message. <= 15 lines:
+  bash scripts/discord.sh "Week ending MMM DD
   Portfolio: \$X (±X% week, ±X% phase)
   vs S&P 500: ±X%
   Trades: N (W:X / L:Y / open:Z)

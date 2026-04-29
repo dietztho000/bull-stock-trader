@@ -9,7 +9,14 @@
       "Bash(git update-ref *)",
       "Bash(git rebase *)",
       "Bash(git ls-tree *)",
-      "Bash(grep -iE '\\(^|/\\)\\(\\\\.env|env|env\\\\.local\\)$')"
+      "Bash(grep -iE '\\(^|/\\)\\(\\\\.env|env|env\\\\.local\\)$')",
+      "Bash(git reflog *)",
+      "Bash(git gc *)",
+      "Bash(bash scripts/alpaca.sh account)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(git fetch *)",
+      "Bash(chmod +x scripts/discord.sh)"
     ]
   }
 }
