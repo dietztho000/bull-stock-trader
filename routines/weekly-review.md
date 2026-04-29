@@ -57,7 +57,7 @@ badly), also update memory/TRADING-STRATEGY.md and call out the change
 in the review.
 
 STEP 6 — Send ONE Discord message. <= 15 lines:
-  bash scripts/discord.sh "Week ending MMM DD
+  bash scripts/discord.sh --type=weekly "Week ending MMM DD
   Portfolio: \$X (±X% week, ±X% phase)
   vs S&P 500: ±X%
   Trades: N (W:X / L:Y / open:Z)

@@ -39,6 +39,10 @@ runs per trading day plus two ad-hoc helpers.
 Use bash scripts/alpaca.sh, scripts/perplexity.sh, scripts/discord.sh.
 Never curl these APIs directly.
 
+For discord.sh, always pass `--type=<category>` so each message gets a
+category emoji prefix. Categories: research, fill, midday, eod, weekly,
+error.
+
 ## Communication Style
 
 Ultra concise. No preamble. Short bullets. Match existing memory file

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Notification wrapper. Posts to a Discord channel via webhook.
-# Usage: bash scripts/discord.sh "<message>"
+# Usage: bash scripts/discord.sh [--type=<category>] "<message>"
+# Categories: research, fill, midday, eod, weekly, error (each gets an emoji prefix).
 # If DISCORD_WEBHOOK_URL is unset, appends to a local fallback file.
 
 set -euo pipefail
@@ -16,10 +17,34 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
+TYPE=""
+args=()
+for a in "$@"; do
+  case "$a" in
+    --type=*) TYPE="${a#--type=}" ;;
+    *) args+=("$a") ;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
+
+case "$TYPE" in
+  research) EMOJI="🔬" ;;
+  fill)     EMOJI="🟢" ;;
+  midday)   EMOJI="🎯" ;;
+  eod)      EMOJI="📈" ;;
+  weekly)   EMOJI="📋" ;;
+  error)    EMOJI="⚠️" ;;
+  *)        EMOJI="" ;;
+esac
+
 if [[ $# -gt 0 ]]; then
   msg="$*"
 else
   msg="$(cat)"
+fi
+
+if [[ -n "$EMOJI" ]]; then
+  msg="$EMOJI $msg"
 fi
 
 if [[ -z "${msg// /}" ]]; then

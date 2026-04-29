@@ -45,7 +45,7 @@ STEP 4 — Append EOD snapshot to memory/TRADE-LOG.md:
 **Notes:** one-paragraph plain-english summary.
 
 STEP 5 — Send ONE Discord message (always, even on no-trade days). <= 15 lines:
-  bash scripts/discord.sh "EOD MMM DD
+  bash scripts/discord.sh --type=eod "EOD MMM DD
   Portfolio: \$X (±X% day, ±X% phase)
   Cash: \$X
   Trades today: <list or none>
