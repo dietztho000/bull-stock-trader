@@ -41,7 +41,7 @@ import json, sys
 print(json.dumps({'type': 'message', 'content': sys.argv[1], 'content_format': 'text/md'}))
 " "$msg")"
 
-curl -fsS -X POST \
+curl -fsS --ssl-no-revoke -X POST \
   "https://api.clickup.com/api/v3/workspaces/$CLICKUP_WORKSPACE_ID/chat/channels/$CLICKUP_CHANNEL_ID/messages" \
   -H "Authorization: $CLICKUP_API_KEY" \
   -H "Content-Type: application/json" \
