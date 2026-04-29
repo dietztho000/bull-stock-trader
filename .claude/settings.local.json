@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x \"c:/Users/codma/OneDrive/Desktop/Apps/BULL Stock Trader/scripts/\"*.sh)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git update-ref *)",
+      "Bash(git rebase *)",
+      "Bash(git ls-tree *)",
+      "Bash(grep -iE '\\(^|/\\)\\(\\\\.env|env|env\\\\.local\\)$')"
+    ]
+  }
+}

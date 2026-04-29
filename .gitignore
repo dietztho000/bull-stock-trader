@@ -1,0 +1,23 @@
+# Local credentials — NEVER commit
+.env
+.env.local
+.env.*.local
+env
+env.local
+env.*.local
+*.env
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local-only fallback notification log (root-only — case-insensitive
+# match on Windows would otherwise hide routines/daily-summary.md etc)
+/DAILY-SUMMARY.md
