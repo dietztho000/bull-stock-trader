@@ -44,6 +44,27 @@ if not at -7% yet. Document reasoning in TRADE-LOG and update SECTOR-LEDGER.
 STEP 7 — Optional intraday research via Perplexity if something is moving
 sharply with no obvious cause. Append afternoon addendum to RESEARCH-LOG.
 
-STEP 8 — Notification: only if action was taken.
-  bash scripts/discord.sh --type=midday "<action summary>"
+STEP 8 — ALWAYS post a midday summary to the midday channel. Branch on
+whether any action was taken.
+
+If actions fired (cuts, tightens, escalations):
+  bash scripts/discord.sh --type=midday "🎯 Midday scan — $DATE $(date +%H:%M) CT
+
+Actions: N
+• Cut SYM @ -X.X% (-\$XXX) — rule cutoff
+• Tightened SYM trail 10% → 7% (at +X.X%)
+
+📊 Open: N positions | 💰 Cash: \$X"
+
+If no actions were taken (quiet midday):
+  bash scripts/discord.sh --type=midday "🎯 Midday scan — $DATE $(date +%H:%M) CT
+
+No actions taken — all positions within rules.
+• SYM ±X.X% (stop \$X.XX)
+• SYM ±X.X% (stop \$X.XX)"
+
+If there are no open positions at all, end the second template with
+"No open positions." instead of the bullet list.
+
+The post is mandatory either way — no silent runs.
 <!-- STEPS-END -->

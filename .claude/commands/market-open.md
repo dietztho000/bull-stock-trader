@@ -61,6 +61,26 @@ STEP 6 — Append each trade to memory/TRADE-LOG.md (matching existing format):
 Date, ticker, side, shares, entry price, stop level, thesis, target, R:R,
 sector, entry-scorer JSON block.
 
-STEP 7 — Notification: only if a trade was placed.
-  bash scripts/discord.sh --type=fill "<tickers, shares, fill prices, one-line why>"
+STEP 7 — ALWAYS post a market-open summary to the fill channel. Branch
+the format on whether any trades fired.
+
+If trades fired (preserve format exactly — emojis, blank lines, bullets):
+  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(date +%H:%M) CT
+
+Trades placed: N
+• SYM: BUY N @ \$X.XX (market|limit) — stop \$X.XX trailing 10%
+  Catalyst: <one-liner>
+  Entry score: X/10 (cat:X mom:X r/r:X stop:X)
+
+💰 Cash: \$X | Positions: N/6 | Trades this week: X/3"
+
+If NO trades fired, post a short reason-coded confirmation:
+  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(date +%H:%M) CT
+
+No trades fired.
+Reason: <pick the most specific match: 'no actionable plan in RESEARCH-LOG' | 'VIX XX.X (>=25 regime gate)' | 'sector rotation block on SYM' | 'all ideas failed entry-scorer (<7)' | 'position cap reached (6/6)' | 'weekly trade cap reached (3/3)' | 'PDT block'>
+
+💰 Cash: \$X | Positions: N/6"
+
+The post is mandatory either way — no silent runs.
 <!-- STEPS-END -->

@@ -27,20 +27,27 @@ fi
 # Failure path — log run-end as fail, post Discord with captured cause.
 bash "$ROOT/scripts/run-log.sh" end "$routine" fail >/dev/null 2>&1 || true
 
-# Discord caps at 2000 chars; leave room for the prefix line.
+# Discord caps at 2000 chars; leave room for the prefix lines.
 # Route auth-canary's own preflight failures to the auth-canary channel,
 # since that channel is dedicated to bot-health signals. All other
 # routines' preflight failures are real workflow errors → error channel.
-truncated="${output:0:1500}"
+truncated="${output:0:1400}"
 if [[ "$routine" == "auth-canary" ]]; then
   msg_type="auth-canary"
 else
   msg_type="error"
 fi
+when="$(date '+%Y-%m-%d %H:%M %Z')"
 bash "$ROOT/scripts/discord.sh" --type="$msg_type" \
-  "auth preflight FAILED in $routine (exit $rc) — fix and re-run
+  "⚠️ ${routine} preflight FAILED — ${when}
 
-$truncated" || true
+Exit code: ${rc}
+
+\`\`\`
+${truncated}
+\`\`\`
+
+Action: fix and re-run." || true
 
 # Surface the captured output to the routine's run log too, so the cloud
 # UI shows the same context the Discord post had.

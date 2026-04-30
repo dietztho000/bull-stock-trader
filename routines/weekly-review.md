@@ -78,14 +78,26 @@ STEP 5 — If a rule needs to change (proven out for 2+ weeks, or failed
 badly), also update memory/TRADING-STRATEGY.md and call out the change
 in the review.
 
-STEP 6 — Send ONE Discord message. <= 15 lines:
-  bash scripts/discord.sh --type=weekly "Week ending MMM DD
-  Portfolio: \$X (±X% week, ±X% phase)
-  vs S&P 500: ±X% week, ±X% phase
-  Trades: N (W:X / L:Y / open:Z)
-  Best: SYM +X%   Worst: SYM -X%
-  One-line takeaway: <...>
-  Grade: <letter>"
+STEP 6 — Send ONE Discord weekly message. Preserve format exactly:
+  bash scripts/discord.sh --type=weekly "📋 Week ending $DATE
+
+💰 Portfolio: \$X (±X.X% week, ±X.X% phase)
+📊 vs SPY: ±X.X% week, ±X.X% phase
+
+Trades: N (W:X / L:Y / open:Z)
+Best: SYM +X.X%   Worst: SYM -X.X%
+Win rate: X% | Profit factor: X.X
+
+Sector ledger:
+• Tech: 2W / 0L
+• Healthcare: 0W / 1L
+
+Takeaway: <one-liner>
+Grade: <A-F>"
+
+Render the sector ledger as one bullet per sector that traded this week
+(omit sectors with zero activity). If no trades closed this week, write
+"No closed trades this week." in place of the sector ledger bullets.
 
 FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory):
   bash scripts/run-log.sh end weekly-review ok

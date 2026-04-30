@@ -58,8 +58,14 @@ STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and compute, for today:
   MISSING  = EXPECTED - FIRED
 Stash both counts (|FIRED| / |EXPECTED|) for STEP 8's EOD message.
 
-If MISSING is non-empty, fire BEFORE the EOD post:
-  bash scripts/discord.sh --type=auth-canary "watchdog $DATE: missing routines: <list>"
+If MISSING is non-empty, fire BEFORE the EOD post (preserve format):
+  bash scripts/discord.sh --type=auth-canary "⚠️ Watchdog — $DATE
+
+Missing routines: <comma-separated list>
+Fired routines: <comma-separated list>
+
+Action: check the cloud Routines UI run logs for the missing ones."
+
 This goes to the auth-canary (bot-health) channel so it sits alongside
 the morning auth checks instead of mixing with in-flight workflow errors.
 This catches silent no-ops that look identical to legitimate quiet days.
@@ -67,23 +73,37 @@ This catches silent no-ops that look identical to legitimate quiet days.
 STEP 7 — Perplexity cost tally. Read memory/PERPLEXITY-LOG.md and count
 rows whose timestamp starts with $DATE. Estimate cost as
 (count * $0.0005). Compute the rolling 14-day median count from prior
-days' rows; if today's count > 2x that median, fire
-`bash scripts/discord.sh --type=error "perplexity $DATE: $COUNT calls
-(2x rolling median $MEDIAN — possible prompt regression)"`.
+days' rows. Stash COUNT, COST, MEDIAN for STEP 8's EOD post.
+If today's count > 2x median, ALSO fire (preserve format):
+  bash scripts/discord.sh --type=error "⚠️ Perplexity cost spike — $DATE
 
-STEP 8 — Send ONE Discord message (always, even on no-trade days). <= 15 lines.
-Use the |FIRED|/|EXPECTED| counts from STEP 6. The "Routines:" line is the
+Calls today: $COUNT (~\$$COST)
+Rolling 14-day median: $MEDIAN
+Threshold: >2× median
+
+Possible prompt regression — check today's RESEARCH-LOG and routine logs."
+
+STEP 8 — Send ONE Discord EOD message (always, even on no-trade days).
+Preserve format exactly. The Health section's "Routines:" line is the
 all-clear signal — without it, no-news-is-good-news collides with cron
-itself being broken (you'd see no EOD post at all, but you also wouldn't
-notice if you weren't looking).
-  bash scripts/discord.sh --type=eod "EOD MMM DD
-  Portfolio: \$X (±X% day, ±X% phase)
-  vs SPY: ±X% day / ±X% phase
-  Cash: \$X
-  Trades today: <list or none>
-  Open positions:
-    SYM ±X.X% (stop \$X.XX)
-  Routines: N/M fired<if MISSING non-empty: ' (missing: <list>)'>
-  Perplexity: N calls (~\$X.XX)
-  Tomorrow: <one-line plan>"
+itself being broken.
+  bash scripts/discord.sh --type=eod "📈 EOD — $DATE (Day N, Wkdy)
+
+💰 Portfolio: \$X (±X.X% day, ±X.X% phase)
+📊 vs SPY: ±X.X% day / ±X.X% phase
+Cash: \$X (X% of equity)
+
+Trades today: <list or 'none'>
+Open positions:
+• SYM ±X.X% (stop \$X.XX)
+• SYM ±X.X% (stop \$X.XX)
+
+🩺 Health:
+• Routines: N/M fired<if MISSING non-empty: ' (missing: <list>)'>
+• Perplexity: N calls (~\$X.XX)
+
+Tomorrow: <one-line plan>"
+
+If there are no open positions, replace the bullet list with the literal
+line `No open positions.` If "Trades today" is empty, write "none".
 <!-- STEPS-END -->

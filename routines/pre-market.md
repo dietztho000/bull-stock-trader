@@ -71,8 +71,28 @@ The dated entry should include:
 - Risk factors for the day
 - Decision: trade or HOLD (default HOLD — patience > activity)
 
-STEP 5 — Notification: silent unless urgent.
-  bash scripts/discord.sh --type=research "<one line>"
+STEP 5 — ALWAYS post a research summary to the research channel.
+Use this exact format (preserve emojis, blank line, and bullets):
+
+  bash scripts/discord.sh --type=research "🔬 Pre-market — $DATE
+
+📊 Market context:
+• WTI: \$X / Brent: \$Y
+• S&P futures: ±X.X% | VIX: XX.X
+• Catalysts: <one-liner of today's biggest>
+
+💡 Trade ideas (N):
+1. SYM — entry \$X, stop \$Y, target \$Z (catalyst: <one-liner>)
+2. SYM — entry \$X, stop \$Y, target \$Z (catalyst: <one-liner>)
+
+⚠️ Risk factors: <one-liner>
+
+Decision: HOLD"
+
+If the decision is TRADE, write "Decision: TRADE — see market-open at 8:30 CT".
+If a Perplexity query exits 3 (key missing), append a final line "Note:
+Perplexity unavailable — used WebSearch fallback." before the Decision line.
+Truncate any section to keep the total under ~1800 chars (Discord limit).
 
 FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory):
   bash scripts/run-log.sh end pre-market ok

@@ -9,37 +9,62 @@ This routine fires at 03:30 CT (04:30 ET) every weekday — about 5 hours
 before market-open. Its only job is to surface broken credentials early
 enough that the user has time to rotate keys before pre-market fires.
 
-Be terse. Print one line per dependency. Exit non-zero if any check failed.
+Be terse internally; the Discord post is the user-facing surface and follows
+a strict format (see STEP 5).
 
 <!-- STEPS-BEGIN -->
-STEP 1 — Alpaca account check (broker auth — most critical):
+STEP 1 — Alpaca account check (broker auth — most critical). Capture
+result for STEP 5:
   bash scripts/alpaca.sh account
-Capture exit status. Non-zero = STOP everything else, fire Discord error
-naming the failure (401, 403, network, etc.), exit 1.
+Stash: ALPACA_ACCOUNT_OK = (true|false), ACCOUNT_NUMBER = "PA…" or empty,
+ALPACA_ACCOUNT_ERR = "<HTTP code or message>" if false.
 
-STEP 2 — Alpaca data feed check:
+STEP 2 — Alpaca data feed check. Capture result:
   bash scripts/alpaca.sh quote SPY
-Non-zero = same handling. Data API can fail independently of trading API.
+Stash: ALPACA_DATA_OK, SPY_PRICE = "$X.XX" (the .quote.ap value), DATA_ERR.
 
-STEP 3 — Perplexity check (research dependency):
+STEP 3 — Perplexity check. Capture result:
   bash scripts/perplexity.sh "current S&P 500 level (one number)"
-Non-zero = note in summary; do NOT abort (Perplexity has a documented
-exit-3 fallback to WebSearch, and other routines tolerate research being
-soft-down).
+Stash: PERPLEXITY_OK (treat exit-3 fallback as PERPLEXITY_OK=false), PPLX_ERR.
 
-STEP 4 — Discord webhook check:
-  bash scripts/discord.sh --type=auth-canary "auth-canary $DATE: testing webhook"
-The fact that this Discord post landed at all is the test — if the
-auth-canary webhook is dead, you won't see the message at all (silent
-fail). Mention this limitation in the summary line.
+STEP 4 — Discord webhook check (proves the auth-canary webhook works):
+  bash scripts/discord.sh --type=auth-canary "📡 Auth canary $DATE: webhook self-test"
+If this exits non-zero, Discord webhook is broken — STEP 5's main post
+also won't land, so log to TRADE-LOG (STEP 6) and exit with that error
+in the routine's run log.
 
-STEP 5 — Summary post (only if anything degraded):
-  bash scripts/discord.sh --type=auth-canary "auth-canary $DATE FAIL: <which checks failed, in plain words>"
-If everything passed, EXIT SILENTLY — the test post in STEP 4 already
-proved Discord works. No "all good" spam.
+STEP 5 — ALWAYS post the structured summary to the auth-canary channel.
+Build it from the stashed STEP 1-3 results. Format EXACTLY (preserve the
+emojis, blank line, and bullets):
 
-STEP 6 — On any failure in STEP 1-3, also write a one-line entry to
-memory/TRADE-LOG.md so the audit trail captures the outage:
+If all four checks passed:
+  bash scripts/discord.sh --type=auth-canary "📡 Auth canary — $DATE
+
+✓ Alpaca account: ok (acct $ACCOUNT_NUMBER)
+✓ Alpaca data feed: ok (SPY $SPY_PRICE)
+✓ Perplexity: ok
+✓ Discord webhook: ok (this message)
+
+All systems healthy."
+
+If any check failed, replace its ✓ line with ✗ and a brief reason; change
+the trailing line to "Action: rotate keys / check provider status." and
+prefix the title with ⚠️ instead of 📡. Example failed Perplexity:
+
+  bash scripts/discord.sh --type=auth-canary "⚠️ Auth canary — $DATE
+
+✓ Alpaca account: ok (acct PA328…)
+✓ Alpaca data feed: ok (SPY \$689.60)
+✗ Perplexity: FAIL (401 unauthorized)
+✓ Discord webhook: ok (this message)
+
+Action: rotate PERPLEXITY_API_KEY."
+
+STEP 6 — On any failure in STEP 1-3, ALSO write a one-line audit entry to
+memory/TRADE-LOG.md so the audit trail captures the outage. Idempotency
+guard per CLAUDE.md: grep for `### $DATE HH:MM — Auth canary` first; if a
+section for this minute already exists, skip the append.
+
   ### YYYY-MM-DD HH:MM — Auth canary FAILED
   - Alpaca account: <ok|FAIL: 401>
   - Alpaca data:    <ok|FAIL: 5xx>
