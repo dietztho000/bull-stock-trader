@@ -52,7 +52,7 @@ esac
 # in TYPE (e.g. "auth-canary") are converted to underscores so the env var
 # name is shell-valid (DISCORD_WEBHOOK_URL_AUTH_CANARY).
 if [[ -n "$TYPE" ]]; then
-  category_var="DISCORD_WEBHOOK_URL_$(printf '%s' "$TYPE" | tr 'a-z' 'A-Z' | tr '-' '_')"
+  category_var="DISCORD_WEBHOOK_URL_$(printf '%s' "$TYPE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"
   WEBHOOK="${!category_var:-${DISCORD_WEBHOOK_URL:-}}"
 else
   WEBHOOK="${DISCORD_WEBHOOK_URL:-}"

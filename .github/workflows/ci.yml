@@ -14,7 +14,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck
-          shellcheck scripts/*.sh
+          shellcheck -x --source-path=SCRIPTDIR scripts/*.sh
 
   ssot-drift:
     runs-on: ubuntu-latest
