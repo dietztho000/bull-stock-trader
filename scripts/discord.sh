@@ -2,7 +2,14 @@
 # Notification wrapper. Posts to a Discord channel via webhook.
 # Usage: bash scripts/discord.sh [--type=<category>] "<message>"
 # Categories: research, fill, midday, eod, weekly, error (each gets an emoji prefix).
-# If DISCORD_WEBHOOK_URL is unset, appends to a local fallback file.
+#
+# Webhook routing — per-category override with single-channel fallback:
+#   DISCORD_WEBHOOK_URL_<UPPERCASE_CATEGORY>   (optional, takes priority)
+#   DISCORD_WEBHOOK_URL                        (fallback, also the default)
+# e.g. set DISCORD_WEBHOOK_URL_EOD to send daily summaries to a different
+# channel than DISCORD_WEBHOOK_URL_WEEKLY. Unset categories use the default.
+# If both are unset, appends to a local fallback file.
+#
 # If NTFY_TOPIC is set, also POSTs to https://ntfy.sh/$NTFY_TOPIC for redundancy.
 
 set -euo pipefail
@@ -35,6 +42,17 @@ case "$TYPE" in
   *)        EMOJI="" ;;
 esac
 
+# Resolve which webhook to POST to. DISCORD_WEBHOOK_URL_<TYPE_UPPER> takes
+# priority over DISCORD_WEBHOOK_URL. The TYPE was constrained by the case
+# above, so the env-var name we look up here is always one of the six known
+# categories (no risk of attacker-controlled indirect expansion).
+if [[ -n "$TYPE" ]]; then
+  category_var="DISCORD_WEBHOOK_URL_$(printf '%s' "$TYPE" | tr '[:lower:]' '[:upper:]')"
+  WEBHOOK="${!category_var:-${DISCORD_WEBHOOK_URL:-}}"
+else
+  WEBHOOK="${DISCORD_WEBHOOK_URL:-}"
+fi
+
 if [[ $# -gt 0 ]]; then
   msg="$*"
 else
@@ -66,7 +84,7 @@ _mirror_ntfy() {
 
 stamp="$(date '+%Y-%m-%d %H:%M %Z')"
 
-if [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
+if [[ -z "$WEBHOOK" ]]; then
   printf "\n---\n## %s (fallback — Discord not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"
   echo "[discord fallback] appended to DAILY-SUMMARY.md"
   echo "$msg"
@@ -76,7 +94,7 @@ fi
 
 payload="$(jq -Rn --arg c "$msg" '{content:$c}')"
 
-_curl_retry POST "$DISCORD_WEBHOOK_URL" \
+_curl_retry POST "$WEBHOOK" \
   -H 'Content-Type: application/json' \
   --data-raw "$payload"
 echo

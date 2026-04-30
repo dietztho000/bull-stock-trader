@@ -47,6 +47,15 @@ script, commit both files together. CI can verify in-sync state with
    - `PERPLEXITY_MODEL` (defaults to `sonar`)
    - `BOT_MODE=paper` + `ALPACA_PAPER_*` (run a parallel paper routine)
    - `NTFY_TOPIC` (mirror Discord notifications to ntfy.sh)
+   - Per-category Discord webhook overrides — set on the matching routine
+     to send that category to a dedicated channel. Each falls back to
+     `DISCORD_WEBHOOK_URL` when unset:
+     - `DISCORD_WEBHOOK_URL_EOD` on `daily-summary`
+     - `DISCORD_WEBHOOK_URL_WEEKLY` on `weekly-review`
+     - `DISCORD_WEBHOOK_URL_FILL` on `market-open` / `trade`
+     - `DISCORD_WEBHOOK_URL_MIDDAY` on `midday` / `stops`
+     - `DISCORD_WEBHOOK_URL_RESEARCH` on `pre-market`
+     - `DISCORD_WEBHOOK_URL_ERROR` on any routine (auth-preflight failures)
 
 ## Creating a routine
 
