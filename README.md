@@ -16,6 +16,11 @@ failed trades. Patience > activity.
 
 Full rules: [memory/TRADING-STRATEGY.md](memory/TRADING-STRATEGY.md).
 
+## Daily flow
+
+See [FLOW.md](FLOW.md) for the routine timeline + memory-file read/write
+diagram.
+
 ## Repo layout
 
 ```
