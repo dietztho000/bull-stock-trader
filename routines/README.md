@@ -51,13 +51,16 @@ script, commit both files together. CI can verify in-sync state with
    - Per-category Discord webhook overrides — set on the matching routine
      to send that category to a dedicated channel. Each falls back to
      `DISCORD_WEBHOOK_URL` when unset:
+     - `DISCORD_WEBHOOK_URL_AUTH_CANARY` on `auth-canary`
      - `DISCORD_WEBHOOK_URL_EOD` on `daily-summary`
      - `DISCORD_WEBHOOK_URL_WEEKLY` on `weekly-review`
      - `DISCORD_WEBHOOK_URL_FILL` on `market-open` / `trade`
      - `DISCORD_WEBHOOK_URL_MIDDAY` on `midday`
      - `DISCORD_WEBHOOK_URL_STOPS` on `stops`
      - `DISCORD_WEBHOOK_URL_RESEARCH` on `pre-market`
-     - `DISCORD_WEBHOOK_URL_ERROR` on any routine (auth-preflight failures)
+     - `DISCORD_WEBHOOK_URL_ERROR` on any routine (in-flight workflow failures
+       — but `auth-canary`'s own preflight failures route to the auth-canary
+       channel above, since that channel is the dedicated bot-health stream)
 
 ## Creating a routine
 

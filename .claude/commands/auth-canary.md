@@ -28,13 +28,13 @@ exit-3 fallback to WebSearch, and other routines tolerate research being
 soft-down).
 
 STEP 4 — Discord webhook check:
-  bash scripts/discord.sh --type=research "auth-canary $DATE: testing webhook"
-The fact that this Discord post landed at all is the test — if the webhook
-is dead, the user won't see the message at all (silent fail). Mention this
-limitation in the summary line.
+  bash scripts/discord.sh --type=auth-canary "auth-canary $DATE: testing webhook"
+The fact that this Discord post landed at all is the test — if the
+auth-canary webhook is dead, you won't see the message at all (silent
+fail). Mention this limitation in the summary line.
 
 STEP 5 — Summary post (only if anything degraded):
-  bash scripts/discord.sh --type=error "auth-canary $DATE FAIL: <which checks failed, in plain words>"
+  bash scripts/discord.sh --type=auth-canary "auth-canary $DATE FAIL: <which checks failed, in plain words>"
 If everything passed, EXIT SILENTLY — the test post in STEP 4 already
 proved Discord works. No "all good" spam.
 

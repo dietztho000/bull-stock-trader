@@ -28,8 +28,16 @@ fi
 bash "$ROOT/scripts/run-log.sh" end "$routine" fail >/dev/null 2>&1 || true
 
 # Discord caps at 2000 chars; leave room for the prefix line.
+# Route auth-canary's own preflight failures to the auth-canary channel,
+# since that channel is dedicated to bot-health signals. All other
+# routines' preflight failures are real workflow errors → error channel.
 truncated="${output:0:1500}"
-bash "$ROOT/scripts/discord.sh" --type=error \
+if [[ "$routine" == "auth-canary" ]]; then
+  msg_type="auth-canary"
+else
+  msg_type="error"
+fi
+bash "$ROOT/scripts/discord.sh" --type="$msg_type" \
   "auth preflight FAILED in $routine (exit $rc) — fix and re-run
 
 $truncated" || true

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Notification wrapper. Posts to a Discord channel via webhook.
 # Usage: bash scripts/discord.sh [--type=<category>] "<message>"
-# Categories: research, fill, midday, stops, eod, weekly, error (each gets an emoji prefix).
+# Categories: research, fill, midday, stops, eod, weekly, error, auth-canary
+# (each gets an emoji prefix).
 #
 # Webhook routing — per-category override with single-channel fallback:
 #   DISCORD_WEBHOOK_URL_<UPPERCASE_CATEGORY>   (optional, takes priority)
@@ -33,22 +34,25 @@ done
 set -- "${args[@]+"${args[@]}"}"
 
 case "$TYPE" in
-  research) EMOJI="🔬" ;;
-  fill)     EMOJI="🟢" ;;
-  midday)   EMOJI="🎯" ;;
-  stops)    EMOJI="🛡️" ;;
-  eod)      EMOJI="📈" ;;
-  weekly)   EMOJI="📋" ;;
-  error)    EMOJI="⚠️" ;;
-  *)        EMOJI="" ;;
+  research)    EMOJI="🔬" ;;
+  fill)        EMOJI="🟢" ;;
+  midday)      EMOJI="🎯" ;;
+  stops)       EMOJI="🛡️" ;;
+  eod)         EMOJI="📈" ;;
+  weekly)      EMOJI="📋" ;;
+  error)       EMOJI="⚠️" ;;
+  auth-canary) EMOJI="📡" ;;
+  *)           EMOJI="" ;;
 esac
 
 # Resolve which webhook to POST to. DISCORD_WEBHOOK_URL_<TYPE_UPPER> takes
 # priority over DISCORD_WEBHOOK_URL. The TYPE was constrained by the case
-# above, so the env-var name we look up here is always one of the six known
-# categories (no risk of attacker-controlled indirect expansion).
+# above, so the env-var name we look up here is always one of the known
+# categories (no risk of attacker-controlled indirect expansion). Hyphens
+# in TYPE (e.g. "auth-canary") are converted to underscores so the env var
+# name is shell-valid (DISCORD_WEBHOOK_URL_AUTH_CANARY).
 if [[ -n "$TYPE" ]]; then
-  category_var="DISCORD_WEBHOOK_URL_$(printf '%s' "$TYPE" | tr '[:lower:]' '[:upper:]')"
+  category_var="DISCORD_WEBHOOK_URL_$(printf '%s' "$TYPE" | tr 'a-z' 'A-Z' | tr '-' '_')"
   WEBHOOK="${!category_var:-${DISCORD_WEBHOOK_URL:-}}"
 else
   WEBHOOK="${DISCORD_WEBHOOK_URL:-}"
