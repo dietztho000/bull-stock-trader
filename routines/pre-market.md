@@ -22,13 +22,13 @@ HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
   bash scripts/run-log.sh start pre-market
 
 PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
-  bash scripts/alpaca.sh account
-If that command exits non-zero (401, 403, network error, etc.):
-  bash scripts/run-log.sh end pre-market fail
-  bash scripts/discord.sh --type=error "auth preflight failed in pre-market — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
-  exit immediately. Do NOT continue to research, do NOT call Perplexity,
-  do NOT write to memory. Trading without account state is unsafe and
-  Perplexity calls cost real money.
+  bash scripts/auth-preflight.sh pre-market
+If that command exits non-zero, the helper has ALREADY logged the failure
+to RUN-LOG.jsonl and posted a Discord --type=error containing the
+underlying cause (HTTP code, response body, or missing-env-var message).
+Exit immediately without further work. Do NOT continue to research, do NOT
+call Perplexity, do NOT write to memory. Trading without account state is
+unsafe and Perplexity calls cost real money.
 
 STEP 1 — Read memory for context:
 - memory/TRADING-STRATEGY.md
