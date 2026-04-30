@@ -28,8 +28,11 @@ If that command exits non-zero (401, 403, network error, etc.):
 
 STEP 1 — Read memory for today's plan:
 - memory/TRADING-STRATEGY.md
-- TODAY's entry in memory/RESEARCH-LOG.md (if missing, run pre-market
-  STEPS 1-3 inline)
+- TODAY's entry in memory/RESEARCH-LOG.md. If missing, run pre-market
+  STEPS 1-4 inline — STEP 4 is critical: write the dated entry to
+  memory/RESEARCH-LOG.md so later routines (midday, daily-summary) can
+  read it instead of re-running Perplexity. Make sure RESEARCH-LOG.md
+  is included in the FINAL STEP commit when this fallback fires.
 - tail of memory/TRADE-LOG.md (for weekly trade count)
 - memory/SECTOR-LEDGER.md (rule #10 — 2-loss streak by sector blocks new trades)
 
@@ -79,9 +82,11 @@ sector, entry-scorer JSON block.
 STEP 7 — Notification: only if a trade was placed.
   bash scripts/discord.sh --type=fill "<tickers, shares, fill prices, one-line why>"
 
-FINAL STEP — COMMIT AND PUSH (mandatory if any trades executed):
-  git add memory/TRADE-LOG.md memory/SECTOR-LEDGER.md
-  git commit -m "market-open trades $DATE"
+FINAL STEP — COMMIT AND PUSH (mandatory if any trades executed OR if the
+STEP 1 inline-research fallback wrote a fresh RESEARCH-LOG.md entry):
+  git add memory/TRADE-LOG.md memory/SECTOR-LEDGER.md memory/RESEARCH-LOG.md
+  git commit -m "market-open $DATE"
   git push origin main
-Skip commit if no trades fired. On push failure: git pull --rebase origin main, then push again.
+Skip commit if NEITHER trades fired NOR the fallback wrote a research entry.
+On push failure: git pull --rebase origin main, then push again.
 Never force-push.

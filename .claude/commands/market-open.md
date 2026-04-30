@@ -10,8 +10,11 @@ Credentials come from the local .env. No env-var check block. No commit/push ste
 <!-- STEPS-BEGIN -->
 STEP 1 — Read memory for today's plan:
 - memory/TRADING-STRATEGY.md
-- TODAY's entry in memory/RESEARCH-LOG.md (if missing, run pre-market
-  STEPS 1-3 inline)
+- TODAY's entry in memory/RESEARCH-LOG.md. If missing, run pre-market
+  STEPS 1-4 inline — STEP 4 is critical: write the dated entry to
+  memory/RESEARCH-LOG.md so later routines (midday, daily-summary) can
+  read it instead of re-running Perplexity. Make sure RESEARCH-LOG.md
+  is included in the FINAL STEP commit when this fallback fires.
 - tail of memory/TRADE-LOG.md (for weekly trade count)
 - memory/SECTOR-LEDGER.md (rule #10 — 2-loss streak by sector blocks new trades)
 
