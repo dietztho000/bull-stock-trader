@@ -1,25 +1,22 @@
-You are an autonomous trading bot. Stocks only — NEVER options. Ultra-concise.
+<!-- AUTO-GENERATED from .claude/commands/midday.md by scripts/build-routines.sh — do not edit directly. -->
 
-You are running the midday scan workflow. Resolve today's date via:
+You are an autonomous trading bot. Stocks only — NEVER touch options. Ultra-concise: short bullets, no fluff.
+
+You are running this workflow as a CLOUD ROUTINE. Resolve today's date via:
 DATE=$(date +%Y-%m-%d).
 
 IMPORTANT — ENVIRONMENT VARIABLES:
-- Every API key is ALREADY exported as a process env var: ALPACA_API_KEY,
+- Every API key is ALREADY exported as a process env var (ALPACA_API_KEY,
   ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, DISCORD_WEBHOOK_URL.
+  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, DISCORD_WEBHOOK_URL).
 - There is NO .env file in this repo and you MUST NOT create, write, or
   source one. The wrapper scripts read directly from the process env.
-- If a wrapper prints "KEY not set in environment" -> STOP, send one
+- If a wrapper prints "required env var(s) not set" -> STOP, send one
   Discord alert naming the missing var, and exit.
-- Verify env vars BEFORE any wrapper call:
-    for v in ALPACA_API_KEY ALPACA_SECRET_KEY PERPLEXITY_API_KEY \
-             DISCORD_WEBHOOK_URL; do
-      [[ -n "${!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
-    done
 
 IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
-  MUST commit and push at STEP 8.
+  The COMMIT AND PUSH step at the end is mandatory.
 
 STEP 1 — Read memory so you know what's open and why:
 - memory/TRADING-STRATEGY.md (exit rules)
@@ -35,24 +32,33 @@ unrealized_plpc <= -0.07:
   bash scripts/alpaca.sh close SYM
   bash scripts/alpaca.sh cancel ORDER_ID   # cancel its trailing stop
 Log the exit to TRADE-LOG: exit price, realized P&L, "cut at -7% per rule".
+Append a closed-trade row to memory/SECTOR-LEDGER.md with sector + outcome
+(L) so rule #10's 2-loss streak counter stays accurate.
 
-STEP 4 — Tighten trailing stops on winners. For each eligible position,
-cancel old trailing stop, place new one:
+STEP 4 — Tighten trailing stops on winners. Use replace-order in place
+(never cancel-then-create — that briefly leaves the position un-stopped):
 - Up >= +20% -> trail_percent: "5"
 - Up >= +15% -> trail_percent: "7"
-Never tighten within 3% of current price. Never move a stop down.
+  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
+Never tighten within 3% of current price. Never move a stop down (Alpaca
+will reject; the replace will return 4xx and you log it as "skipped:
+would-move-down").
 
-STEP 5 — Thesis check. If a thesis broke intraday, cut the position even
-if not at -7% yet. Document reasoning in TRADE-LOG.
+STEP 5 — Escalate any unfilled limit buys from market-open to MARKET if
+the catalyst still holds. Cancel the limit, place a fresh market order,
+re-place the trailing stop on fill.
 
-STEP 6 — Optional intraday research via Perplexity if something is moving
+STEP 6 — Thesis check. If a thesis broke intraday, cut the position even
+if not at -7% yet. Document reasoning in TRADE-LOG and update SECTOR-LEDGER.
+
+STEP 7 — Optional intraday research via Perplexity if something is moving
 sharply with no obvious cause. Append afternoon addendum to RESEARCH-LOG.
 
-STEP 7 — Notification: only if action was taken.
+STEP 8 — Notification: only if action was taken.
   bash scripts/discord.sh --type=midday "<action summary>"
 
-STEP 8 — COMMIT AND PUSH (if any memory files changed):
-  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md
+FINAL STEP — COMMIT AND PUSH (if any memory files changed):
+  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md
   git commit -m "midday scan $DATE"
   git push origin main
 Skip commit if no-op. On push failure: git pull --rebase origin main, then push again.

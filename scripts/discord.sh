@@ -3,26 +3,24 @@
 # Usage: bash scripts/discord.sh [--type=<category>] "<message>"
 # Categories: research, fill, midday, eod, weekly, error (each gets an emoji prefix).
 # If DISCORD_WEBHOOK_URL is unset, appends to a local fallback file.
+# If NTFY_TOPIC is set, also POSTs to https://ntfy.sh/$NTFY_TOPIC for redundancy.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ENV_FILE="$ROOT/.env"
-FALLBACK="$ROOT/DAILY-SUMMARY.md"
+# shellcheck source=_lib.sh
+source "$ROOT/scripts/_lib.sh"
+_load_env "$ROOT"
+_require_jq
 
-if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
+FALLBACK="$ROOT/DAILY-SUMMARY.md"
 
 TYPE=""
 args=()
-for a in "$@"; do
-  case "$a" in
-    --type=*) TYPE="${a#--type=}" ;;
-    *) args+=("$a") ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --type=*) TYPE="${1#--type=}"; shift ;;
+    *)        args+=("$1"); shift ;;
   esac
 done
 set -- "${args[@]+"${args[@]}"}"
@@ -43,22 +41,11 @@ else
   msg="$(cat)"
 fi
 
-if [[ -n "$EMOJI" ]]; then
-  msg="$EMOJI $msg"
-fi
+[[ -n "$EMOJI" ]] && msg="$EMOJI $msg"
 
 if [[ -z "${msg// /}" ]]; then
   echo "usage: bash scripts/discord.sh \"<message>\"" >&2
   exit 1
-fi
-
-stamp="$(date '+%Y-%m-%d %H:%M %Z')"
-
-if [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
-  printf "\n---\n## %s (fallback — Discord not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"
-  echo "[discord fallback] appended to DAILY-SUMMARY.md"
-  echo "$msg"
-  exit 0
 fi
 
 # Discord enforces a 2000-char message limit. Truncate with notice.
@@ -66,22 +53,31 @@ if [[ ${#msg} -gt 1900 ]]; then
   msg="${msg:0:1900}…(truncated)"
 fi
 
-if command -v python3 >/dev/null 2>&1; then
-  PY=python3
-elif command -v python >/dev/null 2>&1; then
-  PY=python
-else
-  echo "ERROR: python or python3 is required to JSON-encode the payload" >&2
-  exit 1
+# ntfy.sh mirror — boring-tech redundancy. No creds needed; pick a long, hard-
+# to-guess topic name in NTFY_TOPIC. Fire-and-forget, never blocks Discord.
+_mirror_ntfy() {
+  if [[ -n "${NTFY_TOPIC:-}" ]]; then
+    curl -sS --ssl-no-revoke --max-time 5 \
+      -H "Title: bull-stock-trader" \
+      -d "$msg" \
+      "https://ntfy.sh/$NTFY_TOPIC" >/dev/null 2>&1 || true
+  fi
+}
+
+stamp="$(date '+%Y-%m-%d %H:%M %Z')"
+
+if [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
+  printf "\n---\n## %s (fallback — Discord not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"
+  echo "[discord fallback] appended to DAILY-SUMMARY.md"
+  echo "$msg"
+  _mirror_ntfy
+  exit 0
 fi
 
-payload="$($PY -c "
-import json, sys
-print(json.dumps({'content': sys.argv[1]}))
-" "$msg")"
+payload="$(jq -Rn --arg c "$msg" '{content:$c}')"
 
-curl -fsS --ssl-no-revoke -X POST \
-  "$DISCORD_WEBHOOK_URL" \
-  -H "Content-Type: application/json" \
-  -d "$payload"
+_curl_retry POST "$DISCORD_WEBHOOK_URL" \
+  -H 'Content-Type: application/json' \
+  --data-raw "$payload"
 echo
+_mirror_ntfy

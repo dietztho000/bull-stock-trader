@@ -7,11 +7,13 @@ DATE=$(date +%Y-%m-%d).
 
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
+<!-- STEPS-BEGIN -->
 STEP 1 — Read memory for today's plan:
 - memory/TRADING-STRATEGY.md
 - TODAY's entry in memory/RESEARCH-LOG.md (if missing, run pre-market
   STEPS 1-3 inline)
 - tail of memory/TRADE-LOG.md (for weekly trade count)
+- memory/SECTOR-LEDGER.md (rule #10 — 2-loss streak by sector blocks new trades)
 
 STEP 2 — Re-validate with live data:
   bash scripts/alpaca.sh account
@@ -25,19 +27,37 @@ and log the reason:
 - Position cost <= 20% of equity
 - Catalyst documented in today's RESEARCH-LOG
 - daytrade_count leaves room (PDT: 3/5 rolling business days)
+- Sector for this ticker has < 2 consecutive losses in last 30 days
+  (read memory/SECTOR-LEDGER.md). If sector is unknown, look it up via
+  perplexity.sh "What is the GICS sector for $TICKER?", cache the answer
+  in memory/SECTOR-MAP.md, then re-check.
+- Entry scorer (see TRADING-STRATEGY.md "Entry Scorer"): each trade must
+  score >= 7/10 across catalyst, momentum, R:R, stop-distance. Record
+  the score block in TRADE-LOG before STEP 4.
 
-STEP 4 — Execute the buys (market orders, day TIF):
-  bash scripts/alpaca.sh order '{"symbol":"SYM","qty":"N","side":"buy","type":"market","time_in_force":"day"}'
-Wait for fill confirmation before placing the stop.
+STEP 4 — Execute the buys. Default to a marketable LIMIT at midpoint
++ 10 bps to reduce slippage on small-cap names; fall back to MARKET if
+spread > 50 bps (illiquid name = market is safer):
+  # quote SYM gives bid (bp) and ask (ap)
+  mid = (bp + ap) / 2; spread_bps = (ap - bp) / mid * 10000
+  if spread_bps > 50:
+    bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side buy --type market --tif day
+  else:
+    limit = round(mid * 1.001, 2)   # midpoint + 10 bps
+    bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side buy --type limit --limit-price LIMIT --tif day
+Wait for fill confirmation before placing the stop. If the limit is unfilled
+at routine end, leave it — midday will escalate to market if still unfilled.
 
 STEP 5 — Immediately place 10% trailing stop GTC for each new position:
-  bash scripts/alpaca.sh order '{"symbol":"SYM","qty":"N","side":"sell","type":"trailing_stop","trail_percent":"10","time_in_force":"gtc"}'
+  bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type trailing_stop --trail-percent 10 --tif gtc
 If Alpaca rejects with PDT error, fall back to fixed stop 10% below entry:
-  bash scripts/alpaca.sh order '{"symbol":"SYM","qty":"N","side":"sell","type":"stop","stop_price":"X.XX","time_in_force":"gtc"}'
+  bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type stop --stop-price X.XX --tif gtc
 If also blocked, queue the stop in TRADE-LOG as "PDT-blocked, set tomorrow AM".
 
 STEP 6 — Append each trade to memory/TRADE-LOG.md (matching existing format):
-Date, ticker, side, shares, entry price, stop level, thesis, target, R:R.
+Date, ticker, side, shares, entry price, stop level, thesis, target, R:R,
+sector, entry-scorer JSON block.
 
 STEP 7 — Notification: only if a trade was placed.
   bash scripts/discord.sh --type=fill "<tickers, shares, fill prices, one-line why>"
+<!-- STEPS-END -->

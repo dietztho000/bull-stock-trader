@@ -9,10 +9,12 @@ Credentials come from the local .env file (the wrapper scripts source it
 automatically). No env-var check block. No commit/push step — the user
 controls git locally.
 
+<!-- STEPS-BEGIN -->
 STEP 1 — Read memory for context:
 - memory/TRADING-STRATEGY.md
 - tail of memory/TRADE-LOG.md
 - tail of memory/RESEARCH-LOG.md
+- memory/SECTOR-LEDGER.md (recent sector outcomes — relevant when picking ideas)
 
 STEP 2 — Pull live account state:
   bash scripts/alpaca.sh account
@@ -37,8 +39,12 @@ STEP 4 — Write a dated entry to memory/RESEARCH-LOG.md:
 - Account snapshot (equity, cash, buying power, daytrade count)
 - Market context (oil, indices, VIX, today's releases)
 - 2-3 actionable trade ideas WITH catalyst + entry/stop/target
+- Sector check: cross-reference each idea against memory/SECTOR-LEDGER.md;
+  flag any idea in a sector with a 2-loss streak (rule #10 will block it
+  at /trade time anyway, but call it out here)
 - Risk factors for the day
 - Decision: trade or HOLD (default HOLD — patience > activity)
 
 STEP 5 — Notification: silent unless urgent.
   bash scripts/discord.sh --type=research "<one line>"
+<!-- STEPS-END -->

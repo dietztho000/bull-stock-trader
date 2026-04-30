@@ -1,0 +1,23 @@
+# Sector Map — Cached GICS sector per ticker
+
+Cached sector lookups so the routines don't query Perplexity for the same
+ticker twice. Append to this file the first time a ticker is seen.
+
+Use the 11 standard GICS sectors:
+- Communication Services
+- Consumer Discretionary
+- Consumer Staples
+- Energy
+- Financials
+- Health Care
+- Industrials
+- Information Technology
+- Materials
+- Real Estate
+- Utilities
+
+## Map
+
+| Symbol | Sector | Source | Date added |
+|--------|--------|--------|------------|
+| _first row appended on first ticker lookup_ | | | |

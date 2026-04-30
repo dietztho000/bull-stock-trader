@@ -2,30 +2,51 @@
 
 Each `.md` file in this directory is the prompt body for a Claude Code cloud
 routine. Paste the file contents **verbatim** into the routine's prompt field —
-do not paraphrase. The env-var check block and the COMMIT AND PUSH step are
-load-bearing.
+do not paraphrase. The env-var preflight block and the COMMIT AND PUSH step
+are load-bearing.
+
+## Single source of truth — do not edit routine files by hand
+
+The STEP content of every routine lives in `.claude/commands/<name>.md`
+between `<!-- STEPS-BEGIN -->` / `<!-- STEPS-END -->` markers. The matching
+`routines/<name>.md` file is **auto-generated** by:
+
+```bash
+bash scripts/build-routines.sh
+```
+
+…which concatenates `_cloud-header.md` + the extracted steps + the
+per-routine `_cloud-footer-<name>.md`. Edit the command file, run the build
+script, commit both files together. CI can verify in-sync state with
+`git diff --exit-code routines/`.
 
 ## Schedule (America/Chicago)
 
-| Routine        | Cron          | When                                |
-|----------------|---------------|-------------------------------------|
-| pre-market     | `0 6 * * 1-5` | 6:00 AM weekdays                    |
-| market-open    | `30 8 * * 1-5`| 8:30 AM weekdays (market opens)     |
-| midday         | `0 12 * * 1-5`| Noon weekdays                       |
-| daily-summary  | `0 15 * * 1-5`| 3:00 PM weekdays (market closes CT) |
-| weekly-review  | `0 16 * * 5`  | 4:00 PM Fridays only                |
+| Routine        | Cron          | When                                       |
+|----------------|---------------|--------------------------------------------|
+| pre-market     | `0 6 * * 1-5` | 6:00 AM weekdays                           |
+| market-open    | `30 8 * * 1-5`| 8:30 AM weekdays (market opens)            |
+| midday         | `0 12 * * 1-5`| Noon weekdays                              |
+| stops          | `30 13 * * 1-5`| 1:30 PM weekdays — stop reconciliation    |
+| daily-summary  | `0 15 * * 1-5`| 3:00 PM weekdays (market closes CT)        |
+| weekly-review  | `0 16 * * 5`  | 4:00 PM Fridays only                       |
 
 ## One-time prerequisites
 
 1. **Install the Claude GitHub App** on this repo (least privilege — single repo).
 2. **Toggle "Allow unrestricted branch pushes"** in each routine's environment.
    Without this, `git push origin main` silently fails with a proxy error.
-3. **Set environment variables on the routine** (NOT in a `.env` file in the repo):
+3. **Set environment variables on the routine** (see [env.template](../env.template)
+   for the full annotated list). At minimum:
    - `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` (required)
-   - `ALPACA_ENDPOINT`, `ALPACA_DATA_ENDPOINT` (optional, defaults to live URLs)
    - `PERPLEXITY_API_KEY` (required for research)
-   - `PERPLEXITY_MODEL` (optional, defaults to `sonar`)
-   - `DISCORD_WEBHOOK_URL` (notifications — Discord server settings → Integrations → Webhooks)
+   - `DISCORD_WEBHOOK_URL` (notifications)
+
+   Optional:
+   - `ALPACA_ENDPOINT`, `ALPACA_DATA_ENDPOINT` (defaults to live URLs)
+   - `PERPLEXITY_MODEL` (defaults to `sonar`)
+   - `BOT_MODE=paper` + `ALPACA_PAPER_*` (run a parallel paper routine)
+   - `NTFY_TOPIC` (mirror Discord notifications to ntfy.sh)
 
 ## Creating a routine
 
