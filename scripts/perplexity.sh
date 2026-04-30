@@ -24,6 +24,16 @@ fi
 
 MODEL="${PERPLEXITY_MODEL:-sonar}"
 
+# Cost telemetry — log every query before firing so daily-summary can tally
+# call counts and flag prompt regressions that 10x spend overnight.
+PPLX_LOG="$ROOT/memory/PERPLEXITY-LOG.md"
+mkdir -p "$(dirname "$PPLX_LOG")"
+ts="$(date '+%Y-%m-%d %H:%M %Z')"
+# Strip newlines from query for clean single-line logging; truncate at 200 chars.
+qline="${query//$'\n'/ }"
+qline="${qline:0:200}"
+printf '| %s | %s | %s |\n' "$ts" "$MODEL" "$qline" >> "$PPLX_LOG"
+
 payload="$(jq -n --arg m "$MODEL" --arg q "$query" '{
   model: $m,
   messages: [

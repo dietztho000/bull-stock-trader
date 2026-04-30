@@ -57,7 +57,7 @@ _gen_client_id() {
 }
 
 # -- Subcommand dispatch ----------------------------------------------------
-CMDS=(account positions position quote bars clock orders order submit-order
+CMDS=(account positions position quote bars clock orders submit-order
       replace-order cancel cancel-all close close-all portfolio-history)
 
 cmd="${1:-}"
@@ -95,12 +95,6 @@ case "$cmd" in
   orders)
     status="${1:-open}"
     _alpaca GET "$API/orders?status=$status&limit=100"
-    ;;
-  order)
-    # DEPRECATED — prefer submit-order. Kept for backwards-compat with any
-    # ad-hoc prompts. Raw-JSON callers MUST inject their own client_order_id.
-    body="${1:?usage: order '<json>'  (DEPRECATED — use submit-order)}"
-    _alpaca_json POST "$API/orders" "$body"
     ;;
   submit-order)
     # Named-arg order builder. Generates a client_order_id so retries are safe.

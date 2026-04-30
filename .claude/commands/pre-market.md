@@ -35,7 +35,13 @@ bash scripts/perplexity.sh "<query>" for each:
 If Perplexity exits 3, fall back to native WebSearch and note the
 fallback in the log entry.
 
-STEP 4 — Write a dated entry to memory/RESEARCH-LOG.md:
+STEP 4 — Write a dated entry to memory/RESEARCH-LOG.md.
+**Idempotency guard:** before appending, grep for `## $DATE — Pre-market Research`
+in memory/RESEARCH-LOG.md. If a section for today already exists, REPLACE it
+in place rather than appending a duplicate. A "Run again" of this routine
+must NEVER produce two entries for the same date.
+
+The dated entry should include:
 - Account snapshot (equity, cash, buying power, daytrade count)
 - Market context (oil, indices, VIX, today's releases)
 - 2-3 actionable trade ideas WITH catalyst + entry/stop/target

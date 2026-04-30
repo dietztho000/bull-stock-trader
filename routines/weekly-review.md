@@ -18,10 +18,14 @@ IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
+HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+  bash scripts/run-log.sh start weekly-review
+
 PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
   bash scripts/alpaca.sh account
 If that command exits non-zero (401, 403, network error, etc.):
-  bash scripts/discord.sh --type=error "auth preflight failed in <routine name> — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
+  bash scripts/run-log.sh end weekly-review fail
+  bash scripts/discord.sh --type=error "auth preflight failed in weekly-review — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
   exit immediately. Do NOT continue to research, do NOT call Perplexity,
   do NOT write to memory. Trading without account state is unsafe and
   Perplexity calls cost real money.
@@ -52,7 +56,12 @@ STEP 3 — Compute the week's metrics:
 - Profit factor (sum winners / |sum losers|)
 - Render a 7-day ASCII sparkline of alpha_phase from BENCHMARK.md
 
-STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md:
+STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md.
+**Idempotency guard:** grep for `## Week ending $DATE` first. If a section
+for this week already exists (routine re-fired, or you ran it manually
+earlier), REPLACE it in place. Never duplicate a weekly entry.
+
+The review should include:
 - Week stats table (include alpha + sparkline)
 - Closed trades table
 - Open positions at week end
@@ -78,8 +87,9 @@ STEP 6 — Send ONE Discord message. <= 15 lines:
   One-line takeaway: <...>
   Grade: <letter>"
 
-FINAL STEP — COMMIT AND PUSH (mandatory):
-  git add memory/WEEKLY-REVIEW.md memory/TRADING-STRATEGY.md memory/BENCHMARK.md
+FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory):
+  bash scripts/run-log.sh end weekly-review ok
+  git add memory/WEEKLY-REVIEW.md memory/TRADING-STRATEGY.md memory/BENCHMARK.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "weekly review $DATE"
   git push origin main
 If TRADING-STRATEGY.md didn't change, git add will skip it silently.

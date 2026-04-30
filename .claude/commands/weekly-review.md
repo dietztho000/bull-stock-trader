@@ -34,7 +34,12 @@ STEP 3 — Compute the week's metrics:
 - Profit factor (sum winners / |sum losers|)
 - Render a 7-day ASCII sparkline of alpha_phase from BENCHMARK.md
 
-STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md:
+STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md.
+**Idempotency guard:** grep for `## Week ending $DATE` first. If a section
+for this week already exists (routine re-fired, or you ran it manually
+earlier), REPLACE it in place. Never duplicate a weekly entry.
+
+The review should include:
 - Week stats table (include alpha + sparkline)
 - Closed trades table
 - Open positions at week end

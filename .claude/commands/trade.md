@@ -13,6 +13,11 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
    - SHARES * ask <= 20% of equity
    - SHARES * ask <= available cash
    - daytrade_count < 3
+   - Volatility regime gate: query VIX via
+       bash scripts/perplexity.sh "current VIX index level today"
+     If VIX >= 25, REFUSE the trade and print "BLOCKED: VIX $X >= 25
+     (high-volatility regime — wait for VIX < 22 before opening new risk)".
+     This replaces the old standalone /risk command.
    - Catalyst documented (ask for thesis if not in today's RESEARCH-LOG)
    - Sector rotation: look up SYMBOL's sector in memory/SECTOR-MAP.md.
      If unknown, run perplexity.sh "What is the GICS sector for $SYMBOL?"

@@ -18,10 +18,14 @@ IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
+HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+  bash scripts/run-log.sh start midday
+
 PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
   bash scripts/alpaca.sh account
 If that command exits non-zero (401, 403, network error, etc.):
-  bash scripts/discord.sh --type=error "auth preflight failed in <routine name> — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
+  bash scripts/run-log.sh end midday fail
+  bash scripts/discord.sh --type=error "auth preflight failed in midday — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
   exit immediately. Do NOT continue to research, do NOT call Perplexity,
   do NOT write to memory. Trading without account state is unsafe and
   Perplexity calls cost real money.
@@ -65,9 +69,11 @@ sharply with no obvious cause. Append afternoon addendum to RESEARCH-LOG.
 STEP 8 — Notification: only if action was taken.
   bash scripts/discord.sh --type=midday "<action summary>"
 
-FINAL STEP — COMMIT AND PUSH (if any memory files changed):
-  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md
+FINAL STEP — log heartbeat end + COMMIT AND PUSH:
+  bash scripts/run-log.sh end midday ok
+  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "midday scan $DATE"
   git push origin main
-Skip commit if no-op. On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
+so the heartbeat trace persists. On push failure: git pull --rebase origin
+main, then push again. Never force-push.

@@ -16,10 +16,14 @@ IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
+HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+  bash scripts/run-log.sh start {{ROUTINE}}
+
 PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
   bash scripts/alpaca.sh account
 If that command exits non-zero (401, 403, network error, etc.):
-  bash scripts/discord.sh --type=error "auth preflight failed in <routine name> — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
+  bash scripts/run-log.sh end {{ROUTINE}} fail
+  bash scripts/discord.sh --type=error "auth preflight failed in {{ROUTINE}} — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
   exit immediately. Do NOT continue to research, do NOT call Perplexity,
   do NOT write to memory. Trading without account state is unsafe and
   Perplexity calls cost real money.

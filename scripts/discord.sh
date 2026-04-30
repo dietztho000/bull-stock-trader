@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Notification wrapper. Posts to a Discord channel via webhook.
 # Usage: bash scripts/discord.sh [--type=<category>] "<message>"
-# Categories: research, fill, midday, eod, weekly, error (each gets an emoji prefix).
+# Categories: research, fill, midday, stops, eod, weekly, error (each gets an emoji prefix).
 #
 # Webhook routing — per-category override with single-channel fallback:
 #   DISCORD_WEBHOOK_URL_<UPPERCASE_CATEGORY>   (optional, takes priority)
@@ -36,6 +36,7 @@ case "$TYPE" in
   research) EMOJI="🔬" ;;
   fill)     EMOJI="🟢" ;;
   midday)   EMOJI="🎯" ;;
+  stops)    EMOJI="🛡️" ;;
   eod)      EMOJI="📈" ;;
   weekly)   EMOJI="📋" ;;
   error)    EMOJI="⚠️" ;;

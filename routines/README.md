@@ -24,6 +24,7 @@ script, commit both files together. CI can verify in-sync state with
 
 | Routine        | Cron          | When                                       |
 |----------------|---------------|--------------------------------------------|
+| auth-canary    | `30 3 * * 1-5`| 3:30 AM weekdays — auth health pre-flight  |
 | pre-market     | `0 6 * * 1-5` | 6:00 AM weekdays                           |
 | market-open    | `30 8 * * 1-5`| 8:30 AM weekdays (market opens)            |
 | midday         | `0 12 * * 1-5`| Noon weekdays                              |
@@ -53,7 +54,8 @@ script, commit both files together. CI can verify in-sync state with
      - `DISCORD_WEBHOOK_URL_EOD` on `daily-summary`
      - `DISCORD_WEBHOOK_URL_WEEKLY` on `weekly-review`
      - `DISCORD_WEBHOOK_URL_FILL` on `market-open` / `trade`
-     - `DISCORD_WEBHOOK_URL_MIDDAY` on `midday` / `stops`
+     - `DISCORD_WEBHOOK_URL_MIDDAY` on `midday`
+     - `DISCORD_WEBHOOK_URL_STOPS` on `stops`
      - `DISCORD_WEBHOOK_URL_RESEARCH` on `pre-market`
      - `DISCORD_WEBHOOK_URL_ERROR` on any routine (auth-preflight failures)
 

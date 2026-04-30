@@ -16,7 +16,7 @@ ROUTINE_DIR="$ROOT/routines"
 
 # Routines that have a cloud counterpart. /portfolio and /trade are
 # interactive — local-only, no cloud routine.
-ROUTINES=(pre-market market-open midday daily-summary weekly-review stops)
+ROUTINES=(auth-canary pre-market market-open midday daily-summary weekly-review stops)
 
 extract_steps() {
   # Print everything between the BEGIN/END markers (markers themselves stripped).
@@ -44,7 +44,7 @@ for name in "${ROUTINES[@]}"; do
     printf '%s\n' "$steps"
     echo
     cat "$footer"
-  } > "$out"
+  } | sed "s/{{ROUTINE}}/$name/g" > "$out"
 
   echo "wrote $out"
 done

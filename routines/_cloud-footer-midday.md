@@ -1,6 +1,8 @@
-FINAL STEP — COMMIT AND PUSH (if any memory files changed):
-  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md
+FINAL STEP — log heartbeat end + COMMIT AND PUSH:
+  bash scripts/run-log.sh end {{ROUTINE}} ok
+  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "midday scan $DATE"
   git push origin main
-Skip commit if no-op. On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
+so the heartbeat trace persists. On push failure: git pull --rebase origin
+main, then push again. Never force-push.

@@ -55,5 +55,5 @@ if any stops were modified, placed, or canceled. Format:
   - SYM: skipped (would move down)
 
 STEP 7 — Notification: only if action was taken.
-  bash scripts/discord.sh --type=midday "stops: <one-line summary>"
+  bash scripts/discord.sh --type=stops "<one-line summary>"
 <!-- STEPS-END -->

@@ -1,6 +1,8 @@
-FINAL STEP — COMMIT AND PUSH (only if TRADE-LOG was updated):
-  git add memory/TRADE-LOG.md
+FINAL STEP — log heartbeat end + COMMIT AND PUSH:
+  bash scripts/run-log.sh end {{ROUTINE}} ok
+  git add memory/TRADE-LOG.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "stop reconciliation $DATE"
   git push origin main
-Skip commit if no stops were modified. On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+Always commit at least RUN-LOG.jsonl (even on no-op runs) so the heartbeat
+trace persists. On push failure: git pull --rebase origin main, then push
+again. Never force-push.

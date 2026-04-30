@@ -1,11 +1,11 @@
 # BULL Stock Trader — Autonomous Trading Bot
 
-A cloud-scheduled, Git-as-memory trading agent built on Claude Code. Six cron
-routines fire each weekday: pre-market research, market-open execution, midday
-scan, mid-afternoon stop reconciliation, daily summary, and Friday weekly
-review. **Claude is the bot** — there is no separate Python process. Every run
-is a fresh container that clones `main`, reads memory, calls the live APIs,
-writes new memory, and pushes.
+A cloud-scheduled, Git-as-memory trading agent built on Claude Code. Seven cron
+routines fire each weekday: pre-dawn auth-canary, pre-market research,
+market-open execution, midday scan, mid-afternoon stop reconciliation, daily
+summary, and Friday weekly review. **Claude is the bot** — there is no
+separate Python process. Every run is a fresh container that clones `main`,
+reads memory, calls the live APIs, writes new memory, and pushes.
 
 ## Strategy at a glance
 Swing trading stocks only — no options, ever. Max 5–6 positions, max 20% per
@@ -42,11 +42,12 @@ Then in Claude Code:
 ```
 /portfolio       # read-only snapshot — smoke test
 /benchmark       # YTD-vs-SPY snapshot — read-only
+/auth-canary     # 5-min preflight ping to all 4 APIs (cron: weekdays 3:30am CT)
 /pre-market      # write today's research
 /market-open     # validate + execute
 /midday          # cut losers, tighten winners
 /stops           # reconcile every position has the right trailing stop
-/daily-summary   # EOD recap + Discord message
+/daily-summary   # EOD recap + Discord message + run-log watchdog
 /weekly-review   # Friday only
 /trade SYM N buy # ad-hoc trade with full rule + entry-scorer validation
 ```
@@ -67,16 +68,17 @@ Markdown files in `memory/` are the bot's only state between runs. Every
 write is an append-only dated section, so merge conflicts are effectively
 impossible across the hours-apart routine schedule.
 
-| File                  | Cadence                          |
-|-----------------------|----------------------------------|
-| TRADING-STRATEGY.md   | Friday only, when a rule changes |
-| TRADE-LOG.md          | Every trade, every EOD           |
-| RESEARCH-LOG.md       | Every pre-market                 |
-| BENCHMARK.md          | Every EOD (one row/day vs SPY)   |
-| SECTOR-LEDGER.md      | On every closed trade (W/L)      |
-| SECTOR-MAP.md         | Cached GICS lookup per ticker    |
-| WEEKLY-REVIEW.md      | Fridays                          |
-| PROJECT-CONTEXT.md    | Rarely                           |
+| File                  | Cadence                                  |
+|-----------------------|------------------------------------------|
+| TRADING-STRATEGY.md   | Friday only, when a rule changes         |
+| TRADE-LOG.md          | Every trade, every EOD                   |
+| RESEARCH-LOG.md       | Every pre-market                         |
+| BENCHMARK.md          | Every EOD (one row/day vs SPY)           |
+| SECTOR-LEDGER.md      | On every closed trade (W/L)              |
+| SECTOR-MAP.md         | Cached GICS lookup per ticker            |
+| WEEKLY-REVIEW.md      | Fridays                                  |
+| RUN-LOG.jsonl         | Every routine start + end (heartbeat)    |
+| PERPLEXITY-LOG.md     | Every Perplexity query (cost telemetry)  |
 
 ## Editing workflow steps
 

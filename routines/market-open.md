@@ -18,10 +18,14 @@ IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
+HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+  bash scripts/run-log.sh start market-open
+
 PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
   bash scripts/alpaca.sh account
 If that command exits non-zero (401, 403, network error, etc.):
-  bash scripts/discord.sh --type=error "auth preflight failed in <routine name> — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
+  bash scripts/run-log.sh end market-open fail
+  bash scripts/discord.sh --type=error "auth preflight failed in market-open — check ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_ENDPOINT on the routine"
   exit immediately. Do NOT continue to research, do NOT call Perplexity,
   do NOT write to memory. Trading without account state is unsafe and
   Perplexity calls cost real money.
@@ -82,11 +86,14 @@ sector, entry-scorer JSON block.
 STEP 7 — Notification: only if a trade was placed.
   bash scripts/discord.sh --type=fill "<tickers, shares, fill prices, one-line why>"
 
-FINAL STEP — COMMIT AND PUSH (mandatory if any trades executed OR if the
-STEP 1 inline-research fallback wrote a fresh RESEARCH-LOG.md entry):
-  git add memory/TRADE-LOG.md memory/SECTOR-LEDGER.md memory/RESEARCH-LOG.md
+FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory if any trades
+executed OR if the STEP 1 inline-research fallback wrote a fresh
+RESEARCH-LOG.md entry):
+  bash scripts/run-log.sh end market-open ok
+  git add memory/TRADE-LOG.md memory/SECTOR-LEDGER.md memory/RESEARCH-LOG.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "market-open $DATE"
   git push origin main
-Skip commit if NEITHER trades fired NOR the fallback wrote a research entry.
+Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
+so the heartbeat trace and call log persist across the fresh-clone routines.
 On push failure: git pull --rebase origin main, then push again.
 Never force-push.
