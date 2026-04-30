@@ -50,16 +50,19 @@ the file:
 Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
-STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and assert that
-every routine that SHOULD have fired today produced at least one
-{"action":"end","status":"ok"} line:
-  - auth-canary, pre-market, market-open, midday, stops, daily-summary
-    (all weekdays)
-  - weekly-review (Fridays only)
-For each missing routine, build a one-line warning. If anything is
-missing, fire `bash scripts/discord.sh --type=error "watchdog $DATE:
-missing routines: <list>"` BEFORE the EOD post. This catches silent
-no-ops that look identical to legitimate quiet days.
+STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and compute, for today:
+  EXPECTED = {auth-canary, pre-market, market-open, midday, stops, daily-summary}
+            (all weekdays; add `weekly-review` to EXPECTED on Fridays)
+  FIRED    = set of routines with at least one {"action":"end","status":"ok"}
+            row whose timestamp starts with $DATE
+  MISSING  = EXPECTED - FIRED
+Stash both counts (|FIRED| / |EXPECTED|) for STEP 8's EOD message.
+
+If MISSING is non-empty, fire BEFORE the EOD post:
+  bash scripts/discord.sh --type=auth-canary "watchdog $DATE: missing routines: <list>"
+This goes to the auth-canary (bot-health) channel so it sits alongside
+the morning auth checks instead of mixing with in-flight workflow errors.
+This catches silent no-ops that look identical to legitimate quiet days.
 
 STEP 7 — Perplexity cost tally. Read memory/PERPLEXITY-LOG.md and count
 rows whose timestamp starts with $DATE. Estimate cost as
@@ -68,7 +71,11 @@ days' rows; if today's count > 2x that median, fire
 `bash scripts/discord.sh --type=error "perplexity $DATE: $COUNT calls
 (2x rolling median $MEDIAN — possible prompt regression)"`.
 
-STEP 8 — Send ONE Discord message (always, even on no-trade days). <= 15 lines:
+STEP 8 — Send ONE Discord message (always, even on no-trade days). <= 15 lines.
+Use the |FIRED|/|EXPECTED| counts from STEP 6. The "Routines:" line is the
+all-clear signal — without it, no-news-is-good-news collides with cron
+itself being broken (you'd see no EOD post at all, but you also wouldn't
+notice if you weren't looking).
   bash scripts/discord.sh --type=eod "EOD MMM DD
   Portfolio: \$X (±X% day, ±X% phase)
   vs SPY: ±X% day / ±X% phase
@@ -76,6 +83,7 @@ STEP 8 — Send ONE Discord message (always, even on no-trade days). <= 15 lines
   Trades today: <list or none>
   Open positions:
     SYM ±X.X% (stop \$X.XX)
+  Routines: N/M fired<if MISSING non-empty: ' (missing: <list>)'>
   Perplexity: N calls (~\$X.XX)
   Tomorrow: <one-line plan>"
 <!-- STEPS-END -->
