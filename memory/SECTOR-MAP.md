@@ -21,3 +21,6 @@ Use the 11 standard GICS sectors:
 | Symbol | Sector | Source | Date added |
 |--------|--------|--------|------------|
 | _first row appended on first ticker lookup_ | | | |
+| NVDA | Information Technology | Perplexity | 2026-04-30 |
+| XOM | Energy | Perplexity | 2026-04-30 |
+| AMKR | Information Technology | Perplexity | 2026-04-30 |
