@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { runAlpaca } from "./alpaca";
+import { runAlpaca, type AlpacaMode } from "./alpaca";
 import { BOT_ROOT } from "./memoryPath";
 
 export type Mode = "paper" | "live" | "unknown";
@@ -11,6 +11,14 @@ export interface ModeInfo {
   source: ModeSource;
   endpoint: string | null;
   accountNumber: string | null;
+  error: string | null;
+}
+
+export interface AccountProbe {
+  target: AlpacaMode;
+  configured: boolean;
+  accountNumber: string | null;
+  endpoint: string | null;
   error: string | null;
 }
 
@@ -73,4 +81,47 @@ export async function detectMode(): Promise<ModeInfo> {
     return { mode: "unknown", source: "unknown", endpoint: ep || null, accountNumber: null, error: errMsg };
   }
   return { mode: "unknown", source: "unknown", endpoint: null, accountNumber: null, error: null };
+}
+
+export async function readBotMode(): Promise<AlpacaMode> {
+  const env = { ...(await readDotenv()), ...process.env } as Record<string, string>;
+  const raw = (env.BOT_MODE ?? "").toLowerCase();
+  return raw === "paper" ? "paper" : "live";
+}
+
+export async function detectAccountInfo(target: AlpacaMode): Promise<AccountProbe> {
+  const env = { ...(await readDotenv()), ...process.env } as Record<string, string>;
+  const configured =
+    target === "paper"
+      ? Boolean(env.ALPACA_PAPER_API_KEY && env.ALPACA_PAPER_SECRET_KEY)
+      : Boolean(env.ALPACA_API_KEY && env.ALPACA_SECRET_KEY);
+  const endpoint =
+    target === "paper"
+      ? env.ALPACA_PAPER_ENDPOINT ?? "https://paper-api.alpaca.markets/v2"
+      : env.ALPACA_ENDPOINT ?? "https://api.alpaca.markets/v2";
+
+  if (!configured) {
+    return { target, configured: false, accountNumber: null, endpoint, error: null };
+  }
+
+  try {
+    const account = (await runAlpaca("account", [], { mode: target })) as {
+      account_number?: string;
+    };
+    return {
+      target,
+      configured: true,
+      accountNumber: account?.account_number ?? null,
+      endpoint,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      target,
+      configured: true,
+      accountNumber: null,
+      endpoint,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }

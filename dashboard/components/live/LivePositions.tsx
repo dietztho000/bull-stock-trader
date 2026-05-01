@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import clsx from "clsx";
 import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
+import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -16,9 +17,9 @@ type Position = {
   unrealized_plpc: string;
 };
 
-export function LivePositions() {
+export function LivePositions({ mode }: { mode?: AlpacaMode } = {}) {
   const { data, error, isLoading } = useSWR<Position[] | { error: string }>(
-    "/api/alpaca/positions",
+    alpacaApiUrl("positions", mode),
     fetcher,
     { refreshInterval: 5000 }
   );

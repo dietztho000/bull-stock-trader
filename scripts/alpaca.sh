@@ -14,7 +14,14 @@ _load_env "$ROOT"
 _require_jq
 
 # -- Mode + credentials -----------------------------------------------------
+# Optional --mode=paper|live override (must be the first arg, before the
+# subcommand). Lets the dashboard query both accounts in parallel without
+# touching BOT_MODE, which still controls what the *bot* trades against.
 MODE="${BOT_MODE:-live}"
+if [[ "${1:-}" == --mode=* ]]; then
+  MODE="${1#--mode=}"
+  shift
+fi
 case "$MODE" in
   paper)
     : "${ALPACA_PAPER_API_KEY:?ALPACA_PAPER_API_KEY required when BOT_MODE=paper}"

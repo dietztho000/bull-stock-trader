@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { Kpi } from "@/components/ui/Card";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
+import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -15,12 +16,14 @@ type Account = {
   portfolio_value: string;
 };
 
-export function LiveAccountKpis() {
+export function LiveAccountKpis({ mode }: { mode?: AlpacaMode } = {}) {
   const { data, error } = useSWR<Account | { error: string }>(
-    "/api/alpaca/account",
+    alpacaApiUrl("account", mode),
     fetcher,
     { refreshInterval: 5000 }
   );
+
+  const equityLabel = mode === "paper" ? "Equity (paper)" : "Equity (live)";
 
   if (error || (data && "error" in data)) {
     const msg = error?.message ?? (data as { error: string })?.error;
@@ -51,7 +54,7 @@ export function LiveAccountKpis() {
   return (
     <>
       <Kpi
-        label="Equity (live)"
+        label={equityLabel}
         value={fmtMoney(equity)}
         delta={{ value: fmtSignedMoney(dayPnl), positive: colorOf(dayPnl) }}
         hint={`day ${fmtPct(dayPct)}`}

@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { fmtMoney } from "@/lib/format";
+import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -16,9 +17,9 @@ type Order = {
   status: string;
 };
 
-export function LiveOrders() {
+export function LiveOrders({ mode }: { mode?: AlpacaMode } = {}) {
   const { data, error } = useSWR<Order[] | { error: string }>(
-    "/api/alpaca/orders",
+    alpacaApiUrl("orders", mode),
     fetcher,
     { refreshInterval: 8000 }
   );

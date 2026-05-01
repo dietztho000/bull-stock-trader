@@ -21,13 +21,17 @@ export function isAllowedAlpacaCmd(cmd: string): cmd is AlpacaCmd {
   return (ALLOWED as string[]).includes(cmd);
 }
 
+export type AlpacaMode = "paper" | "live";
+
 export async function runAlpaca(
   cmd: AlpacaCmd,
-  args: string[] = []
+  args: string[] = [],
+  opts: { mode?: AlpacaMode } = {}
 ): Promise<unknown> {
   const script = path.join(BOT_ROOT, "scripts", "alpaca.sh");
+  const modeFlag = opts.mode ? [`--mode=${opts.mode}`] : [];
   return new Promise((resolve, reject) => {
-    const proc = spawn("bash", [script, cmd, ...args], {
+    const proc = spawn("bash", [script, ...modeFlag, cmd, ...args], {
       cwd: BOT_ROOT,
       env: process.env,
     });

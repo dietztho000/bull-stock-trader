@@ -1,19 +1,22 @@
 import { Card, Kpi } from "@/components/ui/Card";
-import { LiveAccountKpis } from "@/components/live/LiveAccountKpis";
-import { LivePositions } from "@/components/live/LivePositions";
-import { LiveOrders } from "@/components/live/LiveOrders";
+import { AccountPanel } from "@/components/live/AccountPanel";
+import { AccountTabs } from "@/components/live/AccountTabs";
 import { MarketClock } from "@/components/live/MarketClock";
 import { EquityCurve } from "@/components/charts/EquityCurve";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { loadResearchLog } from "@/lib/parsers/researchLog";
+import { readBotMode } from "@/lib/mode";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function OverviewPage() {
-  const benchmark = await loadBenchmark();
-  const research = await loadResearchLog();
+  const [benchmark, research, defaultTab] = await Promise.all([
+    loadBenchmark(),
+    loadResearchLog(),
+    readBotMode(),
+  ]);
 
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
   const phasePnl =
@@ -37,8 +40,7 @@ export default async function OverviewPage() {
         <MarketClock />
       </header>
 
-      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <LiveAccountKpis />
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
         <Kpi
           label="Phase P&L"
           value={fmtSignedMoney(phasePnl)}
@@ -46,7 +48,7 @@ export default async function OverviewPage() {
             value: fmtPct(last?.phasePct),
             positive: colorOf(last?.phasePct),
           }}
-          hint="vs phase start"
+          hint="vs phase start (live)"
         />
       </section>
 
@@ -61,14 +63,11 @@ export default async function OverviewPage() {
         />
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-5">
-        <Card title="Live positions" subtitle="Refreshes every 5s from Alpaca">
-          <LivePositions />
-        </Card>
-        <Card title="Open orders" subtitle="Trailing stops, limits, etc.">
-          <LiveOrders />
-        </Card>
-      </div>
+      <AccountTabs
+        defaultTab={defaultTab}
+        livePanel={<AccountPanel mode="live" />}
+        paperPanel={<AccountPanel mode="paper" />}
+      />
 
       {research[0] && (
         <Card title={`Latest research — ${research[0].date}`}>
