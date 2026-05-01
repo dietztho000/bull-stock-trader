@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ModeBadge } from "./ModeBadge";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -11,15 +12,16 @@ const links = [
   { href: "/strategy", label: "Strategy" },
 ];
 
-export function Nav() {
+export async function Nav() {
   return (
     <aside className="w-56 shrink-0 border-r border-[var(--color-border)] min-h-screen px-4 py-6 bg-[var(--color-panel)]">
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="text-sm uppercase tracking-wider text-[var(--color-muted)]">
           Bull Stock Trader
         </div>
         <div className="text-base font-semibold">Dashboard</div>
       </div>
+      <ModeBadge />
       <nav className="flex flex-col gap-1">
         {links.map((l) => (
           <Link

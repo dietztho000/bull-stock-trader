@@ -23,5 +23,6 @@ export const MEMORY_FILES = [
   "RESEARCH-LOG.md",
   "WEEKLY-REVIEW.md",
   "TRADING-STRATEGY.md",
-  "PROJECT-CONTEXT.md",
+  "RUN-LOG.jsonl",
+  "PERPLEXITY-LOG.md",
 ] as const;
