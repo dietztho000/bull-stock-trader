@@ -5,11 +5,18 @@ import { usePathname } from "next/navigation";
 import { motion, LayoutGroup } from "framer-motion";
 import clsx from "clsx";
 
-const links = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: (props: { className?: string }) => React.JSX.Element;
+};
+
+const links: NavLink[] = [
   { href: "/", label: "Overview", icon: OverviewIcon },
   { href: "/trades", label: "Trades", icon: TradesIcon },
   { href: "/analytics", label: "Analytics", icon: AnalyticsIcon },
   { href: "/journal", label: "Journal", icon: JournalIcon },
+  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/strategy", label: "Strategy", icon: StrategyIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
@@ -42,6 +49,7 @@ export function Nav() {
                   )}
                   <Link
                     href={l.href}
+                    prefetch={false}
                     className={clsx(
                       "relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
                       active
@@ -100,6 +108,16 @@ function JournalIcon({ className }: { className?: string }) {
       <line x1="6" y1="5" x2="11" y2="5" />
       <line x1="6" y1="8" x2="11" y2="8" />
       <line x1="6" y1="11" x2="9" y2="11" />
+    </svg>
+  );
+}
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="12" height="11" rx="1.5" />
+      <line x1="2" y1="6.5" x2="14" y2="6.5" />
+      <line x1="5" y1="2" x2="5" y2="4.5" />
+      <line x1="11" y1="2" x2="11" y2="4.5" />
     </svg>
   );
 }

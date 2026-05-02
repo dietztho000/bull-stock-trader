@@ -15,6 +15,7 @@ import {
 } from "@/lib/calendar/events";
 import type { EarningsEntry } from "@/lib/parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "@/lib/parsers/economicCalendar.shared";
+import { etTimeStringToCT } from "@/lib/time";
 import { RefreshEconomicButton } from "./RefreshEconomicButton";
 import { RefreshMarketEarningsButton } from "./RefreshMarketEarningsButton";
 
@@ -187,7 +188,7 @@ export function CalendarView({ earnings, economic, refreshedAt }: Props) {
                         ) : null}
                       </>
                     ) : (
-                      `${e.entry.time ? `${e.entry.time} ET — ` : ""}${e.entry.event}`
+                      `${e.entry.time ? `${etTimeStringToCT(e.entry.time, e.date)} CT — ` : ""}${e.entry.event}`
                     )}
                   </div>
                 </div>
@@ -313,7 +314,9 @@ function EventDetail({ event }: { event: CalendarEvent }) {
         <div className="text-sm font-semibold">{e.event}</div>
         {e.importance && <ImportanceBadge importance={e.importance} />}
       </div>
-      {e.time && <Detail label="Time (ET)" value={e.time} mono />}
+      {e.time && (
+        <Detail label="Time (CT)" value={etTimeStringToCT(e.time, event.date)} mono />
+      )}
       {e.forecast && <Detail label="Forecast" value={e.forecast} />}
       {e.previous && <Detail label="Previous" value={e.previous} />}
       {e.source && <Detail label="Source" value={e.source} />}
@@ -350,8 +353,8 @@ function isoFirstOfMonth(iso: string): string {
 function shiftMonth(iso: string, delta: number): string {
   const m = iso.match(/^(\d{4})-(\d{2})/);
   if (!m) return iso;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function buildMonthGrid(monthStart: string): { iso: string; inMonth: boolean }[] {
@@ -359,14 +362,14 @@ function buildMonthGrid(monthStart: string): { iso: string; inMonth: boolean }[]
   if (!m) return [];
   const year = Number(m[1]);
   const monthIdx = Number(m[2]) - 1;
-  const first = new Date(year, monthIdx, 1);
-  const startOffset = first.getDay(); // 0 = Sunday
+  const first = new Date(Date.UTC(year, monthIdx, 1));
+  const startOffset = first.getUTCDay(); // 0 = Sunday
   const cells: { iso: string; inMonth: boolean }[] = [];
   // 42 cells = 6 rows. Trim trailing all-out-of-month rows below.
   for (let i = 0; i < 42; i++) {
-    const d = new Date(year, monthIdx, 1 - startOffset + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    cells.push({ iso, inMonth: d.getMonth() === monthIdx });
+    const d = new Date(Date.UTC(year, monthIdx, 1 - startOffset + i));
+    const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    cells.push({ iso, inMonth: d.getUTCMonth() === monthIdx });
   }
   // Drop the last row if all are out-of-month (keeps grid tight for short months).
   while (cells.length >= 7 && cells.slice(-7).every((c) => !c.inMonth)) {

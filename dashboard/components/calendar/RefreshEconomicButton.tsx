@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { fmtClockCT } from "@/lib/time";
 
 type Status =
   | { kind: "idle" }
@@ -48,7 +49,7 @@ export function RefreshEconomicButton({
     <div className="flex items-center gap-2">
       {refreshedAt && status.kind === "idle" && (
         <span className="text-[10px] text-[var(--color-muted)] hidden sm:inline">
-          loaded {new Date(refreshedAt).toLocaleTimeString()}
+          loaded {fmtClockCT(refreshedAt)}
         </span>
       )}
       {status.kind === "ok" && (

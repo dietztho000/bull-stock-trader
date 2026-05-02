@@ -11,8 +11,7 @@ import {
 } from "@/lib/calendar/events";
 import type { EarningsEntry } from "@/lib/parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "@/lib/parsers/economicCalendar.shared";
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { etTimeStringToCT, fmtWeekdayShortCT } from "@/lib/time";
 
 type Props = {
   earnings: EarningsEntry[];
@@ -76,8 +75,7 @@ function DayColumn({
 }) {
   const m = iso.match(/^\d{4}-\d{2}-(\d{2})$/);
   const day = m ? Number(m[1]) : 0;
-  const date = new Date(iso + "T00:00:00");
-  const dow = WEEKDAYS[date.getDay()];
+  const dow = fmtWeekdayShortCT(iso);
   const isToday = iso === today;
   const visible = events.slice(0, 3);
   const overflow = events.length - visible.length;
@@ -156,7 +154,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
       .join(" ");
   } else {
     label = event.entry.event;
-    title = `${event.entry.time ? `${event.entry.time} ET — ` : ""}${event.entry.event}`;
+    title = `${event.entry.time ? `${etTimeStringToCT(event.entry.time, event.date)} CT — ` : ""}${event.entry.event}`;
   }
   return (
     <div className="flex items-center gap-1">

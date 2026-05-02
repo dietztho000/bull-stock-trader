@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { dayOfWeekCT } from "@/lib/time";
 
 // Simple GitHub-style calendar heatmap of daily returns.
 export function CalendarHeatmap({
@@ -11,18 +12,19 @@ export function CalendarHeatmap({
   if (!data.length)
     return <div className="text-xs text-[var(--color-muted)]">No daily data yet.</div>;
 
-  // Group by ISO week.
+  // Group by week. Data points are pure calendar dates (no time) and a
+  // calendar date's weekday is identical in CT and UTC — we use noon UTC as
+  // a stable anchor so dayOfWeekCT() never bumps a day across midnight.
   const map = new Map<string, { date: string; ret: number }>();
   for (const d of data) map.set(d.date, d);
 
-  const start = new Date(data[0].date);
-  const end = new Date(data[data.length - 1].date);
+  const start = new Date(`${data[0].date}T00:00:00Z`);
+  const end = new Date(`${data[data.length - 1].date}T00:00:00Z`);
   const days: { date: string; ret: number | null; weekday: number }[] = [];
   for (let t = start.getTime(); t <= end.getTime(); t += 86400000) {
-    const d = new Date(t);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = new Date(t).toISOString().slice(0, 10);
     const v = map.get(iso);
-    days.push({ date: iso, ret: v?.ret ?? null, weekday: d.getUTCDay() });
+    days.push({ date: iso, ret: v?.ret ?? null, weekday: dayOfWeekCT(`${iso}T12:00:00Z`) });
   }
 
   const weeks: typeof days[] = [];

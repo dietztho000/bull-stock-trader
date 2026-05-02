@@ -1,5 +1,6 @@
 import type { EarningsEntry } from "../parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "../parsers/economicCalendar.shared";
+import { todayInCT, addDaysISO } from "../time";
 
 export type CalendarEvent =
   | { kind: "earnings"; date: string; entry: EarningsEntry }
@@ -97,15 +98,11 @@ export function eventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent
 }
 
 export function isoToday(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayInCT(d);
 }
 
 export function addDaysIso(iso: string, days: number): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return iso;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return addDaysISO(iso, days);
 }
 
 export function eventTitle(e: CalendarEvent): string {
