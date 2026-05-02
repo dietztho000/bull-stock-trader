@@ -34,21 +34,47 @@ STEP 1 — Read memory so you know what's open and why:
 - memory/TRADING-STRATEGY.md (exit rules)
 - tail of memory/TRADE-LOG.md (entries, original thesis per position, stops)
 - today's memory/RESEARCH-LOG.md entry
+- memory/EARNINGS-CALENDAR.md (rule #13 — earnings exit)
 
 STEP 2 — Pull current state:
   bash scripts/alpaca.sh positions
   bash scripts/alpaca.sh orders
 
-STEP 3 — Cut losers immediately. For every position where
-unrealized_plpc <= -0.07:
+STEP 3a — Earnings exit (rule #13). For each open position whose
+EARNINGS-CALENDAR.md row has `Next Earnings Date == today`, force-exit
+at market BEFORE midday so we don't hold through the print. Re-fetch
+positions first to avoid double-cuts:
+  bash scripts/alpaca.sh positions   # confirm still open
   bash scripts/alpaca.sh close SYM
-  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its trailing stop
-Log the exit to TRADE-LOG: exit price, realized P&L, "cut at -7% per rule".
+  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its stop
+Log to TRADE-LOG: "exit: pre-earnings forced-close ($bmo_amc print today)".
 Append a closed-trade row to memory/SECTOR-LEDGER.md with sector + outcome
-(L) so rule #10's 2-loss streak counter stays accurate.
+(W/L/B based on realized P&L vs entry).
 
-STEP 4 — Tighten trailing stops on winners. Use replace-order in place
-(never cancel-then-create — that briefly leaves the position un-stopped):
+STEP 3 — Cut losers as a safety-net only. The fixed -7% stop GTC placed
+at entry should have already fired on Alpaca's exchange. Before any close,
+re-fetch positions to avoid double-cuts. For every position still open
+with unrealized_plpc <= -0.07:
+  bash scripts/alpaca.sh positions   # confirm still open
+  bash scripts/alpaca.sh close SYM
+  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its stop
+Log the exit to TRADE-LOG: exit price, realized P&L, "cut at -7% (exchange
+stop missed — illiquid/race)". Append a closed-trade row to
+memory/SECTOR-LEDGER.md with sector + outcome (L) so rule #10's 2-loss
+streak counter stays accurate.
+
+STEP 4a — Promote fixed entry stops to a 10% trailing stop once green.
+For every position with unrealized_plpc >= +0.01 whose lone open stop
+order has type IN {"stop", "stop_limit"} (not yet promoted), PATCH it
+in place:
+  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 10
+This converts the order to type=trailing_stop without un-stopping the
+position. Idempotent: if type is already "trailing_stop", skip. After
+promotion, STEP 4b's ratchet rules take over.
+
+STEP 4b — Tighten trailing stops on winners. Only operates on stops with
+type == "trailing_stop". Use replace-order in place (never cancel-then-
+create — that briefly leaves the position un-stopped):
 - Up >= +20% -> trail_percent: "5"
 - Up >= +15% -> trail_percent: "7"
   bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
@@ -56,9 +82,27 @@ Never tighten within 3% of current price. Never move a stop down (Alpaca
 will reject; the replace will return 4xx and you log it as "skipped:
 would-move-down").
 
+STEP 4c — Take-profit ladder rung 1 (rule #16). For every position with
+unrealized_plpc >= +0.20 AND no `take-profit-50` annotation in TRADE-LOG
+for this position's entry, sell half at market to lock the gain. Round
+qty/2 down to integer; skip if half_qty < 1.
+  bash scripts/alpaca.sh submit-order --symbol SYM --qty $half_qty --side sell --type market --tif day
+After the partial-sell fills, the existing trailing stop on the position
+auto-tracks the reduced qty (Alpaca handles this). Append the annotation
+to TRADE-LOG so this rung never fires twice for the same entry:
+  ### MMM DD HH:MM — Take-profit ladder
+  - SYM: rung-1 fired @+X.X% — sold $half_qty/$total_qty (proceeds \$X.XX)
+    take-profit-50: fired YYYY-MM-DD HH:MM at +X.X%
+**Idempotency:** before selling, grep TRADE-LOG for `take-profit-50: fired`
+on this entry's anchor (Date+ticker). If found, skip. The half-sell is
+non-reversible — never run it twice.
+
 STEP 5 — Escalate any unfilled limit buys from market-open to MARKET if
 the catalyst still holds. Cancel the limit, place a fresh market order,
-re-place the trailing stop on fill.
+and on fill place a fixed -7% **stop-limit** GTC — same shape as
+market-open STEP 5: stop_price = round(fill * 0.93, 2), limit_price =
+round(fill * 0.92, 2), --type stop_limit. A later routine will PATCH it
+to a trailing stop once the position is green.
 
 STEP 6 — Thesis check. If a thesis broke intraday, cut the position even
 if not at -7% yet. Document reasoning in TRADE-LOG and update SECTOR-LEDGER.
@@ -69,11 +113,13 @@ sharply with no obvious cause. Append afternoon addendum to RESEARCH-LOG.
 STEP 8 — ALWAYS post a midday summary to the midday channel. Branch on
 whether any action was taken.
 
-If actions fired (cuts, tightens, escalations):
+If actions fired (earnings exits, cuts, promotions, tightens, escalations):
   bash scripts/discord.sh --type=midday "🎯 Midday scan — $DATE $(date +%H:%M) CT
 
 Actions: N
-• Cut SYM @ -X.X% (-\$XXX) — rule cutoff
+• Earnings-exit SYM @ \$X.XX — pre-print forced-close (BMO|AMC today)
+• Cut SYM @ -X.X% (-\$XXX) — exchange stop missed, safety-net close
+• Promoted SYM stop → trailing 10% (at +X.X%)
 • Tightened SYM trail 10% → 7% (at +X.X%)
 
 📊 Open: N positions | 💰 Cash: \$X"
@@ -96,5 +142,7 @@ FINAL STEP — log heartbeat end + COMMIT AND PUSH:
   git commit -m "midday scan $DATE"
   git push origin main
 Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
-so the heartbeat trace persists. On push failure: git pull --rebase origin
-main, then push again. Never force-push.
+so the heartbeat trace persists. On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

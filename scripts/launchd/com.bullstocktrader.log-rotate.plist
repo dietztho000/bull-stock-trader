@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent: trims ~/Library/Logs/bull-stock-trader-*.log to the last
+  1000 lines, daily at 02:00 local. Prevents unbounded growth from the
+  cloud-sync (every 15 min) and price-monitor (every 10 min) launchd jobs
+  (rule #22).
+
+  Install:
+    cp scripts/launchd/com.bullstocktrader.log-rotate.plist \
+       ~/Library/LaunchAgents/com.bullstocktrader.log-rotate.plist
+    launchctl bootstrap "gui/$(id -u)" \
+       ~/Library/LaunchAgents/com.bullstocktrader.log-rotate.plist
+
+  Trigger immediately:
+    launchctl kickstart -k "gui/$(id -u)/com.bullstocktrader.log-rotate"
+
+  Uninstall:
+    launchctl bootout "gui/$(id -u)/com.bullstocktrader.log-rotate"
+    rm ~/Library/LaunchAgents/com.bullstocktrader.log-rotate.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bullstocktrader.log-rotate</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/dietz/Desktop/Apps/bull-stock-trader/scripts/log-rotate.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/dietz/Desktop/Apps/bull-stock-trader</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/dietz/Library/Logs/bull-stock-trader-log-rotate.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/dietz/Library/Logs/bull-stock-trader-log-rotate.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

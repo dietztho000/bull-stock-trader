@@ -93,5 +93,7 @@ FINAL STEP — log heartbeat end + COMMIT AND PUSH:
   git commit -m "auth-canary $DATE"
   git push origin main
 Always commit at least RUN-LOG.jsonl (even on a passing run) so the EOD
-watchdog can see the canary fired. On push failure: git pull --rebase
-origin main, then push again. Never force-push.
+watchdog can see the canary fired. On push failure (rule #21): retry up
+to 3 times — `git pull --rebase origin main && git push origin main`,
+sleeping ~3s between attempts. If still failing after 3 tries, exit
+with an error Discord post; never force-push.

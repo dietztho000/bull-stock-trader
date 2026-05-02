@@ -8,9 +8,22 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
 
 1. Pull state: account, positions, quote SYMBOL (capture bid bp, ask ap).
 2. For BUY, validate (in this order — STOP and print failed checks if any fail):
+   - Drawdown circuit breaker (rule #14): compute day_pl and week_pl from
+     account.equity (live) minus the most recent EOD-snapshot equity in
+     memory/BENCHMARK.md. REFUSE if day_pl < -0.02 OR week_pl < -0.04.
+     Print "BLOCKED: drawdown circuit breaker tripped (day X.X%, week Y.Y%)".
+   - Earnings gate (rule #13): read memory/EARNINGS-CALENDAR.md row for
+     SYMBOL. If `Next Earnings Date` is within 2 trading days of today,
+     REFUSE. Print "BLOCKED: earnings within 2 trading days
+     ($earnings_date $bmo_amc)". If row missing, query perplexity.sh and
+     append to EARNINGS-CALENDAR.md before re-checking.
    - Total positions after fill <= 6
    - Trades this week + 1 <= 3
-   - SHARES * ask <= 20% of equity
+   - SHARES * ask <= conviction-weighted target (rule #19): compute
+     target_pct from the entry score you score in the validator below
+     (7→12%, 8→15%, 9→18%, 10→20%). REFUSE if SHARES * ask >
+     equity * target_pct. Print "BLOCKED: position size $X exceeds
+     conviction target $Y (score N → cap N%)".
    - SHARES * ask <= available cash
    - daytrade_count < 3
    - Volatility regime gate: query VIX via
@@ -25,6 +38,16 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
      and refuse the trade if this sector has 2+ consecutive losses in last
      30 days. Print "BLOCKED: sector rotation rule (last 2 X-sector trades
      were losses)".
+   - Sector concentration (rule #17): count open positions by sector via
+     SECTOR-MAP.md. REFUSE if this entry would push that sector to > 3
+     positions. Print "BLOCKED: sector concentration cap reached (3/3 in
+     $sector)".
+   - Re-entry guard (rule #20): grep memory/SECTOR-LEDGER.md for closed
+     trades of SYMBOL with outcome `L` in the last 3 trading days. If
+     found AND today's RESEARCH-LOG has no fresh dated catalyst for
+     SYMBOL (added today, distinct from the prior thesis), REFUSE.
+     Print "BLOCKED: re-entry cooldown (stopped out YYYY-MM-DD, no new
+     catalyst)".
    - Entry Scorer (rubric in memory/TRADING-STRATEGY.md): score 1-10 each:
        catalyst (clarity + freshness)
        momentum (price + sector trend)
@@ -47,8 +70,13 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
    Ask "execute? (y/n)".
 5. On confirm:
      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side buy --type <market|limit> [--limit-price X.XX] --tif day
-6. For BUYs, immediately place 10% trailing stop GTC:
-     bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type trailing_stop --trail-percent 10 --tif gtc
+6. For BUYs, immediately place a fixed -7% stop-limit GTC (rule #4 caps
+   slippage to -8%). Compute:
+     stop_price  = round(fill_price * 0.93, 2)
+     limit_price = round(fill_price * 0.92, 2)
+   The intraday routines will PATCH this into a 10% trailing stop once
+   the position is green.
+     bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type stop_limit --stop-price X.XX --limit-price Y.YY --tif gtc
 7. Log to memory/TRADE-LOG.md with full thesis, entry, stop, target, R:R,
    sector, and the entry-scorer JSON block:
      entry_scorer: {catalyst:X, momentum:X, risk_reward:X, stop_distance:X, total:X/10}

@@ -4,5 +4,7 @@ FINAL STEP — log heartbeat end + COMMIT AND PUSH:
   git commit -m "stop reconciliation $DATE"
   git push origin main
 Always commit at least RUN-LOG.jsonl (even on no-op runs) so the heartbeat
-trace persists. On push failure: git pull --rebase origin main, then push
-again. Never force-push.
+trace persists. On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

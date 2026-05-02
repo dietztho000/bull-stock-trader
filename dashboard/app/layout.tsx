@@ -2,6 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { LiveRefresh } from "@/components/LiveRefresh";
+import { ChatLauncher } from "@/components/ai/ChatLauncher";
+import { TopToolbar } from "@/components/ui/TopToolbar";
 
 export const metadata: Metadata = {
   title: "Bull Stock Trader — Dashboard",
@@ -19,10 +21,14 @@ export default function RootLayout({
         <LiveRefresh />
         <div className="flex">
           <Nav />
-          <main className="flex-1 min-w-0 px-6 py-6 max-w-[1600px]">
-            {children}
-          </main>
+          <div className="flex-1 min-w-0 flex flex-col">
+            <TopToolbar />
+            <main className="flex-1 min-w-0 px-6 pb-10 pt-2 max-w-[1600px]">
+              {children}
+            </main>
+          </div>
         </div>
+        <ChatLauncher />
       </body>
     </html>
   );

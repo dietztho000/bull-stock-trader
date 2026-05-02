@@ -7,7 +7,8 @@ export type AlpacaCmd =
   | "positions"
   | "orders"
   | "clock"
-  | "portfolio-history";
+  | "portfolio-history"
+  | "bars";
 
 const ALLOWED: AlpacaCmd[] = [
   "account",
@@ -15,6 +16,7 @@ const ALLOWED: AlpacaCmd[] = [
   "orders",
   "clock",
   "portfolio-history",
+  "bars",
 ];
 
 export function isAllowedAlpacaCmd(cmd: string): cmd is AlpacaCmd {

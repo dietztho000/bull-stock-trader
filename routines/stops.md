@@ -40,25 +40,40 @@ STEP 2 — Pull the state to reconcile:
   bash scripts/alpaca.sh positions
   bash scripts/alpaca.sh orders open
 
-STEP 3 — For every open LONG position, verify exactly one trailing-stop
-GTC order exists for that symbol:
-- 0 stops -> CRITICAL. Place one immediately:
-    bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type trailing_stop --trail-percent 10 --tif gtc
-  Discord error: "stops: missing on SYM, placed 10% trail".
+STEP 3 — For every open LONG position, verify exactly one stop GTC order
+exists for that symbol. The expected type depends on whether the position
+is green yet:
+- 0 stops -> CRITICAL. Branch on profit state:
+    if unrealized_plpc < +0.01:
+      stop_price  = round(entry_price * 0.93, 2)   # -7% trigger
+      limit_price = round(entry_price * 0.92, 2)   # -8% slippage floor
+      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type stop_limit --stop-price X.XX --limit-price Y.YY --tif gtc
+      Discord error: "stops: missing on SYM, placed -7% stop-limit".
+    else:
+      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type trailing_stop --trail-percent 10 --tif gtc
+      Discord error: "stops: missing on SYM, placed 10% trail (already green)".
 - 2+ stops -> cancel the older one(s), keep the most recent:
     bash scripts/alpaca.sh cancel ORDER_ID
 - 1 stop -> proceed to STEP 4.
 
-STEP 4 — Reconcile trail-percent against the rule table:
-- unrealized_plpc >= +0.20 -> required trail = 5%
-- unrealized_plpc >= +0.15 -> required trail = 7%
-- otherwise                  -> required trail = 10%
-If actual trail differs from required AND replacement would not move the
-stop down, PATCH it in place:
-  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
-If the new trail would put the stop within 3% of current price, SKIP and
-log "skipped: too close to current price". If Alpaca rejects the PATCH
-with 4xx ("would move stop down" or similar), log "skipped: would move down".
+STEP 4 — Reconcile the stop type and trail-percent against the rule table.
+Apply the FIRST matching row:
+- stop.type IN {"stop", "stop_limit"} AND unrealized_plpc >= +0.01 ->
+    PATCH to trailing 10%:
+    bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 10
+  (Promotion: position graduated from fixed -7% floor to ratcheting trail.)
+- stop.type IN {"stop", "stop_limit"} AND unrealized_plpc <  +0.01 ->
+    leave the fixed stop alone (Alpaca enforces -7% from entry autonomously).
+- stop.type == "trailing_stop": run the trail-tighten ratchet:
+    unrealized_plpc >= +0.20 -> required trail = 5%
+    unrealized_plpc >= +0.15 -> required trail = 7%
+    otherwise                 -> required trail = 10%
+  If actual trail differs from required AND replacement would not move the
+  stop down, PATCH it in place:
+    bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
+  If the new trail would put the stop within 3% of current price, SKIP
+  and log "skipped: too close to current price". If Alpaca rejects with
+  4xx ("would move stop down" or similar), log "skipped: would move down".
 
 STEP 5 — For every SHORT position (if any ever exist — the strategy is
 long-only, but be defensive), log "WARNING: short position SYM has no
@@ -77,8 +92,9 @@ If any stop was placed/modified/canceled (build a bullet per change):
   bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(date +%H:%M) CT
 
 Stops checked: N
+• SYM: promoted fixed -7% → trail 10% (at +X.X%)
 • SYM: trail 10% → 7% (at +X.X%)
-• SYM: missing stop placed (10%)
+• SYM: missing stop placed (-7% stop-limit | trail 10%)
 • SYM: skipped (would move down)
 
 ✓ All positions stopped correctly."
@@ -87,6 +103,7 @@ If everything was already correct (no changes made):
   bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(date +%H:%M) CT
 
 Stops checked: N
+• SYM: stop-limit -7% (no change, X.X%)
 • SYM: trail 10% (no change, +X.X%)
 • SYM: trail 7% (no change, +16.2%)
 
@@ -106,5 +123,7 @@ FINAL STEP — log heartbeat end + COMMIT AND PUSH:
   git commit -m "stop reconciliation $DATE"
   git push origin main
 Always commit at least RUN-LOG.jsonl (even on no-op runs) so the heartbeat
-trace persists. On push failure: git pull --rebase origin main, then push
-again. Never force-push.
+trace persists. On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

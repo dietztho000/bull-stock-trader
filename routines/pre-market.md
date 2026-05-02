@@ -55,6 +55,57 @@ bash scripts/perplexity.sh "<query>" for each:
 If Perplexity exits 3, fall back to native WebSearch and note the
 fallback in the log entry.
 
+STEP 3b — Refresh memory/EARNINGS-CALENDAR.md. For every ticker that
+appears in today's plan AND every currently-open position, check the row in
+EARNINGS-CALENDAR.md. If the row is missing OR `Date refreshed` is more
+than 7 days ago, query:
+  bash scripts/perplexity.sh "When is the next earnings report for $TICKER? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close)."
+Append/replace the row using the grep-and-replace idempotency pattern (the
+table key is the Symbol column). Set `Date refreshed = $DATE` and
+`Source = Perplexity` (or `WebSearch` if the fallback fired).
+Skip silently if a ticker has no upcoming earnings within 90 days; note
+"none-90d" in the Date column so we don't re-query daily.
+
+STEP 3c — Refresh memory/ECONOMIC-CALENDAR.md. Query Perplexity once per
+pre-market run for the next 14 days of US economic events:
+  bash scripts/perplexity.sh "List all scheduled US economic events for the
+  next 14 calendar days starting $DATE. For each event return: date
+  (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC
+  Minutes, Initial Jobless Claims, Nonfarm Payrolls), importance
+  (high|medium|low), forecast value (string), previous value (string).
+  Output ONLY a JSON array, no prose, no citations."
+Parse the JSON. For each event, idempotency key = (Date + Event); grep for
+`| $DATE | <time> | $EVENT |` in ECONOMIC-CALENDAR.md and replace in place
+if present, else append a new row in the `## Calendar` table. Set
+`Date refreshed = $DATE` and `Source = Perplexity` (or `WebSearch` if the
+fallback fired). Skip silently if Perplexity returns no events. Drop rows
+whose Date is before today (housekeeping — keeps the file from growing
+unbounded). Like STEP 3b, this is idempotent on retry.
+
+STEP 3d — Refresh memory/MARKET-EARNINGS.md (broader market view, separate
+from the per-ticker EARNINGS-CALENDAR.md). This is **weekly cadence, not
+daily**: skip this step entirely if every row in the file's `## Calendar`
+table has `Date refreshed` >= ($DATE - 6 days). Otherwise, the dashboard's
+`/api/calendar/earnings` POST endpoint already implements this (per-ticker
+fan-out across a curated mega-cap list — see
+dashboard/lib/perplexity.ts → fetchMarketEarnings). The simplest way to
+trigger it from the routine is:
+  curl -fsS -X POST http://localhost:3000/api/calendar/earnings || \
+    echo "Note: dashboard not running — skipped MARKET-EARNINGS refresh"
+If the dashboard isn't running locally, manually iterate the curated
+mega-cap list (Mag 7 + big banks + big tech + big retail + big energy +
+big healthcare; full list in lib/perplexity.ts) and for each ticker:
+  bash scripts/perplexity.sh "When is the next earnings report for
+  $TICKER ($COMPANY)? Return ONLY a JSON object with date (YYYY-MM-DD or
+  empty), type (BMO/AMC/empty), epsEstimate (\$ prefix or empty). Today
+  is $DATE."
+Append rows whose date is within 30 days. Each refresh wholesale-replaces
+all `Source = Perplexity` rows in the future window — drop them first,
+then insert the new set. Preserve any `Source = manual` rows the user
+hand-added. This file feeds the dashboard `/calendar` page and the
+Pre-Market Discord Brief; the bot's earnings-gate (rule #13) keeps using
+the per-ticker EARNINGS-CALENDAR.md and does NOT consult this file.
+
 STEP 4 — Write a dated entry to memory/RESEARCH-LOG.md.
 **Idempotency guard:** before appending, grep for `## $DATE — Pre-market Research`
 in memory/RESEARCH-LOG.md. If a section for today already exists, REPLACE it
@@ -96,8 +147,10 @@ Truncate any section to keep the total under ~1800 chars (Discord limit).
 
 FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory):
   bash scripts/run-log.sh end pre-market ok
-  git add memory/RESEARCH-LOG.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
+  git add memory/RESEARCH-LOG.md memory/EARNINGS-CALENDAR.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "pre-market research $DATE"
   git push origin main
-On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

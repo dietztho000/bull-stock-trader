@@ -51,7 +51,8 @@ Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
 STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and compute, for today:
-  EXPECTED = {auth-canary, pre-market, market-open, midday, stops, daily-summary}
+  EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
+              midday, stops, afternoon, daily-summary}
             (all weekdays; add `weekly-review` to EXPECTED on Fridays)
   FIRED    = set of routines with at least one {"action":"end","status":"ok"}
             row whose timestamp starts with $DATE

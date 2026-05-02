@@ -72,6 +72,13 @@ export function LiveAccountKpis({ mode }: { mode?: AlpacaMode } = {}) {
       <Kpi
         label="Day trades"
         value={`${a.daytrade_count}/3`}
+        delta={
+          a.daytrade_count >= 3
+            ? { value: "PDT lock risk", positive: false }
+            : a.daytrade_count >= 2
+            ? { value: "approaching limit", positive: null }
+            : undefined
+        }
         hint="rolling 5d"
       />
     </>

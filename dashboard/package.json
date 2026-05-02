@@ -9,24 +9,27 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
+    "@tanstack/react-table": "^8.20.5",
+    "chokidar": "^4.0.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "marked": "^15.0.4",
     "next": "^15.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
-    "@tanstack/react-table": "^8.20.5",
-    "marked": "^15.0.4",
-    "chokidar": "^4.0.1",
     "swr": "^2.2.5",
-    "zod": "^3.23.8",
-    "clsx": "^2.1.1"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.9.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.6.3",
+    "playwright": "^1.59.1",
+    "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
-    "postcss": "^8.4.49"
+    "typescript": "^5.6.3"
   }
 }

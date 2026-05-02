@@ -23,6 +23,17 @@ cd "$ROOT" || exit 1
 ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 log() { printf '[%s] cron-sync: %s\n' "$(ts)" "$*"; }
 
+# Serialize against any concurrent local commit/push (rule #21).
+# Non-blocking: if another process holds the lock, exit silently — the
+# next 15-min tick will catch up. Avoids piling up jobs behind a stuck
+# git operation.
+LOCK_FILE="$ROOT/.git/.commit-lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "another git op holds .commit-lock — skipping this tick"
+  exit 0
+fi
+
 log "starting"
 
 branch="$(git symbolic-ref --short HEAD 2>/dev/null || echo "")"

@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/Card";
 import { readMemory } from "@/lib/memoryPath";
 import { marked } from "marked";
 
@@ -11,13 +10,18 @@ export default async function StrategyPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Trading strategy</h1>
-      <Card title="memory/TRADING-STRATEGY.md" subtitle="Read-only rule book">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Strategy</h1>
+        <p className="text-xs text-[var(--color-muted)] mt-0.5">
+          Read-only rule book · memory/TRADING-STRATEGY.md
+        </p>
+      </header>
+      <section className="frost rounded-2xl p-6 sm:p-8 mx-auto w-full max-w-3xl">
         <article
-          className="prose-strategy text-sm leading-relaxed"
+          className="prose-strategy text-sm"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      </Card>
+      </section>
     </div>
   );
 }

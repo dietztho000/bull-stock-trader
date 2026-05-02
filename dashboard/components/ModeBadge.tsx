@@ -1,47 +1,89 @@
-import { detectMode } from "@/lib/mode";
+"use client";
 
-export async function ModeBadge() {
-  const info = await detectMode();
+import useSWR from "swr";
+import clsx from "clsx";
 
-  const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
-    live: {
-      bg: "bg-red-600",
-      text: "text-white",
-      border: "border-red-700",
-      label: "LIVE TRADING",
-    },
-    paper: {
-      bg: "bg-amber-400",
-      text: "text-black",
-      border: "border-amber-500",
-      label: "PAPER MODE",
-    },
-    unknown: {
-      bg: "bg-zinc-600",
-      text: "text-white",
-      border: "border-zinc-700",
-      label: "MODE UNKNOWN",
-    },
+const fetcher = (u: string) => fetch(u).then((r) => r.json());
+
+type Account = { account_number?: string };
+type Resp = Account | { error: string };
+
+type DerivedMode = "live" | "paper" | "unknown";
+
+function deriveMode(data: Resp | undefined): {
+  mode: DerivedMode;
+  accountNumber: string | null;
+  error: string | null;
+} {
+  if (!data) return { mode: "unknown", accountNumber: null, error: null };
+  if ("error" in data) {
+    return { mode: "unknown", accountNumber: null, error: data.error };
+  }
+  const acct = data.account_number ?? null;
+  if (!acct) return { mode: "unknown", accountNumber: null, error: null };
+  return {
+    mode: acct.startsWith("PA") ? "paper" : "live",
+    accountNumber: acct,
+    error: null,
   };
-  const s = styles[info.mode];
+}
+
+const CONFIG: Record<
+  DerivedMode,
+  { tint: string; dotColor: string; label: string; detail: string }
+> = {
+  live: {
+    tint: "glass-tint-down",
+    dotColor: "bg-[var(--color-down)]",
+    label: "Live",
+    detail: "real money",
+  },
+  paper: {
+    tint: "glass-tint-warn",
+    dotColor: "bg-[var(--color-warn)]",
+    label: "Paper",
+    detail: "simulated",
+  },
+  unknown: {
+    tint: "",
+    dotColor: "bg-[var(--color-muted)]",
+    label: "Unknown",
+    detail: "—",
+  },
+};
+
+export function ModeBadge() {
+  // Shares SWR cache with LiveAccountKpis (same key) — single request total
+  // even though multiple components subscribe. dedupingInterval avoids
+  // re-fetching across navigations.
+  const { data } = useSWR<Resp>("/api/alpaca/account", fetcher, {
+    refreshInterval: 60000,
+    dedupingInterval: 60000,
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+  });
+  const { mode, accountNumber, error } = deriveMode(data);
+  const config = CONFIG[mode];
+  const detail = mode === "unknown" && error ? "probe failed" : config.detail;
 
   return (
-    <div className={`mb-4 rounded border-2 ${s.border} ${s.bg} ${s.text} px-3 py-2`}>
-      <div className="text-[10px] font-semibold uppercase tracking-wider opacity-90">
-        {info.mode === "live" ? "DANGER — REAL MONEY" : info.mode === "paper" ? "SIMULATED" : "Status"}
-      </div>
-      <div className="text-base font-bold">{s.label}</div>
-      <div className="mt-1 text-[10px] font-mono leading-tight opacity-80">
-        {info.accountNumber ? <>acct: {info.accountNumber}</> : null}
-        {info.accountNumber && info.endpoint ? <br /> : null}
-        {info.endpoint ? <>endpoint: {info.endpoint.replace(/^https?:\/\//, "")}</> : null}
-        {!info.accountNumber && !info.endpoint ? <>source: {info.source}</> : null}
-      </div>
-      {info.error ? (
-        <div className="mt-1 text-[10px] font-mono leading-tight opacity-90 break-all">
-          probe failed: {info.error.slice(0, 120)}
-        </div>
-      ) : null}
+    <div
+      className={clsx(
+        "glass rounded-full px-3 py-1.5 inline-flex items-center gap-2",
+        config.tint
+      )}
+      title={[
+        accountNumber && `acct: ${accountNumber}`,
+        error && `error: ${error.slice(0, 120)}`,
+      ]
+        .filter(Boolean)
+        .join("\n")}
+    >
+      <span className={clsx("w-2 h-2 rounded-full pulse-dot", config.dotColor)} />
+      <span className="text-xs font-semibold tracking-wide">{config.label}</span>
+      <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--color-muted)]">
+        {detail}
+      </span>
     </div>
   );
 }

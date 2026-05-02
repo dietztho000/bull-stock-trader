@@ -20,9 +20,10 @@ Open these in order before doing anything:
 ## Daily Workflows
 
 Defined in .claude/commands/ (local, single source of truth) and routines/
-(cloud, auto-generated). Seven scheduled runs per trading day (auth-canary,
-pre-market, market-open, midday, stops, daily-summary, Friday-only weekly-review)
-plus three ad-hoc helpers (/portfolio, /benchmark, /trade).
+(cloud, auto-generated). Ten scheduled runs per trading day (auth-canary,
+pre-market, market-open, mid-morning, late-morning, midday, stops, afternoon,
+daily-summary, Friday-only weekly-review) plus three ad-hoc helpers
+(/portfolio, /benchmark, /trade).
 
 After editing any STEP content in `.claude/commands/<name>.md`, run
 `bash scripts/build-routines.sh` to regenerate `routines/<name>.md`.
@@ -34,9 +35,19 @@ After editing any STEP content in `.claude/commands/<name>.md`, run
 - Max 20% per position.
 - Max 3 new trades per week.
 - 75-85% capital deployed.
-- 10% trailing stop on every position as a real GTC order.
-- Cut losers at -7% manually.
+- Fixed -7% **stop-limit** GTC at entry (limit -8% caps slippage). Alpaca enforces the cut autonomously.
+- Once `unrealized_plpc >= +1%`, PATCH the fixed stop into a 10% trailing stop.
 - Tighten trail to 7% at +15%, to 5% at +20%.
+- Routines act as safety-net reconcilers — never the primary cut authority.
+- **Earnings gate**: no entry within 2 trading days of earnings. Force-exit any position the day before its earnings print (rule #13).
+- **Drawdown circuit breaker**: no new entries while day P&L < -2% or week P&L < -4% (rule #14).
+- **Pre-market gap check**: market-open force-exits any open position that gapped <= -7% overnight (rule #15).
+- **Take-profit ladder**: at +20%, sell half; let the rest ride with the 5% trail (rule #16). Idempotent via `take-profit-50` annotation in TRADE-LOG.
+- **Sector concentration cap**: max 3 open positions per GICS sector (rule #17).
+- **Conviction-weighted sizing**: 7→12%, 8→15%, 9→18%, 10→20% of equity (rule #19). 20% absolute ceiling still applies.
+- **Re-entry guard**: no re-entry within 3 trading days of stop-out unless a fresh dated catalyst is in today's RESEARCH-LOG (rule #20).
+- **Commit serialization**: local cron-sync.sh holds .git/.commit-lock; cloud routines retry pushes 3x with rebase before erroring (rule #21).
+- **Log rotation**: launchd trims `~/Library/Logs/bull-stock-trader-*.log` to last 1000 lines daily at 02:00 (rule #22).
 - Never within 3% of current price. Never move a stop down.
 - Follow sector momentum. Exit a sector after 2 failed trades (enforced
   via memory/SECTOR-LEDGER.md by /trade and /market-open).

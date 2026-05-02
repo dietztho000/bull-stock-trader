@@ -21,3 +21,11 @@ __pycache__/
 # Local-only fallback notification log (root-only — case-insensitive
 # match on Windows would otherwise hide routines/daily-summary.md etc)
 /DAILY-SUMMARY.md
+
+# price-monitor.sh runtime artifacts (state cache, not memory)
+memory/.price-monitor-state.json
+memory/.price-monitor.log
+
+# Dashboard per-machine settings (Discord webhook overrides, etc.)
+# Holds secrets — never commit.
+memory/dashboard-settings.json

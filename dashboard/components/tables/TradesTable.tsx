@@ -13,8 +13,17 @@ import {
 import clsx from "clsx";
 import type { ClosedTrade } from "@/lib/parsers/sectorLedger";
 import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
+import { sizingStatus } from "@/lib/stats/sizing";
+import { Badge } from "@/components/ui/Card";
+import { PostMortemButton } from "@/components/ai/PostMortemPopover";
 
-export function TradesTable({ trades }: { trades: ClosedTrade[] }) {
+export type ClosedTradeWithSizing = ClosedTrade & {
+  score: number | null;
+  targetPct: number | null;
+  actualPct: number | null;
+};
+
+export function TradesTable({ trades }: { trades: ClosedTradeWithSizing[] }) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "date", desc: true },
   ]);
@@ -34,7 +43,7 @@ export function TradesTable({ trades }: { trades: ClosedTrade[] }) {
     );
   }, [trades, sectorFilter, outcomeFilter]);
 
-  const columns = useMemo<ColumnDef<ClosedTrade>[]>(
+  const columns = useMemo<ColumnDef<ClosedTradeWithSizing>[]>(
     () => [
       { accessorKey: "date", header: "Date" },
       { accessorKey: "symbol", header: "Ticker" },
@@ -86,7 +95,50 @@ export function TradesTable({ trades }: { trades: ClosedTrade[] }) {
         },
       },
       { accessorKey: "outcome", header: "W/L" },
+      {
+        id: "sizing",
+        header: "Sizing (actual / target)",
+        cell: ({ row }) => {
+          const r = row.original;
+          if (r.targetPct == null) {
+            return <span className="text-[var(--color-muted)]">—</span>;
+          }
+          const targetStr = `${(r.targetPct * 100).toFixed(0)}%`;
+          if (r.actualPct == null) {
+            return (
+              <span className="text-[var(--color-muted)]">
+                — / {targetStr} (score {r.score ?? "?"})
+              </span>
+            );
+          }
+          const actualStr = `${(r.actualPct * 100).toFixed(1)}%`;
+          const status = sizingStatus(r.actualPct, r.targetPct);
+          if (status === "over") {
+            return (
+              <Badge tone="down">
+                {actualStr} / {targetStr}
+              </Badge>
+            );
+          }
+          return (
+            <span className="tabular text-[var(--color-muted)]">
+              {actualStr} / {targetStr}{" "}
+              <span className="text-[10px] opacity-70">(score {r.score})</span>
+            </span>
+          );
+        },
+      },
       { accessorKey: "notes", header: "Notes" },
+      {
+        id: "ai",
+        header: "AI",
+        cell: ({ row }) => (
+          <PostMortemButton
+            symbol={row.original.symbol}
+            entryDate={row.original.date || null}
+          />
+        ),
+      },
     ],
     []
   );

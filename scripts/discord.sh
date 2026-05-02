@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Notification wrapper. Posts to a Discord channel via webhook.
 # Usage: bash scripts/discord.sh [--type=<category>] "<message>"
-# Categories: research, fill, midday, stops, eod, weekly, error, auth-canary
-# (each gets an emoji prefix).
+# Categories: research, fill, midday, stops, eod, weekly, error, auth-canary, alert
+# (each gets an emoji prefix). The "alert" category is reserved for the
+# local price-monitor and skips Discord entirely when NTFY_TOPIC is set,
+# routing to ntfy.sh push only — keeps high-frequency alerts off the
+# Discord webhook rate limit (rule #18).
 #
 # Webhook routing — per-category override with single-channel fallback:
 #   DISCORD_WEBHOOK_URL_<UPPERCASE_CATEGORY>   (optional, takes priority)
@@ -42,8 +45,17 @@ case "$TYPE" in
   weekly)      EMOJI="📋" ;;
   error)       EMOJI="⚠️" ;;
   auth-canary) EMOJI="📡" ;;
+  alert)       EMOJI="⚠️" ;;
   *)           EMOJI="" ;;
 esac
+
+# `alert` category routes to ntfy.sh ONLY (skip Discord) so high-frequency
+# price-monitor warnings don't burn the Discord webhook rate limit.
+# Falls back to Discord-or-fallback file if NTFY_TOPIC is unset.
+ALERT_NTFY_ONLY=0
+if [[ "$TYPE" == "alert" && -n "${NTFY_TOPIC:-}" ]]; then
+  ALERT_NTFY_ONLY=1
+fi
 
 # Resolve which webhook to POST to. DISCORD_WEBHOOK_URL_<TYPE_UPPER> takes
 # priority over DISCORD_WEBHOOK_URL. The TYPE was constrained by the case
@@ -88,6 +100,13 @@ _mirror_ntfy() {
 }
 
 stamp="$(date '+%Y-%m-%d %H:%M %Z')"
+
+# alert + NTFY_TOPIC: ntfy-only routing (skip Discord)
+if [[ "$ALERT_NTFY_ONLY" == "1" ]]; then
+  _mirror_ntfy
+  echo "[alert -> ntfy: $NTFY_TOPIC]"
+  exit 0
+fi
 
 if [[ -z "$WEBHOOK" ]]; then
   printf "\n---\n## %s (fallback — Discord not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"

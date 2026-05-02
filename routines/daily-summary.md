@@ -73,7 +73,8 @@ Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
 STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and compute, for today:
-  EXPECTED = {auth-canary, pre-market, market-open, midday, stops, daily-summary}
+  EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
+              midday, stops, afternoon, daily-summary}
             (all weekdays; add `weekly-review` to EXPECTED on Fridays)
   FIRED    = set of routines with at least one {"action":"end","status":"ok"}
             row whose timestamp starts with $DATE
@@ -135,5 +136,7 @@ Day P&L depends on this commit landing):
   git add memory/TRADE-LOG.md memory/BENCHMARK.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
   git commit -m "EOD snapshot $DATE"
   git push origin main
-On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

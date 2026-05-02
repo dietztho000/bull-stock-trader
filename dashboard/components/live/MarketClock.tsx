@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { Badge } from "@/components/ui/Card";
+import clsx from "clsx";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -13,26 +13,48 @@ export function MarketClock() {
     fetcher,
     { refreshInterval: 30000 }
   );
-  if (!data || "error" in data)
-    return <Badge tone="neutral">Market: unknown</Badge>;
-  const c = data as Clock;
-  if (c.is_open)
+
+  if (!data || "error" in data) {
     return (
-      <Badge tone="up">
-        Market open · closes {new Date(c.next_close).toLocaleTimeString([], {
+      <div className="glass rounded-full px-3 py-1.5 inline-flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-muted)]" />
+        <span className="text-xs text-[var(--color-muted)]">Market: unknown</span>
+      </div>
+    );
+  }
+
+  const c = data as Clock;
+  const dotColor = c.is_open ? "bg-[var(--color-up)]" : "bg-[var(--color-warn)]";
+  const tint = c.is_open ? "glass-tint-up" : "glass-tint-warn";
+
+  if (c.is_open) {
+    return (
+      <div className={clsx("glass rounded-full px-3 py-1.5 inline-flex items-center gap-2", tint)}>
+        <span className={clsx("w-1.5 h-1.5 rounded-full pulse-dot", dotColor)} />
+        <span className="text-xs font-medium">Market open</span>
+        <span className="text-[10px] text-[var(--color-muted)] tabular">
+          closes{" "}
+          {new Date(c.next_close).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={clsx("glass rounded-full px-3 py-1.5 inline-flex items-center gap-2", tint)}>
+      <span className={clsx("w-1.5 h-1.5 rounded-full", dotColor)} />
+      <span className="text-xs font-medium">Closed</span>
+      <span className="text-[10px] text-[var(--color-muted)] tabular">
+        opens{" "}
+        {new Date(c.next_open).toLocaleString([], {
+          weekday: "short",
           hour: "numeric",
           minute: "2-digit",
         })}
-      </Badge>
-    );
-  return (
-    <Badge tone="warn">
-      Market closed · opens{" "}
-      {new Date(c.next_open).toLocaleString([], {
-        weekday: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      })}
-    </Badge>
+      </span>
+    </div>
   );
 }

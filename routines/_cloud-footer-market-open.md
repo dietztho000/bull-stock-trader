@@ -7,5 +7,7 @@ RESEARCH-LOG.md entry):
   git push origin main
 Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
 so the heartbeat trace and call log persist across the fresh-clone routines.
-On push failure: git pull --rebase origin main, then push again.
-Never force-push.
+On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.
