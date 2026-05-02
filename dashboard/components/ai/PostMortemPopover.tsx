@@ -92,9 +92,9 @@ export function PostMortemButton({
           )}
           {state.kind === "ready" && (
             <div
-              className="prose prose-invert prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_ol]:pl-4 [&_ul]:pl-4"
+              className="prose-ai"
               dangerouslySetInnerHTML={{
-                __html: marked.parse(state.text, { async: false }) as string,
+                __html: marked.parse(state.text, { async: false, gfm: true }) as string,
               }}
             />
           )}

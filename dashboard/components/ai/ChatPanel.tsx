@@ -126,14 +126,14 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
             className={
               t.role === "user"
                 ? "ml-6 px-3 py-2 rounded bg-[var(--color-panel-2)] border border-[var(--color-border)]"
-                : "mr-6 px-3 py-2 rounded border border-[var(--color-border)]/60 prose prose-invert prose-sm max-w-none"
+                : "mr-6 px-3 py-2 rounded border border-[var(--color-border)]/60"
             }
           >
             {t.role === "assistant" ? (
               <div
-                className="leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                className="prose-ai"
                 dangerouslySetInnerHTML={{
-                  __html: marked.parse(t.content || "…", { async: false }) as string,
+                  __html: marked.parse(t.content || "…", { async: false, gfm: true }) as string,
                 }}
               />
             ) : (
