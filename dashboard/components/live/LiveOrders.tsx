@@ -3,6 +3,8 @@
 import useSWR from "swr";
 import { fmtMoney } from "@/lib/format";
 import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
+import { useLiveSwr } from "@/lib/useLiveSwr";
 import { Badge } from "@/components/ui/Card";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
@@ -39,10 +41,13 @@ function LimitFloorCell({ o }: { o: Order }) {
 }
 
 export function LiveOrders({ mode }: { mode?: AlpacaMode } = {}) {
+  const ctx = useTradingAccountOptional();
+  const effectiveMode = mode ?? ctx?.account;
+  const liveOpts = useLiveSwr(8000);
   const { data, error } = useSWR<Order[] | { error: string }>(
-    alpacaApiUrl("orders", mode),
+    alpacaApiUrl("orders", effectiveMode),
     fetcher,
-    { refreshInterval: 8000 }
+    { ...liveOpts, keepPreviousData: true }
   );
   if (error || (data && "error" in data)) {
     const msg = error?.message ?? (data as { error: string })?.error;

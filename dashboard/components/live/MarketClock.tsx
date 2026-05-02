@@ -2,16 +2,19 @@
 
 import useSWR from "swr";
 import clsx from "clsx";
+import { fmtTimeOfDayCT, fmtWeekdayTimeCT } from "@/lib/time";
+import { useLiveSwr } from "@/lib/useLiveSwr";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 type Clock = { is_open: boolean; next_open: string; next_close: string };
 
 export function MarketClock() {
+  const liveOpts = useLiveSwr(30000);
   const { data } = useSWR<Clock | { error: string }>(
     "/api/alpaca/clock",
     fetcher,
-    { refreshInterval: 30000 }
+    liveOpts
   );
 
   if (!data || "error" in data) {
@@ -33,11 +36,7 @@ export function MarketClock() {
         <span className={clsx("w-1.5 h-1.5 rounded-full pulse-dot", dotColor)} />
         <span className="text-xs font-medium">Market open</span>
         <span className="text-[10px] text-[var(--color-muted)] tabular">
-          closes{" "}
-          {new Date(c.next_close).toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+          closes {fmtTimeOfDayCT(c.next_close)}
         </span>
       </div>
     );
@@ -48,12 +47,7 @@ export function MarketClock() {
       <span className={clsx("w-1.5 h-1.5 rounded-full", dotColor)} />
       <span className="text-xs font-medium">Closed</span>
       <span className="text-[10px] text-[var(--color-muted)] tabular">
-        opens{" "}
-        {new Date(c.next_open).toLocaleString([], {
-          weekday: "short",
-          hour: "numeric",
-          minute: "2-digit",
-        })}
+        opens {fmtWeekdayTimeCT(c.next_open)}
       </span>
     </div>
   );

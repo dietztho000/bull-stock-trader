@@ -1,0 +1,121 @@
+/* ─── DashboardGrid overrides for react-grid-layout ───
+   Imported once from app/layout.tsx, after the upstream
+   react-grid-layout/css/styles.css and react-resizable/css/styles.css. */
+
+.dashboard-grid-wrap {
+  /* Reserve room around the grid so resize handles don't get clipped. */
+  position: relative;
+}
+
+.dashboard-grid-item {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.dashboard-grid-item-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* Force the tile's primary child (Card section, plain div, Suspense, etc.) to
+   stretch to the full grid cell. Without this, the child sits at intrinsic
+   height and the user sees empty space at the bottom of resized tiles. */
+.dashboard-grid-item-inner > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Card body grows inside its frost section so chart-heavy tiles fill. */
+.dashboard-grid-item-inner > section.frost > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Edit-mode visual treatment: a faint accent ring + grab cursor. */
+.dashboard-grid-wrap.is-editing .dashboard-grid-item {
+  cursor: grab;
+}
+.dashboard-grid-wrap.is-editing .dashboard-grid-item:active {
+  cursor: grabbing;
+}
+.dashboard-grid-wrap.is-editing .dashboard-grid-item-inner {
+  outline: 1.5px dashed color-mix(in oklch, var(--color-accent) 60%, transparent);
+  outline-offset: -1px;
+  border-radius: 16px;
+  /* Slight hover lift to communicate interactivity. */
+  transition: outline-color 0.15s ease, transform 0.15s ease;
+}
+.dashboard-grid-wrap.is-editing .dashboard-grid-item:hover .dashboard-grid-item-inner {
+  outline-color: var(--color-accent);
+}
+
+/* Drag placeholder — the spot where the tile will land. */
+.react-grid-item.react-grid-placeholder {
+  background: color-mix(in oklch, var(--color-accent) 22%, transparent) !important;
+  border: 1.5px dashed color-mix(in oklch, var(--color-accent) 65%, transparent) !important;
+  border-radius: 16px !important;
+  opacity: 1 !important;
+  transition-duration: 80ms;
+}
+
+/* Item being dragged should float above neighbours. */
+.react-grid-item.react-draggable-dragging {
+  z-index: 30;
+  cursor: grabbing !important;
+}
+
+/* Resize handle — bigger hit-area for touch, styled to match the frost aesthetic. */
+.dashboard-grid-wrap.is-editing .react-resizable-handle {
+  width: 24px;
+  height: 24px;
+  bottom: 4px;
+  right: 4px;
+  background-image: none;
+  background-color: transparent;
+  opacity: 1;
+}
+.dashboard-grid-wrap.is-editing .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+  border-bottom-right-radius: 3px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.dashboard-grid-wrap.is-editing .react-resizable-handle:hover::after {
+  opacity: 1;
+}
+.dashboard-grid-wrap:not(.is-editing) .react-resizable-handle {
+  display: none;
+}
+
+/* React-resizable already sets cursor: se-resize via inline styles; reinforce it. */
+.dashboard-grid-wrap.is-editing .react-resizable-handle {
+  cursor: se-resize;
+}
+
+/* Smooth transitions for tiles dropping into place. */
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.react-grid-item.react-draggable-dragging.cssTransforms {
+  transition: none;
+}
+
+/* Reduced motion — kill the layout animations. */
+@media (prefers-reduced-motion: reduce) {
+  .react-grid-item.cssTransforms {
+    transition: none;
+  }
+}

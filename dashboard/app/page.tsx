@@ -1,12 +1,12 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { Card } from "@/components/ui/Card";
-import { AccountPanel } from "@/components/live/AccountPanel";
-import { AccountTabsControl } from "@/components/live/AccountTabs";
-import { EquityCurve } from "@/components/charts/EquityCurve";
-import { DrawdownNarrator } from "@/components/ai/DrawdownNarrator";
-import { UpcomingEventsCard } from "@/components/calendar/UpcomingEventsCard";
-import { PnlHero } from "@/components/live/PnlHero";
+import { DashboardGrid } from "@/components/layout/DashboardGrid";
+import { LayoutProvider } from "@/components/layout/LayoutEditContext";
+import { EditLayoutToggle } from "@/components/layout/EditLayoutToggle";
+import { LandingRedirect } from "@/components/providers/LandingRedirect";
+import {
+  OVERVIEW_LAYOUT,
+  OVERVIEW_TILES,
+  type OverviewCtx,
+} from "@/components/layout/overview/registry";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { loadResearchLog } from "@/lib/parsers/researchLog";
 import {
@@ -18,13 +18,16 @@ import {
   loadEconomicCalendar,
   type EconomicEvent,
 } from "@/lib/parsers/economicCalendar";
+import { loadLadderProgress, type LadderState } from "@/lib/parsers/ladderProgress";
+import { runAlpaca } from "@/lib/alpaca";
+import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { mergeEarnings } from "@/lib/calendar/events";
 import { readBotMode } from "@/lib/mode";
 import { activeTab } from "@/lib/activeTab";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
 import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
-import { todayInET, isTradingDayET } from "@/lib/memoryFreshness";
+import { todayInCT, isTradingDayCT, currentWeekMondayCT } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,13 +45,7 @@ function lastPortfolio(rows: { portfolio: number | null }[]): number | null {
 function weekStartPortfolio(
   rows: { date: string; portfolio: number | null }[]
 ): number | null {
-  const today = new Date();
-  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const monday = new Date(t0);
-  const dow = monday.getDay();
-  const diff = dow === 0 ? -6 : 1 - dow;
-  monday.setDate(monday.getDate() + diff);
-  const mondayStr = monday.toISOString().slice(0, 10);
+  const mondayStr = currentWeekMondayCT();
   for (const r of rows) {
     if (r.date >= mondayStr && r.portfolio != null) return r.portfolio;
   }
@@ -71,8 +68,8 @@ export default async function OverviewPage({
   const mdWeekStart = weekStartPortfolio(benchmark.rows);
   const mdSpyPhasePct = last?.spyPhasePct ?? null;
 
-  const today = todayInET();
-  const mdIsStaleToday = last?.date !== today && isTradingDayET(today);
+  const today = todayInCT();
+  const mdIsStaleToday = last?.date !== today && isTradingDayCT(today);
   const [liveSpy, liveWeek] = mdIsStaleToday
     ? await Promise.all([
         liveSpyPhasePct(benchmark.phaseStart),
@@ -82,140 +79,81 @@ export default async function OverviewPage({
   const spyPhasePct = liveSpy ?? mdSpyPhasePct;
   const weekStart = liveWeek ?? mdWeekStart;
 
-  return (
-    <div className="space-y-6">
-      <PnlHero
-        mode={accountMode}
-        startingEquity={benchmark.startingEquity}
-        phaseStart={benchmark.phaseStart}
-        yesterdayPortfolio={yesterday}
-        weekStartPortfolio={weekStart}
-        spyPhasePct={spyPhasePct}
-      />
-
-      <Suspense fallback={null}>
-        <DrawdownNarrator />
-      </Suspense>
-
-      <Card
-        title="Equity vs SPY"
-        subtitle={`Phase to date · ${benchmark.rows.length} trading days recorded`}
-      >
-        <EquityCurve
-          data={benchmark.rows.map((r) => ({
-            date: r.date,
-            portfolio: r.portfolio,
-            spy: r.spyClose,
-          }))}
-          startingEquity={benchmark.startingEquity}
-        />
-      </Card>
-
-      <div className="space-y-4">
-        <AccountTabsControl activeTab={accountMode} />
-        <Suspense fallback={<AccountPanelSkeleton />}>
-          <AccountPanel mode={accountMode} />
-        </Suspense>
-      </div>
-
-      <div className="grid lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3">
-          <Suspense fallback={<UpcomingEventsSkeleton />}>
-            <UpcomingEventsSection />
-          </Suspense>
-        </div>
-        <div className="lg:col-span-2">
-          <Suspense fallback={<LatestBriefSkeleton />}>
-            <LatestBriefSection />
-          </Suspense>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-async function UpcomingEventsSection() {
-  const [botEarningsMap, marketEarnings, economic] = await Promise.all([
+  const [
+    botEarningsMap,
+    marketEarnings,
+    economic,
+    research,
+    ladderMap,
+  ] = await Promise.all([
     loadEarningsCalendar().catch(() => new Map<string, EarningsEntry>()),
     loadMarketEarnings().catch((): EarningsEntry[] => []),
     loadEconomicCalendar().catch((): EconomicEvent[] => []),
+    loadResearchLog().catch(() => []),
+    loadLadderProgress().catch(() => new Map<string, LadderState>()),
   ]);
-  const earnings = mergeEarnings(Array.from(botEarningsMap.values()), marketEarnings);
-  return <UpcomingEventsCard earnings={earnings} economic={economic} />;
-}
 
-async function LatestBriefSection() {
-  const research = await loadResearchLog();
-  const latest = research[0];
-  if (!latest) {
-    return (
-      <Card title="No research yet">
-        <div className="text-xs text-[var(--color-muted)]">
-          Pre-market research lands at 6 AM ET.
-        </div>
-      </Card>
-    );
+  let earnings: Record<string, EarningsEntry> | undefined;
+  try {
+    earnings = Object.fromEntries(botEarningsMap);
+  } catch {
+    earnings = undefined;
   }
-  return (
-    <Card
-      title={`Latest brief — ${latest.date}`}
-      right={
-        <Link
-          href="/journal"
-          className="text-[11px] text-[var(--color-muted)] hover:text-[var(--color-accent)]"
-        >
-          Open journal →
-        </Link>
-      }
-    >
-      {latest.ideas.length > 0 ? (
-        <ul className="text-sm space-y-1.5">
-          {latest.ideas.slice(0, 4).map((idea, i) => (
-            <li
-              key={i}
-              className="text-[var(--color-text)] truncate"
-              title={idea}
-            >
-              <span className="text-[var(--color-muted)] mr-2">·</span>
-              {idea}
-            </li>
-          ))}
-          {latest.ideas.length > 4 && (
-            <li className="text-xs text-[var(--color-muted)] pt-1">
-              + {latest.ideas.length - 4} more in journal
-            </li>
-          )}
-        </ul>
-      ) : (
-        <pre className="whitespace-pre-wrap text-xs leading-relaxed text-[var(--color-text)] max-h-48 overflow-hidden">
-          {latest.body}
-        </pre>
-      )}
-    </Card>
+
+  let overnightGaps: Record<string, number | null> | undefined;
+  try {
+    const positions = (await runAlpaca("positions", [], { mode: accountMode })) as Array<{
+      symbol: string;
+    }>;
+    const symbols = positions.map((p) => p.symbol);
+    if (symbols.length > 0) {
+      const gapMap = await loadOvernightGaps(symbols, accountMode);
+      overnightGaps = Object.fromEntries(gapMap);
+    }
+  } catch {
+    overnightGaps = undefined;
+  }
+
+  const ladder = ladderMap.size > 0 ? Object.fromEntries(ladderMap) : undefined;
+
+  const upcomingEarnings = mergeEarnings(
+    Array.from(botEarningsMap.values()),
+    marketEarnings
   );
-}
 
-function AccountPanelSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="frost rounded-2xl h-20 animate-pulse" />
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="frost rounded-xl h-20 animate-pulse" />
-        ))}
-      </div>
-      <div className="grid lg:grid-cols-2 gap-5">
-        <div className="frost rounded-2xl h-48 animate-pulse" />
-        <div className="frost rounded-2xl h-48 animate-pulse" />
-      </div>
-    </div>
+  const ctx: OverviewCtx = {
+    accountMode,
+    benchmark,
+    yesterdayPortfolio: yesterday,
+    weekStartPortfolio: weekStart,
+    spyPhasePct,
+    earnings,
+    overnightGaps,
+    ladder,
+    upcomingEarnings,
+    economic,
+    latestBrief: research[0] ?? null,
+  };
+
+  const tiles: Record<string, React.ReactNode> = Object.fromEntries(
+    OVERVIEW_TILES.map((t) => [t.id, t.render(ctx)])
   );
-}
 
-function UpcomingEventsSkeleton() {
-  return <div className="frost rounded-2xl h-40 animate-pulse" />;
-}
-
-function LatestBriefSkeleton() {
-  return <div className="frost rounded-2xl h-40 animate-pulse" />;
+  return (
+    <LayoutProvider pageId="overview" spec={OVERVIEW_LAYOUT}>
+      <LandingRedirect />
+      <div className="space-y-5">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+            <p className="text-xs text-[var(--color-muted)] mt-0.5">
+              Live P&amp;L, equity curve, and today&apos;s catalysts.
+            </p>
+          </div>
+          <EditLayoutToggle />
+        </header>
+        <DashboardGrid tiles={tiles} />
+      </div>
+    </LayoutProvider>
+  );
 }

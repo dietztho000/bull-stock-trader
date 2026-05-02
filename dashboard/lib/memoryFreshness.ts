@@ -2,28 +2,19 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { MEMORY_DIR } from "./memoryPath";
 import { loadBenchmark } from "./parsers/benchmark";
+import { todayInCT, isTradingDayCT } from "./time";
 
 export type MemoryFreshness = {
   syncMtimeMs: number | null;
   latestRowDate: string | null;
-  todayET: string;
+  todayCT: string;
   isTradingDay: boolean;
   status: "fresh" | "warn" | "stale";
 };
 
-export function todayInET(now = new Date()): string {
-  return now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-}
-
-export function isTradingDayET(dateStr: string): boolean {
-  const d = new Date(`${dateStr}T12:00:00-05:00`);
-  const dow = d.getUTCDay();
-  return dow >= 1 && dow <= 5;
-}
-
 export async function loadMemoryFreshness(): Promise<MemoryFreshness> {
-  const todayET = todayInET();
-  const tradingDay = isTradingDayET(todayET);
+  const todayCT = todayInCT();
+  const tradingDay = isTradingDayCT(todayCT);
 
   let syncMtimeMs: number | null = null;
   try {
@@ -43,9 +34,9 @@ export async function loadMemoryFreshness(): Promise<MemoryFreshness> {
 
   const ageHours =
     syncMtimeMs != null ? (Date.now() - syncMtimeMs) / (1000 * 60 * 60) : Infinity;
-  const rowIsToday = latestRowDate === todayET;
+  const rowIsToday = latestRowDate === todayCT;
   const rowIsYesterday =
-    latestRowDate != null && rowIsBeforeOrEqual(latestRowDate, todayET, 1);
+    latestRowDate != null && rowIsBeforeOrEqual(latestRowDate, todayCT, 1);
 
   let status: "fresh" | "warn" | "stale";
   if (!tradingDay) {
@@ -58,7 +49,7 @@ export async function loadMemoryFreshness(): Promise<MemoryFreshness> {
     status = "stale";
   }
 
-  return { syncMtimeMs, latestRowDate, todayET, isTradingDay: tradingDay, status };
+  return { syncMtimeMs, latestRowDate, todayCT, isTradingDay: tradingDay, status };
 }
 
 function rowIsBeforeOrEqual(rowDate: string, today: string, daysBack: number): boolean {

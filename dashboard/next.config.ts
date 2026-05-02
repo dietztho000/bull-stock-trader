@@ -12,7 +12,6 @@ const config: NextConfig = {
       { source: "/sectors", destination: "/trades?tab=sectors", permanent: true },
       { source: "/research", destination: "/journal?tab=research", permanent: true },
       { source: "/weekly", destination: "/journal?tab=weekly", permanent: true },
-      { source: "/calendar", destination: "/journal?tab=calendar", permanent: true },
     ];
   },
 };

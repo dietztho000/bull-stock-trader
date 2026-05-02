@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import { Card } from "@/components/ui/Card";
 import { getDrawdownNarrative } from "@/lib/ai/drawdown";
+import { fmtClockCT } from "@/lib/time";
 
 export async function DrawdownNarrator() {
   if (!process.env.ANTHROPIC_API_KEY) return null;
@@ -21,7 +22,7 @@ export async function DrawdownNarrator() {
             }}
           />
           <div className="mt-2 text-[10px] text-[var(--color-muted)]">
-            generated {new Date(result.generatedAt).toLocaleTimeString()} · cached 10 min
+            generated {fmtClockCT(result.generatedAt)} · cached 10 min
           </div>
         </>
       )}

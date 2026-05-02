@@ -8,13 +8,14 @@ import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { buildPreMarketBrief, type BriefPosition, type ClockState } from "@/lib/discord/brief";
 import { sendDiscord } from "@/lib/discord";
 import { mergeEarnings } from "@/lib/calendar/events";
+import { todayInCT, fmtDateTimeCT } from "@/lib/time";
+import { getSuppressionReason, loadSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayInCT();
 }
 
 type AlpacaPosition = {
@@ -47,9 +48,8 @@ async function assembleBrief(opts: { test?: boolean } = {}): Promise<{
   const date = todayIso();
 
   if (opts.test) {
-    const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
     return {
-      message: `✅ Webhook test from dashboard at ${stamp} UTC`,
+      message: `✅ Webhook test from dashboard at ${fmtDateTimeCT(new Date())} CT`,
       stats: { earningsToday: 0, economicToday: 0, positions: 0, hasHighImpact: false },
     };
   }
@@ -126,6 +126,25 @@ export async function POST(req: Request) {
     const url = new URL(req.url);
     const test = url.searchParams.get("test") === "true";
     const { message } = await assembleBrief({ test });
+
+    // Test sends bypass user-configured filters and quiet hours so the user
+    // can verify the webhook without fighting their own preferences.
+    if (!test) {
+      const settings = await loadSettings();
+      const reason = getSuppressionReason(settings, "research");
+      if (reason) {
+        return NextResponse.json(
+          {
+            ok: true,
+            delivery: "suppressed",
+            suppressedReason: reason,
+            message,
+          },
+          { headers: { "Cache-Control": "no-store" } }
+        );
+      }
+    }
+
     const result = await sendDiscord("research", message);
     return NextResponse.json(
       {

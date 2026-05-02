@@ -1,5 +1,6 @@
 import { runAlpaca } from "@/lib/alpaca";
 import type { AlpacaMode } from "@/lib/alpacaMode";
+import { currentWeekMondayCT } from "@/lib/time";
 
 type PortfolioHistory = {
   timestamp?: number[];
@@ -12,7 +13,7 @@ const cache = new Map<string, { value: number | null; expires: number }>();
 export async function liveWeekStartPortfolio(
   mode: AlpacaMode = "live"
 ): Promise<number | null> {
-  const monday = currentWeekMondayET();
+  const monday = currentWeekMondayCT();
   const key = `${mode}:${monday}`;
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.value;
@@ -43,15 +44,4 @@ async function fetchWeekStart(
     }
   }
   return null;
-}
-
-function currentWeekMondayET(): string {
-  const todayET = new Date().toLocaleDateString("en-CA", {
-    timeZone: "America/New_York",
-  });
-  const today = new Date(`${todayET}T12:00:00Z`);
-  const dow = today.getUTCDay();
-  const diff = dow === 0 ? -6 : 1 - dow;
-  const monday = new Date(today.getTime() + diff * 24 * 60 * 60 * 1000);
-  return monday.toISOString().slice(0, 10);
 }

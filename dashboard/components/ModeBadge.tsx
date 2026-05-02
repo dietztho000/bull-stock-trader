@@ -2,34 +2,16 @@
 
 import useSWR from "swr";
 import clsx from "clsx";
+import { useTradingAccount } from "@/lib/tradingAccountContext";
+import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 type Account = { account_number?: string };
 type Resp = Account | { error: string };
 
-type DerivedMode = "live" | "paper" | "unknown";
-
-function deriveMode(data: Resp | undefined): {
-  mode: DerivedMode;
-  accountNumber: string | null;
-  error: string | null;
-} {
-  if (!data) return { mode: "unknown", accountNumber: null, error: null };
-  if ("error" in data) {
-    return { mode: "unknown", accountNumber: null, error: data.error };
-  }
-  const acct = data.account_number ?? null;
-  if (!acct) return { mode: "unknown", accountNumber: null, error: null };
-  return {
-    mode: acct.startsWith("PA") ? "paper" : "live",
-    accountNumber: acct,
-    error: null,
-  };
-}
-
 const CONFIG: Record<
-  DerivedMode,
+  AlpacaMode,
   { tint: string; dotColor: string; label: string; detail: string }
 > = {
   live: {
@@ -44,27 +26,30 @@ const CONFIG: Record<
     label: "Paper",
     detail: "simulated",
   },
-  unknown: {
-    tint: "",
-    dotColor: "bg-[var(--color-muted)]",
-    label: "Unknown",
-    detail: "—",
-  },
 };
 
 export function ModeBadge() {
-  // Shares SWR cache with LiveAccountKpis (same key) — single request total
-  // even though multiple components subscribe. dedupingInterval avoids
-  // re-fetching across navigations.
-  const { data } = useSWR<Resp>("/api/alpaca/account", fetcher, {
-    refreshInterval: 60000,
-    dedupingInterval: 60000,
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-  });
-  const { mode, accountNumber, error } = deriveMode(data);
-  const config = CONFIG[mode];
-  const detail = mode === "unknown" && error ? "probe failed" : config.detail;
+  const { account } = useTradingAccount();
+  // Secondary fetch purely for the tooltip — surfaces the Alpaca account_number
+  // for the currently selected account. Visible label/tint come from context.
+  const { data, error } = useSWR<Resp>(
+    alpacaApiUrl("account", account),
+    fetcher,
+    {
+      refreshInterval: 60000,
+      dedupingInterval: 60000,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      keepPreviousData: true,
+    }
+  );
+
+  const config = CONFIG[account];
+  const accountNumber =
+    data && !("error" in data) ? data.account_number ?? null : null;
+  const probeError =
+    error?.message ??
+    (data && "error" in data ? data.error : null);
 
   return (
     <div
@@ -74,7 +59,7 @@ export function ModeBadge() {
       )}
       title={[
         accountNumber && `acct: ${accountNumber}`,
-        error && `error: ${error.slice(0, 120)}`,
+        probeError && `error: ${String(probeError).slice(0, 120)}`,
       ]
         .filter(Boolean)
         .join("\n")}
@@ -82,7 +67,7 @@ export function ModeBadge() {
       <span className={clsx("w-2 h-2 rounded-full pulse-dot", config.dotColor)} />
       <span className="text-xs font-semibold tracking-wide">{config.label}</span>
       <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--color-muted)]">
-        {detail}
+        {config.detail}
       </span>
     </div>
   );

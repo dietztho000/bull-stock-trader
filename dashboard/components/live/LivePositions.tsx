@@ -4,6 +4,9 @@ import useSWR from "swr";
 import clsx from "clsx";
 import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
+import { useLiveSwr } from "@/lib/useLiveSwr";
+import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 import { Badge } from "@/components/ui/Card";
 import {
   daysUntilEarnings,
@@ -114,10 +117,16 @@ export function LivePositions({
   overnightGaps?: Record<string, number | null>;
   ladder?: LadderJson;
 } = {}) {
+  const ctx = useTradingAccountOptional();
+  const settingsCtx = useSettingsOptional();
+  const display = settingsCtx?.settings.display;
+  const live = settingsCtx?.settings.live;
+  const effectiveMode = mode ?? ctx?.account;
+  const liveOpts = useLiveSwr(5000);
   const { data, error, isLoading } = useSWR<Position[] | { error: string }>(
-    alpacaApiUrl("positions", mode),
+    alpacaApiUrl("positions", effectiveMode),
     fetcher,
-    { refreshInterval: 5000 }
+    { ...liveOpts, keepPreviousData: true }
   );
 
   if (error || (data && "error" in data)) {
@@ -131,10 +140,17 @@ export function LivePositions({
   if (isLoading || !data) {
     return <div className="text-xs text-[var(--color-muted)]">Loading positions…</div>;
   }
-  const positions = data as Position[];
-  if (!positions.length) {
+  const allPositions = data as Position[];
+  if (!allPositions.length) {
     return <div className="text-xs text-[var(--color-muted)]">No open positions.</div>;
   }
+  const hideTinyBelow = display?.hideTinyPositionsBelow ?? 0;
+  const maxShown = live?.maxPositionsShown ?? 0;
+  const filtered = hideTinyBelow > 0
+    ? allPositions.filter((p) => Math.abs(Number(p.market_value)) >= hideTinyBelow)
+    : allPositions;
+  const positions = maxShown > 0 ? filtered.slice(0, maxShown) : filtered;
+  const hiddenCount = allPositions.length - positions.length;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm tabular">
@@ -200,6 +216,12 @@ export function LivePositions({
           })}
         </tbody>
       </table>
+      {hiddenCount > 0 && (
+        <div className="mt-2 text-[11px] text-[var(--color-muted)]">
+          {hiddenCount} position{hiddenCount === 1 ? "" : "s"} hidden by your filter
+          {maxShown > 0 || hideTinyBelow > 0 ? " (Settings → Display & Live Data)" : ""}.
+        </div>
+      )}
     </div>
   );
 }

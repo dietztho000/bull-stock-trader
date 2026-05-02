@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { motion } from "framer-motion";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { useLiveSwr } from "@/lib/useLiveSwr";
 import { BreakerPills } from "./BreakerPills";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
@@ -33,15 +34,16 @@ export function PnlHero({
   weekStartPortfolio: number | null;
   spyPhasePct: number | null;
 }) {
+  const liveOpts = useLiveSwr(5000);
   const { data: account } = useSWR<Account | { error: string }>(
     alpacaApiUrl("account", mode),
     fetcher,
-    { refreshInterval: 5000 }
+    liveOpts
   );
   const { data: positions } = useSWR<Position[] | { error: string }>(
     alpacaApiUrl("positions", mode),
     fetcher,
-    { refreshInterval: 5000 }
+    liveOpts
   );
 
   const isError = !account || "error" in account;

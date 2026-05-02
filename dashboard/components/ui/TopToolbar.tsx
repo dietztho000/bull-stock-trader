@@ -3,6 +3,7 @@ import { ModeBadge } from "@/components/ModeBadge";
 import { MarketClock } from "@/components/live/MarketClock";
 import { DiscordBriefButton } from "@/components/research/DiscordBriefButton";
 import { MemoryFreshness } from "@/components/MemoryFreshness";
+import { AccountSelector } from "@/components/ui/AccountSelector";
 
 export function TopToolbar() {
   return (
@@ -16,6 +17,7 @@ export function TopToolbar() {
             Stock Trader
           </span>
         </div>
+        <AccountSelector />
         <ModeBadge />
         <MarketClock />
         <Suspense fallback={null}>

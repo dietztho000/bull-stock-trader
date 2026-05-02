@@ -1,5 +1,6 @@
 import type { EarningsEntry } from "../parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "../parsers/economicCalendar.shared";
+import { etTimeStringToCT } from "../time";
 
 export type BriefPosition = {
   symbol: string;
@@ -43,7 +44,7 @@ function fmtPctSigned(v: number | null): string {
 }
 
 function fmtEconomicLine(e: EconomicEvent): string {
-  const time = e.time ? `${e.time} ET — ` : "";
+  const time = e.time ? `${etTimeStringToCT(e.time, e.date)} CT — ` : "";
   const stats: string[] = [];
   if (e.forecast) stats.push(`est ${e.forecast}`);
   if (e.previous) stats.push(`prev ${e.previous}`);

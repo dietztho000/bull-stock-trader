@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { loadMemoryFreshness } from "@/lib/memoryFreshness";
 import { fmtRelativeTime } from "@/lib/format";
+import { fmtDateTimeCT } from "@/lib/time";
 
 const DOT: Record<"fresh" | "warn" | "stale", string> = {
   fresh: "bg-[var(--color-up)]",
@@ -17,10 +18,10 @@ const TINT: Record<"fresh" | "warn" | "stale", string> = {
 export async function MemoryFreshness() {
   const f = await loadMemoryFreshness();
   const ageLabel = f.syncMtimeMs != null ? fmtRelativeTime(f.syncMtimeMs) : "—";
-  const mtimeIso =
-    f.syncMtimeMs != null ? new Date(f.syncMtimeMs).toISOString().slice(0, 16).replace("T", " ") : "—";
+  const mtimeStamp =
+    f.syncMtimeMs != null ? fmtDateTimeCT(f.syncMtimeMs) : "—";
   const detail =
-    f.latestRowDate === f.todayET
+    f.latestRowDate === f.todayCT
       ? "today"
       : f.latestRowDate
         ? `row ${f.latestRowDate}`
@@ -33,9 +34,9 @@ export async function MemoryFreshness() {
         TINT[f.status]
       )}
       title={[
-        `Sync: ${mtimeIso} UTC (${ageLabel} ago)`,
+        `Sync: ${mtimeStamp} CT (${ageLabel} ago)`,
         `Latest BENCHMARK row: ${f.latestRowDate ?? "—"}`,
-        `Today (ET): ${f.todayET}${f.isTradingDay ? "" : " · non-trading day"}`,
+        `Today (CT): ${f.todayCT}${f.isTradingDay ? "" : " · non-trading day"}`,
       ].join("\n")}
     >
       <span className={clsx("w-2 h-2 rounded-full", DOT[f.status])} />
