@@ -37,3 +37,16 @@ export function colorOf(n: number | null | undefined): boolean | null {
   if (n == null || !Number.isFinite(n) || n === 0) return null;
   return n > 0;
 }
+
+export function fmtRelativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  if (!Number.isFinite(diff) || diff < 0) return "now";
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d`;
+}

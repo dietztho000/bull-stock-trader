@@ -22,6 +22,9 @@ import { mergeEarnings } from "@/lib/calendar/events";
 import { readBotMode } from "@/lib/mode";
 import { activeTab } from "@/lib/activeTab";
 import type { AlpacaMode } from "@/lib/alpacaMode";
+import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
+import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
+import { todayInET, isTradingDayET } from "@/lib/memoryFreshness";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,8 +68,19 @@ export default async function OverviewPage({
 
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
   const yesterday = lastPortfolio(benchmark.rows);
-  const weekStart = weekStartPortfolio(benchmark.rows);
-  const spyPhasePct = last?.spyPhasePct ?? null;
+  const mdWeekStart = weekStartPortfolio(benchmark.rows);
+  const mdSpyPhasePct = last?.spyPhasePct ?? null;
+
+  const today = todayInET();
+  const mdIsStaleToday = last?.date !== today && isTradingDayET(today);
+  const [liveSpy, liveWeek] = mdIsStaleToday
+    ? await Promise.all([
+        liveSpyPhasePct(benchmark.phaseStart),
+        liveWeekStartPortfolio(accountMode),
+      ])
+    : [null, null];
+  const spyPhasePct = liveSpy ?? mdSpyPhasePct;
+  const weekStart = liveWeek ?? mdWeekStart;
 
   return (
     <div className="space-y-6">

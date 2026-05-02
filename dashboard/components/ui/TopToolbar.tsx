@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { ModeBadge } from "@/components/ModeBadge";
 import { MarketClock } from "@/components/live/MarketClock";
 import { DiscordBriefButton } from "@/components/research/DiscordBriefButton";
+import { MemoryFreshness } from "@/components/MemoryFreshness";
 
 export function TopToolbar() {
   return (
@@ -16,6 +18,9 @@ export function TopToolbar() {
         </div>
         <ModeBadge />
         <MarketClock />
+        <Suspense fallback={null}>
+          <MemoryFreshness />
+        </Suspense>
         <DiscordBriefButton />
       </div>
     </header>
