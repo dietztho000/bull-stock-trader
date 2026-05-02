@@ -1,0 +1,14 @@
+{
+  "summary": {
+    "runDate": "2026-05-02",
+    "tradeCount": 0,
+    "totalActualPnl": 0,
+    "totalSimPnl": 0,
+    "pnlDelta": 0,
+    "ladderFireRate": 0,
+    "reasonBreakdown": {},
+    "cumulativeActual": [],
+    "cumulativeSim": []
+  },
+  "results": []
+}

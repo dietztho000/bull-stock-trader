@@ -1,15 +1,28 @@
 import { Card, Kpi } from "@/components/ui/Card";
 import { UrlTabs } from "@/components/ui/UrlTabs";
 import { activeTab } from "@/lib/activeTab";
+import { LiveEquityOverlayTile } from "@/components/live/tiles/LiveEquityOverlayTile";
 import { EquityCurve } from "@/components/charts/EquityCurve";
 import { DrawdownChart } from "@/components/charts/DrawdownChart";
 import { Histogram } from "@/components/charts/Histogram";
 import { AlphaChart } from "@/components/charts/AlphaChart";
 import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
-import { BacktestSummary } from "@/components/backtest/BacktestSummary";
+import {
+  BacktestEmptyCard,
+  BacktestReasonBreakdown,
+  buildBacktestKpiTiles,
+} from "@/components/backtest/BacktestSummary";
 import { BacktestTable } from "@/components/backtest/BacktestTable";
 import { BacktestCurve } from "@/components/backtest/BacktestCurve";
 import { RunFreshButton } from "@/components/backtest/RunFreshButton";
+import { DashboardGrid } from "@/components/layout/DashboardGrid";
+import { LayoutProvider } from "@/components/layout/LayoutEditContext";
+import { EditLayoutToggle } from "@/components/layout/EditLayoutToggle";
+import {
+  ANALYTICS_BACKTEST_LAYOUT,
+  ANALYTICS_CURVE_LAYOUT,
+  ANALYTICS_RISK_LAYOUT,
+} from "@/components/layout/defaults";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { loadSectorLedger } from "@/lib/parsers/sectorLedger";
 import { loadTradeLog } from "@/lib/parsers/tradeLog";
@@ -60,11 +73,13 @@ export default async function AnalyticsPage({
             Equity curve, risk-adjusted metrics, and rule-change backtest replay.
           </p>
         </div>
-        <UrlTabs<Tab>
-          layoutId="analytics-tabs"
-          options={TAB_OPTIONS}
-          fallback="curve"
-        />
+        <div className="flex items-center gap-2">
+          <UrlTabs<Tab>
+            layoutId="analytics-tabs"
+            options={TAB_OPTIONS}
+            fallback="curve"
+          />
+        </div>
       </header>
 
       {tab === "curve" && <CurveTab />}
@@ -88,23 +103,27 @@ async function CurveTab() {
       return { date: r.date, alpha: r.alpha!, cumAlpha: cum };
     });
 
-  return (
-    <>
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="Days recorded" value={String(benchmark.rows.length)} />
-        <Kpi
-          label="Max drawdown"
-          value={fmtPctFraction(maxDd.pct)}
-          hint={fmtMoney(maxDd.dollar)}
-        />
-        <Kpi
-          label="DD trough"
-          value={maxDd.troughDate ?? "—"}
-          hint={maxDd.peakDate ? `from ${maxDd.peakDate}` : ""}
-        />
-        <Kpi label="Recovery" value={maxDd.recoveryDate ?? "underwater"} />
-      </section>
-
+  const tiles = {
+    "live-snapshot": <LiveEquityOverlayTile />,
+    "kpi-days": <Kpi label="Days recorded" value={String(benchmark.rows.length)} />,
+    "kpi-max-dd": (
+      <Kpi
+        label="Max drawdown"
+        value={fmtPctFraction(maxDd.pct)}
+        hint={fmtMoney(maxDd.dollar)}
+      />
+    ),
+    "kpi-dd-trough": (
+      <Kpi
+        label="DD trough"
+        value={maxDd.troughDate ?? "—"}
+        hint={maxDd.peakDate ? `from ${maxDd.peakDate}` : ""}
+      />
+    ),
+    "kpi-recovery": (
+      <Kpi label="Recovery" value={maxDd.recoveryDate ?? "underwater"} />
+    ),
+    "equity-curve": (
       <Card
         title="Equity curve"
         subtitle="Portfolio vs SPY (SPY normalized to starting equity)"
@@ -119,24 +138,36 @@ async function CurveTab() {
           height={340}
         />
       </Card>
-
+    ),
+    drawdown: (
       <Card title="Drawdown" subtitle="Underwater equity curve from running peak">
         <DrawdownChart data={dd.map((d) => ({ date: d.date, ddPct: d.ddPct }))} />
       </Card>
-
+    ),
+    alpha: (
       <Card title="Alpha" subtitle="Daily portfolio − SPY return; cumulative on right axis">
         <AlphaChart data={alphaSeries} />
       </Card>
+    ),
+    "daily-return-dist": (
+      <Card title="Daily return distribution">
+        <Histogram values={rets.map((r) => r.ret * 100)} format="pct" />
+      </Card>
+    ),
+    "calendar-heatmap": (
+      <Card title="Daily P&L calendar">
+        <CalendarHeatmap data={rets.map((r) => ({ date: r.date, ret: r.ret }))} />
+      </Card>
+    ),
+  };
 
-      <div className="grid lg:grid-cols-2 gap-5">
-        <Card title="Daily return distribution">
-          <Histogram values={rets.map((r) => r.ret * 100)} format="pct" />
-        </Card>
-        <Card title="Daily P&L calendar">
-          <CalendarHeatmap data={rets.map((r) => ({ date: r.date, ret: r.ret }))} />
-        </Card>
+  return (
+    <LayoutProvider pageId="analytics:curve" spec={ANALYTICS_CURVE_LAYOUT}>
+      <div className="flex justify-end -mt-2 mb-1">
+        <EditLayoutToggle />
       </div>
-    </>
+      <DashboardGrid tiles={tiles} />
+    </LayoutProvider>
   );
 }
 
@@ -197,132 +228,136 @@ async function RiskTab() {
       .sort((a, b) => a.score - b.score);
   })();
 
-  return (
-    <>
-      <Card title="Risk-adjusted">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi label="Sharpe (annualized)" value={fmt(sr)} hint="rf=0, 252 days" />
-          <Kpi label="Sortino" value={fmt(so)} hint="downside-only" />
-          <Kpi label="Calmar" value={fmt(ca)} hint="ann. return / |max DD|" />
-          <Kpi label="Annualized return" value={fmtPctFraction(ar)} />
-        </div>
+  const tradesPerWeek = (() => {
+    if (!ledger.closed.length) return "—";
+    const days = Math.max(
+      1,
+      (new Date().getTime() - new Date(ledger.closed[0].date).getTime()) /
+        (7 * 86400000)
+    );
+    return (ledger.closed.length / days).toFixed(2);
+  })();
+
+  const tiles: Record<string, React.ReactNode> = {
+    "kpi-sharpe": <Kpi label="Sharpe (annualized)" value={fmt(sr)} hint="rf=0, 252 days" />,
+    "kpi-sortino": <Kpi label="Sortino" value={fmt(so)} hint="downside-only" />,
+    "kpi-calmar": <Kpi label="Calmar" value={fmt(ca)} hint="ann. return / |max DD|" />,
+    "kpi-ann-return": <Kpi label="Annualized return" value={fmtPctFraction(ar)} />,
+    "kpi-max-dd": (
+      <Kpi
+        label="Max drawdown"
+        value={fmtPctFraction(maxDd.pct)}
+        hint={fmtMoney(maxDd.dollar)}
+      />
+    ),
+    "kpi-peak-date": <Kpi label="Peak date" value={maxDd.peakDate ?? "—"} />,
+    "kpi-trough-date": <Kpi label="Trough date" value={maxDd.troughDate ?? "—"} />,
+    "kpi-recovery": (
+      <Kpi
+        label="Recovery"
+        value={maxDd.recoveryDate ?? "underwater"}
+        hint={maxDd.durationDays != null ? `${maxDd.durationDays}d to trough` : ""}
+      />
+    ),
+    "kpi-mean": <Kpi label="Mean (daily)" value={fmtPctFraction(dailyMean, 3)} />,
+    "kpi-stddev": <Kpi label="Std dev (daily)" value={fmtPctFraction(dailyStd, 3)} />,
+    "kpi-best-day": (
+      <Kpi
+        label="Best day"
+        value={bestDay ? fmtPctFraction(bestDay.ret) : "—"}
+        hint={bestDay?.date}
+      />
+    ),
+    "kpi-worst-day": (
+      <Kpi
+        label="Worst day"
+        value={worstDay ? fmtPctFraction(worstDay.ret) : "—"}
+        hint={worstDay?.date}
+      />
+    ),
+    "kpi-closed": (
+      <Kpi
+        label="Closed"
+        value={String(stats.total)}
+        hint={`${stats.wins}W / ${stats.losses}L / ${stats.breakeven}B`}
+      />
+    ),
+    "kpi-winrate": <Kpi label="Win rate" value={`${(stats.winRate * 100).toFixed(1)}%`} />,
+    "kpi-profit-factor": (
+      <Kpi
+        label="Profit factor"
+        value={
+          stats.profitFactor != null && Number.isFinite(stats.profitFactor)
+            ? stats.profitFactor.toFixed(2)
+            : "—"
+        }
+      />
+    ),
+    "kpi-payoff": (
+      <Kpi label="Payoff ratio" value={fmt(stats.payoffRatio)} hint="avg win / avg loss" />
+    ),
+    "kpi-avg-win": <Kpi label="Avg win" value={fmtMoney(stats.avgWin)} />,
+    "kpi-avg-loss": <Kpi label="Avg loss" value={fmtMoney(stats.avgLoss)} />,
+    "kpi-expectancy": (
+      <Kpi label="Expectancy" value={fmtSignedMoney(stats.expectancy)} hint="$ / trade" />
+    ),
+    "kpi-avg-r": <Kpi label="Avg R-multiple" value={fmt(avgRm)} />,
+    "kpi-stop-discipline": (
+      <Kpi
+        label="Stop discipline"
+        value={stopDiscipline != null ? `${(stopDiscipline * 100).toFixed(0)}%` : "—"}
+        hint="losses cut at -7% rule"
+      />
+    ),
+    "kpi-trades-per-week": (
+      <Kpi label="Trades per week" value={tradesPerWeek} hint="cap 3" />
+    ),
+    "kpi-best-month": (
+      <Kpi
+        label="Best month"
+        value={bestMonth ? fmtPctFraction(bestMonth.ret) : "—"}
+        hint={bestMonth?.ym}
+      />
+    ),
+    "kpi-worst-month": (
+      <Kpi
+        label="Worst month"
+        value={worstMonth ? fmtPctFraction(worstMonth.ret) : "—"}
+        hint={worstMonth?.ym}
+      />
+    ),
+    "kpi-longest-win-streak": (
+      <Kpi label="Longest win streak" value={String(stats.longestWinStreak)} />
+    ),
+    "kpi-longest-loss-streak": (
+      <Kpi label="Longest loss streak" value={String(stats.longestLossStreak)} />
+    ),
+    "kpi-best-trade": (
+      <Kpi
+        label="Best trade"
+        value={stats.best ? fmtSignedMoney(stats.best.pnl) : "—"}
+        hint={stats.best?.symbol}
+      />
+    ),
+    "kpi-worst-trade": (
+      <Kpi
+        label="Worst trade"
+        value={stats.worst ? fmtSignedMoney(stats.worst.pnl) : "—"}
+        hint={stats.worst?.symbol}
+      />
+    ),
+    "r-distribution": (
+      <Card title="R-multiple distribution">
+        <Histogram values={rs.map((r) => r.r)} format="number" />
       </Card>
-
-      <Card title="Drawdown">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi
-            label="Max drawdown"
-            value={fmtPctFraction(maxDd.pct)}
-            hint={fmtMoney(maxDd.dollar)}
-          />
-          <Kpi label="Peak date" value={maxDd.peakDate ?? "—"} />
-          <Kpi label="Trough date" value={maxDd.troughDate ?? "—"} />
-          <Kpi
-            label="Recovery"
-            value={maxDd.recoveryDate ?? "underwater"}
-            hint={maxDd.durationDays != null ? `${maxDd.durationDays}d to trough` : ""}
-          />
-        </div>
+    ),
+    "daily-distribution": (
+      <Card title="Daily returns distribution">
+        <Histogram values={rets.map((r) => r.ret * 100)} format="pct" />
       </Card>
-
-      <Card title="Daily returns">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi label="Mean (daily)" value={fmtPctFraction(dailyMean, 3)} />
-          <Kpi label="Std dev (daily)" value={fmtPctFraction(dailyStd, 3)} />
-          <Kpi
-            label="Best day"
-            value={bestDay ? fmtPctFraction(bestDay.ret) : "—"}
-            hint={bestDay?.date}
-          />
-          <Kpi
-            label="Worst day"
-            value={worstDay ? fmtPctFraction(worstDay.ret) : "—"}
-            hint={worstDay?.date}
-          />
-        </div>
-      </Card>
-
-      <Card title="Trades">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi
-            label="Closed"
-            value={String(stats.total)}
-            hint={`${stats.wins}W / ${stats.losses}L / ${stats.breakeven}B`}
-          />
-          <Kpi label="Win rate" value={`${(stats.winRate * 100).toFixed(1)}%`} />
-          <Kpi
-            label="Profit factor"
-            value={
-              stats.profitFactor != null && Number.isFinite(stats.profitFactor)
-                ? stats.profitFactor.toFixed(2)
-                : "—"
-            }
-          />
-          <Kpi label="Payoff ratio" value={fmt(stats.payoffRatio)} hint="avg win / avg loss" />
-          <Kpi label="Avg win" value={fmtMoney(stats.avgWin)} />
-          <Kpi label="Avg loss" value={fmtMoney(stats.avgLoss)} />
-          <Kpi label="Expectancy" value={fmtSignedMoney(stats.expectancy)} hint="$ / trade" />
-          <Kpi label="Avg R-multiple" value={fmt(avgRm)} />
-        </div>
-      </Card>
-
-      <Card title="Discipline">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi
-            label="Stop discipline"
-            value={
-              stopDiscipline != null ? `${(stopDiscipline * 100).toFixed(0)}%` : "—"
-            }
-            hint="losses cut at -7% rule"
-          />
-          <Kpi
-            label="Trades per week"
-            value={(() => {
-              if (!ledger.closed.length) return "—";
-              const days = Math.max(
-                1,
-                (new Date().getTime() - new Date(ledger.closed[0].date).getTime()) /
-                  (7 * 86400000)
-              );
-              return (ledger.closed.length / days).toFixed(2);
-            })()}
-            hint="cap 3"
-          />
-          <Kpi
-            label="Best month"
-            value={bestMonth ? fmtPctFraction(bestMonth.ret) : "—"}
-            hint={bestMonth?.ym}
-          />
-          <Kpi
-            label="Worst month"
-            value={worstMonth ? fmtPctFraction(worstMonth.ret) : "—"}
-            hint={worstMonth?.ym}
-          />
-          <Kpi label="Longest win streak" value={String(stats.longestWinStreak)} />
-          <Kpi label="Longest loss streak" value={String(stats.longestLossStreak)} />
-          <Kpi
-            label="Best trade"
-            value={stats.best ? fmtSignedMoney(stats.best.pnl) : "—"}
-            hint={stats.best?.symbol}
-          />
-          <Kpi
-            label="Worst trade"
-            value={stats.worst ? fmtSignedMoney(stats.worst.pnl) : "—"}
-            hint={stats.worst?.symbol}
-          />
-        </div>
-      </Card>
-
-      <div className="grid lg:grid-cols-2 gap-5">
-        <Card title="R-multiple distribution">
-          <Histogram values={rs.map((r) => r.r)} format="number" />
-        </Card>
-        <Card title="Daily returns distribution">
-          <Histogram values={rets.map((r) => r.ret * 100)} format="pct" />
-        </Card>
-      </div>
-
-      {scorerBuckets.length > 0 && (
+    ),
+    "scorer-table":
+      scorerBuckets.length > 0 ? (
         <Card title="Win rate by entry-scorer bucket">
           <table className="text-sm tabular w-full">
             <thead>
@@ -343,8 +378,16 @@ async function RiskTab() {
             </tbody>
           </table>
         </Card>
-      )}
-    </>
+      ) : null,
+  };
+
+  return (
+    <LayoutProvider pageId="analytics:risk" spec={ANALYTICS_RISK_LAYOUT}>
+      <div className="flex justify-end -mt-2 mb-1">
+        <EditLayoutToggle />
+      </div>
+      <DashboardGrid tiles={tiles} />
+    </LayoutProvider>
   );
 }
 
@@ -398,43 +441,58 @@ async function BacktestTab() {
       (x): x is { result: (typeof results)[number]; trade: Trade } => x !== null
     );
 
+  const headerTile = (
+    <div className="flex items-center justify-between gap-3 frost rounded-2xl p-4">
+      <p className="text-xs text-[var(--color-muted)] max-w-2xl">
+        Live-trade replay. Each closed trade is rerun against the current exit
+        rules; the delta tells you how a rule change would have changed P&L.
+        Runs in paper mode against Alpaca historical bars.{" "}
+        {snapshot ? (
+          <span className="text-[var(--color-muted)]">
+            Showing cached results from {summary?.runDate}. Click Run fresh to
+            re-run.
+          </span>
+        ) : (
+          <span className="text-[var(--color-warn)]">
+            No cached results yet — click Run fresh to seed.
+          </span>
+        )}
+      </p>
+      <RunFreshButton mode="paper" />
+    </div>
+  );
+
+  const tiles: Record<string, React.ReactNode> =
+    summary && summary.tradeCount > 0
+      ? {
+          header: headerTile,
+          ...buildBacktestKpiTiles(summary),
+          "reason-breakdown": <BacktestReasonBreakdown summary={summary} />,
+          cumulative: (
+            <Card title="Cumulative P&L: actual vs simulated">
+              <BacktestCurve
+                actual={summary.cumulativeActual}
+                sim={summary.cumulativeSim}
+              />
+            </Card>
+          ),
+          "per-trade": (
+            <Card title="Per-trade comparison">
+              <BacktestTable rows={rows} />
+            </Card>
+          ),
+        }
+      : {
+          header: headerTile,
+          summary: <BacktestEmptyCard />,
+        };
+
   return (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-[var(--color-muted)] max-w-2xl">
-          Live-trade replay. Each closed trade is rerun against the current exit
-          rules; the delta tells you how a rule change would have changed P&L.
-          Runs in paper mode against Alpaca historical bars.{" "}
-          {snapshot ? (
-            <span className="text-[var(--color-muted)]">
-              Showing cached results from {summary?.runDate}. Click Run fresh to
-              re-run.
-            </span>
-          ) : (
-            <span className="text-[var(--color-warn)]">
-              No cached results yet — click Run fresh to seed.
-            </span>
-          )}
-        </p>
-        <RunFreshButton mode="paper" />
+    <LayoutProvider pageId="analytics:backtest" spec={ANALYTICS_BACKTEST_LAYOUT}>
+      <div className="flex justify-end -mt-2 mb-1">
+        <EditLayoutToggle />
       </div>
-
-      <BacktestSummary summary={summary} />
-
-      {summary && summary.tradeCount > 0 && (
-        <>
-          <Card title="Cumulative P&L: actual vs simulated">
-            <BacktestCurve
-              actual={summary.cumulativeActual}
-              sim={summary.cumulativeSim}
-            />
-          </Card>
-
-          <Card title="Per-trade comparison">
-            <BacktestTable rows={rows} />
-          </Card>
-        </>
-      )}
-    </>
+      <DashboardGrid tiles={tiles} />
+    </LayoutProvider>
   );
 }

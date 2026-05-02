@@ -8,10 +8,23 @@ the Runs table and the "Latest run" detail section below.
 
 | Date | Trades | Actual P&L | Sim P&L | Delta | Ladder rate |
 |------|--------|-----------|---------|-------|-------------|
+| 2026-05-02 | 0 | $0.00 | $0.00 | $0.00 | 0% |
 | _no runs yet — visit /backtest in the dashboard to seed_ | | | | | |
 
-## Latest run — none
+## Latest run — 2026-05-02
 
-Backtest hasn't run yet. The dashboard `/backtest` page will populate
-this section the first time you click "Run fresh". Until then, the
-table above is a placeholder.
+**Trades replayed:** 0
+**Total actual P&L:** $0.00
+**Total sim P&L:** $0.00
+**Delta:** $0.00 (n/a)
+**Ladder fire rate:** 0%
+
+### Exit reason breakdown
+
+- (no trades)
+
+### Per-trade detail
+
+| Symbol | Entry | Exit (sim) | Sim reason | Sim P&L | Actual P&L | Delta | Ladder |
+|--------|-------|-----------|------------|---------|-----------|-------|--------|
+| — | — | — | — | — | — | — | — |

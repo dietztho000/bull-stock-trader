@@ -6,6 +6,10 @@ import { RScatter } from "@/components/charts/RScatter";
 import { SectorBars } from "@/components/charts/SectorBars";
 import { UrlTabs } from "@/components/ui/UrlTabs";
 import { SkeletonBox } from "@/components/ui/Skeleton";
+import { DashboardGrid } from "@/components/layout/DashboardGrid";
+import { LayoutProvider } from "@/components/layout/LayoutEditContext";
+import { EditLayoutToggle } from "@/components/layout/EditLayoutToggle";
+import { TRADES_ALL_LAYOUT, TRADES_SECTORS_LAYOUT } from "@/components/layout/defaults";
 import { activeTab } from "@/lib/activeTab";
 import { loadSectorLedger } from "@/lib/parsers/sectorLedger";
 import { loadSectorMap } from "@/lib/parsers/sectorMap";
@@ -17,12 +21,14 @@ import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { targetPctForScore, actualPctOfEquity } from "@/lib/stats/sizing";
 import { runAlpaca } from "@/lib/alpaca";
 import { detectAccountInfo, readBotMode } from "@/lib/mode";
+import type { AlpacaMode } from "@/lib/alpacaMode";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const SECTOR_CAP = 3;
 const TABS = ["all", "sectors"] as const;
+const ACCOUNT_TABS = ["live", "paper"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_OPTIONS: { value: Tab; label: string }[] = [
@@ -32,13 +38,10 @@ const TAB_OPTIONS: { value: Tab; label: string }[] = [
 
 type LivePositionLite = { symbol: string };
 
-async function loadLiveConcentration(): Promise<{
+async function loadLiveConcentration(mode: AlpacaMode): Promise<{
   bySector: Map<string, string[]>;
   rawCount: number;
 } | null> {
-  // Use the configured mode from BOT_MODE rather than probing both accounts.
-  // The probe-both pattern doubled Alpaca round-trips on every page render.
-  const mode = await readBotMode();
   try {
     const probe = await detectAccountInfo(mode);
     if (!probe.configured || probe.error) return null;
@@ -66,6 +69,8 @@ export default async function TradesPage({
 }) {
   const sp = await searchParams;
   const tab = activeTab<Tab>(sp, "tab", TABS, "all");
+  const defaultMode = await readBotMode();
+  const accountMode = activeTab<AlpacaMode>(sp, "account", ACCOUNT_TABS, defaultMode);
 
   const [ledger, tradeLog] = await Promise.all([
     loadSectorLedger(),
@@ -74,6 +79,35 @@ export default async function TradesPage({
   const stats = computeTradeStats(ledger.closed);
   const rs = rMultiples(ledger.closed, tradeLog.entries);
   const avg = avgR(rs);
+
+  const kpiTiles: Record<string, React.ReactNode> = {
+    "kpi-closed": (
+      <Kpi
+        label="Closed trades"
+        value={String(stats.total)}
+        hint={`${stats.wins}W / ${stats.losses}L / ${stats.breakeven}B`}
+      />
+    ),
+    "kpi-winrate": (
+      <Kpi label="Win rate" value={`${(stats.winRate * 100).toFixed(1)}%`} />
+    ),
+    "kpi-pnl": (
+      <Kpi label="Realized P&L" value={fmtSignedMoney(stats.totalPnl)} />
+    ),
+    "kpi-avg-r": (
+      <Kpi label="Avg R" value={avg != null ? avg.toFixed(2) : "—"} />
+    ),
+    "kpi-profit-factor": (
+      <Kpi
+        label="Profit factor"
+        value={
+          stats.profitFactor != null && Number.isFinite(stats.profitFactor)
+            ? stats.profitFactor.toFixed(2)
+            : "—"
+        }
+      />
+    ),
+  };
 
   return (
     <div className="space-y-5">
@@ -87,34 +121,18 @@ export default async function TradesPage({
         <UrlTabs<Tab> layoutId="trades-tabs" options={TAB_OPTIONS} fallback="all" />
       </header>
 
-      <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Kpi
-          label="Closed trades"
-          value={String(stats.total)}
-          hint={`${stats.wins}W / ${stats.losses}L / ${stats.breakeven}B`}
-        />
-        <Kpi label="Win rate" value={`${(stats.winRate * 100).toFixed(1)}%`} />
-        <Kpi label="Realized P&L" value={fmtSignedMoney(stats.totalPnl)} />
-        <Kpi label="Avg R" value={avg != null ? avg.toFixed(2) : "—"} />
-        <Kpi
-          label="Profit factor"
-          value={
-            stats.profitFactor != null && Number.isFinite(stats.profitFactor)
-              ? stats.profitFactor.toFixed(2)
-              : "—"
-          }
-        />
-      </section>
-
       {tab === "all" && (
         <AllTradesTab
           ledger={ledger}
           tradeLog={tradeLog}
           stats={stats}
           rs={rs}
+          kpiTiles={kpiTiles}
         />
       )}
-      {tab === "sectors" && <SectorsTab ledger={ledger} />}
+      {tab === "sectors" && (
+        <SectorsTab ledger={ledger} kpiTiles={kpiTiles} mode={accountMode} />
+      )}
     </div>
   );
 }
@@ -124,11 +142,13 @@ function AllTradesTab({
   tradeLog,
   stats,
   rs,
+  kpiTiles,
 }: {
   ledger: Awaited<ReturnType<typeof loadSectorLedger>>;
   tradeLog: Awaited<ReturnType<typeof loadTradeLog>>;
   stats: ReturnType<typeof computeTradeStats>;
   rs: ReturnType<typeof rMultiples>;
+  kpiTiles: Record<string, React.ReactNode>;
 }) {
   const sortedSnapshots = [...tradeLog.snapshots]
     .filter((s) => s.date && s.portfolio != null)
@@ -166,13 +186,15 @@ function AllTradesTab({
     })
     .filter(Boolean) as { x: number; y: number; symbol: string; date: string }[];
 
-  return (
-    <>
+  const tiles: Record<string, React.ReactNode> = {
+    ...kpiTiles,
+    table: (
       <Card title="All closed trades">
         <TradesTable trades={enrichedTrades} />
       </Card>
-
-      <details className="frost rounded-2xl">
+    ),
+    distributions: (
+      <details className="frost rounded-2xl no-drag">
         <summary className="cursor-pointer select-none px-5 py-3 flex items-center justify-between text-sm">
           <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--color-muted)]">
             Distributions
@@ -207,7 +229,8 @@ function AllTradesTab({
           </Card>
         </div>
       </details>
-
+    ),
+    "best-worst": (
       <Card title="Best and worst">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
@@ -248,14 +271,27 @@ function AllTradesTab({
           </div>
         </div>
       </Card>
-    </>
+    ),
+  };
+
+  return (
+    <LayoutProvider pageId="trades:all" spec={TRADES_ALL_LAYOUT}>
+      <div className="flex justify-end -mt-2 mb-1">
+        <EditLayoutToggle />
+      </div>
+      <DashboardGrid tiles={tiles} />
+    </LayoutProvider>
   );
 }
 
 function SectorsTab({
   ledger,
+  kpiTiles,
+  mode,
 }: {
   ledger: Awaited<ReturnType<typeof loadSectorLedger>>;
+  kpiTiles: Record<string, React.ReactNode>;
+  mode: AlpacaMode;
 }) {
   const grouped = bySector(ledger.closed);
   const pnlBars = grouped.map((g) => ({
@@ -263,12 +299,14 @@ function SectorsTab({
     value: g.stats.totalPnl,
   }));
 
-  return (
-    <>
+  const tiles: Record<string, React.ReactNode> = {
+    ...kpiTiles,
+    "live-concentration": (
       <Suspense fallback={<SkeletonBox height={180} />}>
-        <LiveConcentrationSection />
+        <LiveConcentrationSection mode={mode} />
       </Suspense>
-
+    ),
+    "streak-status": (
       <Card
         title="Sector streak status"
         subtitle="Rule #10: 2 consecutive losses → sector blocked for 30 days"
@@ -306,11 +344,13 @@ function SectorsTab({
           </table>
         )}
       </Card>
-
+    ),
+    "pnl-by-sector": (
       <Card title="Realized P&L by sector">
         <SectorBars data={pnlBars} format="money" />
       </Card>
-
+    ),
+    "per-sector-stats": (
       <Card title="Per-sector stats">
         {grouped.length === 0 ? (
           <div className="text-sm text-[var(--color-muted)]">No closed trades yet.</div>
@@ -349,16 +389,25 @@ function SectorsTab({
           </table>
         )}
       </Card>
-    </>
+    ),
+  };
+
+  return (
+    <LayoutProvider pageId="trades:sectors" spec={TRADES_SECTORS_LAYOUT}>
+      <div className="flex justify-end -mt-2 mb-1">
+        <EditLayoutToggle />
+      </div>
+      <DashboardGrid tiles={tiles} />
+    </LayoutProvider>
   );
 }
 
 // Streamed-in section: live Alpaca positions + today's research ideas vs the
 // concentration cap. Wrapped in Suspense at the call-site so the rest of the
 // Sectors tab paints immediately and this card streams in once Alpaca responds.
-async function LiveConcentrationSection() {
+async function LiveConcentrationSection({ mode }: { mode: AlpacaMode }) {
   const [concentration, research, sectorMap] = await Promise.all([
-    loadLiveConcentration(),
+    loadLiveConcentration(mode),
     loadResearchLog(),
     loadSectorMap(),
   ]);
@@ -376,7 +425,7 @@ async function LiveConcentrationSection() {
       : [];
 
   return (
-    <>
+    <div className="space-y-5">
       <Card
         title="Live concentration"
         subtitle={`Rule #17: max ${SECTOR_CAP} open positions per GICS sector`}
@@ -448,6 +497,6 @@ async function LiveConcentrationSection() {
           </ul>
         </Card>
       )}
-    </>
+    </div>
   );
 }
