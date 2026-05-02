@@ -26,13 +26,14 @@ log() { printf '[%s] cron-sync: %s\n' "$(ts)" "$*"; }
 # Serialize against any concurrent local commit/push (rule #21).
 # Non-blocking: if another process holds the lock, exit silently — the
 # next 15-min tick will catch up. Avoids piling up jobs behind a stuck
-# git operation.
-LOCK_FILE="$ROOT/.git/.commit-lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
+# git operation. Uses mkdir as the atomic primitive (portable across
+# macOS/Linux; flock is Linux-only and not present in macOS base).
+LOCK_DIR="$ROOT/.git/.commit-lock.d"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   log "another git op holds .commit-lock — skipping this tick"
   exit 0
 fi
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
 log "starting"
 

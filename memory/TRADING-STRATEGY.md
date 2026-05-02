@@ -66,9 +66,10 @@ Beat the S&P 500 over the challenge window. Stocks only — no options, ever.
     unless a fresh dated catalyst has been added to today's
     RESEARCH-LOG.md (distinct from the prior thesis). Blocks "noise
     bounces" — same idea, same setup, just lower entry.
-21. **Commit serialization** — local cron-sync.sh uses flock on
-    `.git/.commit-lock` so it skips a tick if another git operation
-    holds the lock. Cloud routines retry pushes up to 3 times with
+21. **Commit serialization** — local cron-sync.sh uses an mkdir-atomic
+    lock at `.git/.commit-lock.d` so it skips a tick if another git
+    operation holds the lock (mkdir works on macOS where flock is
+    unavailable). Cloud routines retry pushes up to 3 times with
     `pull --rebase` between attempts before erroring out — handles
     concurrent main pushes from overlapping cloud routines without
     force-push.
