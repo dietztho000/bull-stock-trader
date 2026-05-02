@@ -44,6 +44,45 @@ Format each entry:
 ### Decision
 HOLD — market closed. Plan: at next market open, re-quote GOOGL and QCOM. If entry scorer >= 7 for each, add up to 2 positions (~$18-20k each) to bring deployment to ~75-80%. Re-check NVDA vs -7% cut rule at open.
 
+## 2026-05-01 — Pre-market Research
+
+### Account
+- Equity: $99,741.92
+- Cash: $46,829.98 (47% — still below 75-85% target)
+- Buying power: $146,571.90
+- Daytrade count: 0 (reset; no PDT risk today)
+
+### Positions
+| Symbol | Shares | Avg Entry | Current | P&L% | Stop |
+|--------|--------|-----------|---------|------|------|
+| AMKR | 220 | $68.14 | $69.44 | +1.91% | $63.03 (10% trail) |
+| NVDA | 95 | $209.24 | $201.58 | -3.66% | $181.80 (10% trail) |
+| XOM | 120 | $152.51 | $154.19 | +1.10% | $140.12 (10% trail) |
+
+⚠️ NVDA: -3.66% unrealized. Manual cut threshold = -7% ($194.60). Monitor closely. Not triggered yet.
+
+### Market Context
+- WTI: ~$72-101/barrel range cited Q1; AI power demand bullish for natgas/upstream
+- S&P 500: Continued AI supercycle momentum; 13-15% earnings growth projected
+- VIX: Not available (no real-time data from Perplexity)
+- Today's catalysts: AI diffusion/capex theme ongoing; no specific May 1 earnings events noted
+- Sector momentum: Technology #1 (AI supercycle, data-center buildout); Energy mixed (upstream AI-power tailwind vs. integrated oil drag)
+- Source: Perplexity (Morgan Stanley, JPMorgan, Fidelity, FactSet 2026 outlooks)
+
+### Trade Ideas (Carried from Apr 30 plan)
+1. GOOGL — Post-earnings AI beat; bid $375 / ask $381.21, spread 164 bps (market order required; illiquid open)
+2. QCOM — Earnings beat +9% above consensus; bid $171.32 / ask $175.38, spread 234 bps (very wide)
+
+### Risk Factors
+- **WEEKLY TRADE CAP HIT: 3/3 trades used (AMKR + NVDA + XOM, Apr 30)** — NO new trades this week
+- NVDA approaching watch level (-3.66% vs -7% cut); cut price = $194.60
+- Deployment at 53% — below target, but cap blocks any new buys until next week (Mon May 4)
+- GOOGL and QCOM spreads extremely wide at open (164–234 bps); confirms no entry today even if cap were clear
+- VIX unavailable; macro regime unknown
+
+### Decision
+HOLD — weekly trade cap 3/3 exhausted (all slots used Apr 30). Carry GOOGL and QCOM ideas to Monday May 4. Monitor NVDA for -7% cut trigger ($194.60). All three positions have GTC stops in place.
+
 ## YYYY-MM-DD — Pre-market Research
 
 ### Account
