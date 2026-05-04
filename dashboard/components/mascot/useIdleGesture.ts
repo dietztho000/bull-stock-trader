@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 
 type Gesture = "blink" | "happy" | null;
 
@@ -13,10 +14,11 @@ const GESTURE_DURATION_MS = 1500;
  * NOT run during SSR — the hook gates everything behind a `mounted` flag.
  */
 export function useIdleGesture(enabled: boolean): Gesture {
+  const reduced = useReducedMotion();
   const [gesture, setGesture] = useState<Gesture>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || reduced) return;
     let cancelled = false;
     let timer: number | null = null;
 
@@ -39,7 +41,7 @@ export function useIdleGesture(enabled: boolean): Gesture {
       cancelled = true;
       if (timer != null) window.clearTimeout(timer);
     };
-  }, [enabled]);
+  }, [enabled, reduced]);
 
   return gesture;
 }

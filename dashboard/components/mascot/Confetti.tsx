@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 const COLORS = [
   "var(--color-up)",
@@ -58,11 +58,19 @@ export function Confetti({
   durationMs?: number;
   onDone?: () => void;
 }) {
+  const reduced = useReducedMotion();
   const [particles, setParticles] = useState<Particle[] | null>(null);
 
   useEffect(() => {
     if (!active) {
       setParticles(null);
+      return;
+    }
+    if (reduced) {
+      // Skip the visual celebration entirely under reduced-motion. Still
+      // fire onDone so the trigger flow (localStorage flag, parent state)
+      // doesn't get stuck thinking the animation is mid-run.
+      onDone?.();
       return;
     }
     setParticles(makeParticles(Date.now()));
@@ -71,7 +79,7 @@ export function Confetti({
       onDone?.();
     }, durationMs);
     return () => clearTimeout(t);
-  }, [active, durationMs, onDone]);
+  }, [active, durationMs, onDone, reduced]);
 
   return (
     <AnimatePresence>

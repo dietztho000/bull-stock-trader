@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
 import type { SeasonalOutfit } from "@/lib/mascot/seasonal";
 
@@ -33,6 +33,7 @@ export function BullCharacter({
   className?: string;
 }) {
   const px = SIZE_PX[size];
+  const reduced = useReducedMotion();
   const tone =
     mood === "bullish" || mood === "celebrating"
       ? "var(--color-up)"
@@ -63,7 +64,7 @@ export function BullCharacter({
       />
 
       {/* Mood accessory above head */}
-      <MoodAccessory mood={mood} px={px} />
+      <MoodAccessory mood={mood} px={px} reduced={!!reduced} />
 
       {/* Seasonal accessory (overrides nothing — sits next to mood accessory) */}
       {seasonal && (
@@ -106,13 +107,19 @@ export function BullCharacter({
         variants={bodyVariants}
         transition={SPRING}
       >
-        <motion.div
-          className="absolute inset-0"
-          animate={{ y: [0, -3, 0] }}
-          transition={{ duration: mood === "celebrating" ? 0.9 : 2.6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <BullHeadSvg mood={mood} />
-        </motion.div>
+        {reduced ? (
+          <div className="absolute inset-0">
+            <BullHeadSvg mood={mood} />
+          </div>
+        ) : (
+          <motion.div
+            className="absolute inset-0"
+            animate={{ y: [0, -3, 0] }}
+            transition={{ duration: mood === "celebrating" ? 0.9 : 2.6, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <BullHeadSvg mood={mood} />
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Body details only on larger renders */}
@@ -239,14 +246,14 @@ function BullHeadSvg({ mood }: { mood: Mood }) {
   );
 }
 
-function MoodAccessory({ mood, px }: { mood: Mood; px: number }) {
+function MoodAccessory({ mood, px, reduced }: { mood: Mood; px: number; reduced: boolean }) {
   if (mood === "celebrating") {
     return (
       <motion.div
         className="absolute"
         style={{ top: -8, fontSize: Math.max(px * 0.18, 14) }}
-        animate={{ y: [-2, -6, -2], rotate: [-6, 8, -6] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduced ? undefined : { y: [-2, -6, -2], rotate: [-6, 8, -6] }}
+        transition={reduced ? undefined : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
       >
         🎉
       </motion.div>
@@ -257,8 +264,8 @@ function MoodAccessory({ mood, px }: { mood: Mood; px: number }) {
       <motion.div
         className="absolute"
         style={{ top: -px * 0.05, right: px * 0.08, fontSize: Math.max(px * 0.16, 12) }}
-        animate={{ y: [0, -3, 0], opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduced ? undefined : { y: [0, -3, 0], opacity: [0.6, 1, 0.6] }}
+        transition={reduced ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
       >
         ⛈️
       </motion.div>
@@ -269,8 +276,8 @@ function MoodAccessory({ mood, px }: { mood: Mood; px: number }) {
       <motion.div
         className="absolute"
         style={{ top: -px * 0.04, right: -px * 0.04, fontSize: Math.max(px * 0.16, 12) }}
-        animate={{ rotate: [-6, 6, -6] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduced ? undefined : { rotate: [-6, 6, -6] }}
+        transition={reduced ? undefined : { duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
       >
         👍
       </motion.div>

@@ -33,6 +33,7 @@ export function BullMascotNavCard({ className }: { className?: string }) {
 
   const snapshot = useBullMood({
     mode: account?.account,
+    accountId: account?.accountId,
     ctxOverride: null,
     fallbackCtx: moodCtx.data,
     todayKey,
