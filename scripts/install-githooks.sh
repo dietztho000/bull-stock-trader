@@ -14,4 +14,7 @@ chmod +x .githooks/*
 
 echo "Configured: git config core.hooksPath = .githooks"
 echo "Active hooks:"
-ls -1 .githooks | sed 's/^/  /'
+for hook in .githooks/*; do
+  [[ -e "$hook" ]] || continue
+  printf '  %s\n' "${hook##*/}"
+done
