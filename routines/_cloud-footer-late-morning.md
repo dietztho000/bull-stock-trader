@@ -1,6 +1,6 @@
 FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
 per-bot loop completes — captures every bot's writes in a single commit):
-  bash scripts/run-log.sh end {{ROUTINE}} ok
+  _routine_emit_end {{ROUTINE}} ok
   # `memory/` includes every per-bot subdir touched in the loop plus the
   # shared writes (PERPLEXITY-LOG, sector cache, audit log).
   git add memory/

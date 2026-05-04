@@ -34,35 +34,26 @@ IMPORTANT — PER-BOT MEMORY LAYOUT:
   PERPLEXITY-LOG.md, DASHBOARD-AUDIT.jsonl, dashboard-settings.json.
 
 PER-BOT FAN-OUT — every routine that touches per-bot state runs once per
-enabled bot. The registry lives in memory/shared/dashboard-settings.json
-and is queried via:
+enabled bot. Source the shared scaffolding once at the top, then iterate:
 
-  bash scripts/bots.sh list
+  source scripts/_routine-header.sh
+  _routine_assert_bots_present midday   # Discord error + exit when registry empty
+  _routine_emit_start          midday   # heartbeat: routine fired
 
-This emits TAB-separated rows: `bot_id  account_id  strategy  allocation
-mode`. Each STEP block below runs inside this loop:
+The registry lives in memory/shared/dashboard-settings.json and is queried
+via `bash scripts/bots.sh list`, which emits TAB-separated rows:
+`bot_id  account_id  strategy  allocation  mode`. Each STEP block below
+runs inside this loop:
 
   while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
     export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
     # Per-bot preflight (each account checked independently — one bad
-    # account must not abort the others):
-    if ! bash scripts/auth-preflight.sh midday --account-id="$ACCOUNT_ID"; then
-      continue   # helper already posted Discord error + RUN-LOG entry
-    fi
+    # account must not abort the others). The helper posts Discord +
+    # emits a discriminated RUN-LOG entry on failure.
+    _routine_preflight_or_skip midday || continue
     # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
     # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
   done < <(bash scripts/bots.sh list)
-
-If the registry is empty, abort with one Discord error and exit:
-
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting midday"
-    exit 0
-  fi
-
-HEARTBEAT — log routine start ONCE before the per-bot loop (so a crash
-leaves a trace even if no bot ever ran):
-  bash scripts/run-log.sh start midday
 
 
 PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
@@ -193,7 +184,7 @@ The post is mandatory either way — no silent runs.
 
 FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
 per-bot loop completes — captures every bot's writes in a single commit):
-  bash scripts/run-log.sh end midday ok
+  _routine_emit_end midday ok
   # `memory/` includes every per-bot subdir touched in the loop plus the
   # shared writes (PERPLEXITY-LOG, sector cache, audit log).
   git add memory/
