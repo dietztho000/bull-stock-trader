@@ -51,7 +51,10 @@ export default async function JournalPage({
             Pre-market research, Friday reviews, and the market calendar.
           </p>
         </div>
-        <UrlTabs<Tab> layoutId="journal-tabs" options={TAB_OPTIONS} fallback="research" />
+        <div className="flex items-center gap-2">
+          <RoutineHealthBadge botId={ctx.botId} strategy={ctx.strategy} />
+          <UrlTabs<Tab> layoutId="journal-tabs" options={TAB_OPTIONS} fallback="research" />
+        </div>
       </header>
 
       {tab === "research" && <ResearchTab botId={ctx.botId} strategy={ctx.strategy} />}
@@ -59,6 +62,39 @@ export default async function JournalPage({
       {tab === "weekly" && <WeeklyTab botId={ctx.botId} strategy={ctx.strategy} />}
       {tab === "routines" && <RoutinesTab botId={ctx.botId} strategy={ctx.strategy} />}
     </div>
+  );
+}
+
+/** Surfaces the time since the latest RUN-LOG.jsonl entry as a colored pill.
+ *  Green = within 12h (today's routines are flowing), amber = 12–36h (last
+ *  ran yesterday — normal on weekends), red = >36h or never (likely scheduler
+ *  outage). Catches the failure mode where the dashboard reads a frozen
+ *  per-bot file because cloud routines have stopped pushing. */
+async function RoutineHealthBadge({
+  botId,
+  strategy,
+}: {
+  botId: string;
+  strategy: string;
+}) {
+  const runs = await loadRunLog({ bot: botId, strategy });
+  let latestTs: number | null = null;
+  for (const r of runs) {
+    const ts = r.endTs ?? r.startTs;
+    if (!ts) continue;
+    const ms = Date.parse(ts);
+    if (!Number.isFinite(ms)) continue;
+    if (latestTs == null || ms > latestTs) latestTs = ms;
+  }
+  if (latestTs == null) {
+    return <Badge tone="warn">Routines: never</Badge>;
+  }
+  const diffH = (Date.now() - latestTs) / 3_600_000;
+  const tone = diffH <= 12 ? "up" : diffH <= 36 ? "neutral" : "down";
+  return (
+    <span title={`Last routine entry at ${fmtClockCT(new Date(latestTs))} CT`}>
+      <Badge tone={tone}>Last run {fmtRelativeTime(latestTs)} ago</Badge>
+    </span>
   );
 }
 
