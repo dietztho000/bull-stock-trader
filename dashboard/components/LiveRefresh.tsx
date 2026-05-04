@@ -1,13 +1,34 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 
 type Payload = {
   bots: string[];
   firstAt: number;
   events: Array<{ file: string; bot: string | null; strategy: string | null; relPath: string }>;
+};
+
+/** Per-route file allow-lists. When the current pathname has an entry, the
+ *  refresh only fires if at least one event file matches the list. Routes
+ *  not listed fall back to the default "any shared or active-bot file"
+ *  policy, so this is purely additive — adding a new page without an entry
+ *  preserves prior behavior (audit H1). */
+const ROUTE_ALLOW_LISTS: Record<string, ReadonlySet<string>> = {
+  "/trades": new Set([
+    "TRADE-LOG.md",
+    "SECTOR-LEDGER.md",
+    "dashboard-settings.json",
+  ]),
+  "/calendar": new Set([
+    "ECONOMIC-CALENDAR.md",
+    "MARKET-EARNINGS.md",
+    "EARNINGS-CALENDAR.md",
+    "dashboard-settings.json",
+  ]),
+  "/bots": new Set(["dashboard-settings.json"]),
+  "/strategy": new Set(["TRADING-STRATEGY.md", "dashboard-settings.json"]),
 };
 
 /** Subscribes to the server's memory-event SSE stream and triggers
@@ -18,6 +39,7 @@ type Payload = {
  *  N refreshes/sec to every connected tab (audit P4). */
 export function LiveRefresh() {
   const router = useRouter();
+  const pathname = usePathname();
   const ctx = useTradingAccountOptional();
   const activeBot = ctx?.botId ?? null;
   // Track unclassified relPaths we've already warned about so we don't spam
@@ -25,6 +47,7 @@ export function LiveRefresh() {
   const warnedPathsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    const allowList = ROUTE_ALLOW_LISTS[pathname] ?? null;
     const es = new EventSource("/api/stream");
     es.onmessage = (msg) => {
       try {
@@ -47,9 +70,18 @@ export function LiveRefresh() {
             );
           }
         }
-        // Refresh on: shared file change, the active bot's file change, or an
-        // unclassified write (probably legacy layout — better safe than stale).
-        // Other bots' writes are ignored for this tab.
+        // Pages with an allow-list short-circuit unrelated writes — e.g.
+        // /trades doesn't need to re-render when the economic calendar
+        // updates, even though it's a "shared" file. Unknown layouts always
+        // fall through (better safe than stale).
+        if (allowList && !unknownBot) {
+          const matches = payload.events.some((e) => allowList.has(e.file));
+          if (!matches) return;
+          router.refresh();
+          return;
+        }
+        // Default policy: refresh on shared file change, the active bot's
+        // file change, or an unclassified write.
         if (touchedShared || touchedActive || unknownBot) {
           router.refresh();
         }
@@ -61,6 +93,6 @@ export function LiveRefresh() {
       // browser auto-reconnects
     };
     return () => es.close();
-  }, [router, activeBot]);
+  }, [router, activeBot, pathname]);
   return null;
 }

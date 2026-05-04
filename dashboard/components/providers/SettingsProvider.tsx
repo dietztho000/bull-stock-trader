@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useDashboardSettings, type ClientSettings } from "@/lib/useSettings";
 import type {
   Bot,
@@ -24,8 +24,32 @@ type Ctx = {
 
 const SettingsContext = createContext<Ctx | null>(null);
 
+type SsePayload = {
+  events?: Array<{ file?: string }>;
+};
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { settings, redacted, isLoading, mutate } = useDashboardSettings();
+
+  // SSE-driven instant refresh for dashboard-settings.json edits — replaces
+  // the previous 60s SWR poll (audit H3). The poll still runs at 10min as a
+  // safety net for missed events / disconnected tabs.
+  useEffect(() => {
+    const es = new EventSource("/api/stream");
+    es.onmessage = (msg) => {
+      try {
+        const payload = JSON.parse(msg.data) as SsePayload;
+        const touchedSettings = (payload.events ?? []).some(
+          (e) => e.file === "dashboard-settings.json"
+        );
+        if (touchedSettings) void mutate();
+      } catch {
+        // heartbeat / malformed — ignore
+      }
+    };
+    return () => es.close();
+  }, [mutate]);
+
   const value = useMemo<Ctx>(
     () => ({
       settings,

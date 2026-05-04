@@ -25,11 +25,14 @@ export function useDashboardSettings(): {
   error: Error | null;
   mutate: () => Promise<unknown>;
 } {
+  // Settings rarely change. SettingsProvider drives instant updates via the
+  // chokidar→SSE stream when dashboard-settings.json is touched; this poll
+  // is just a safety net for missed events / disconnected tabs (audit H3).
   const { data, error, isLoading, mutate } = useSWR<RedactedSettings>(
     "/api/settings",
     fetcher,
     {
-      refreshInterval: 60_000,
+      refreshInterval: 600_000,
       revalidateOnFocus: true,
       keepPreviousData: true,
     }
