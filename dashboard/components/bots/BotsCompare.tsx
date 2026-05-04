@@ -3,6 +3,8 @@
 import useSWR from "swr";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { Card, Badge } from "@/components/ui/Card";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import type { LeaderboardRow } from "@/app/api/bots/leaderboard/route";
@@ -12,12 +14,59 @@ const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 type EquityResp = { equity: BotEquity } | { error: string };
 
+/** Audit U6 — read the `?compare=<id>,<id>` URL param to filter the
+ *  comparison view. Empty/missing param shows all bots so the page still
+ *  has a reasonable default landing state. */
+function useCompareSelection(): {
+  selected: Set<string>;
+  toggle: (botId: string) => void;
+  clear: () => void;
+  hasSelection: boolean;
+} {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const raw = searchParams.get("compare") ?? "";
+  const selected = useMemo(() => {
+    return new Set(
+      raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+  }, [raw]);
+
+  function writeUrl(next: Set<string>) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.size === 0) {
+      params.delete("compare");
+    } else {
+      params.set("compare", Array.from(next).join(","));
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+  }
+
+  function toggle(botId: string) {
+    const next = new Set(selected);
+    if (next.has(botId)) next.delete(botId);
+    else next.add(botId);
+    writeUrl(next);
+  }
+
+  function clear() {
+    writeUrl(new Set());
+  }
+
+  return { selected, toggle, clear, hasSelection: selected.size > 0 };
+}
+
 export function BotsCompare() {
   const { data, error, isLoading } = useSWR<{ rows: LeaderboardRow[] }>(
     "/api/bots/leaderboard",
     fetcher,
     { refreshInterval: 60_000, revalidateOnFocus: false, keepPreviousData: true }
   );
+  const compare = useCompareSelection();
 
   if (isLoading && !data) {
     return (
@@ -39,8 +88,8 @@ export function BotsCompare() {
       </div>
     );
   }
-  const rows = data?.rows ?? [];
-  if (rows.length === 0) {
+  const allRows = data?.rows ?? [];
+  if (allRows.length === 0) {
     return (
       <div className="space-y-5">
         <Header />
@@ -53,16 +102,87 @@ export function BotsCompare() {
     );
   }
 
+  const visibleRows = compare.hasSelection
+    ? allRows.filter((r) => compare.selected.has(r.botId))
+    : allRows;
+
   // Layout: each bot gets a column. On narrow screens wraps to 1-col, then 2,
   // then 3+. Capped width per column so the comparison stays scannable.
   return (
     <div className="space-y-5">
       <Header />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {rows.map((r) => (
-          <BotComparePanel key={r.botId} row={r} />
-        ))}
-      </div>
+      <SelectionChips
+        rows={allRows}
+        selected={compare.selected}
+        onToggle={compare.toggle}
+        onClear={compare.clear}
+      />
+      {compare.hasSelection && visibleRows.length === 0 ? (
+        <Card title="No matching bots">
+          <div className="text-xs text-[var(--color-muted)]">
+            None of the selected ids match a registered bot. Clear the
+            selection above to see all bots.
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {visibleRows.map((r) => (
+            <BotComparePanel key={r.botId} row={r} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Audit U6 — selection chips that drive `?compare=<id>,<id>` URL state.
+ *  Clicking a chip toggles its inclusion; the URL is the source of truth so
+ *  the view is bookmarkable / shareable. */
+function SelectionChips({
+  rows,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  rows: LeaderboardRow[];
+  selected: Set<string>;
+  onToggle: (botId: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--color-muted)] font-semibold">
+        Compare
+      </span>
+      {rows.map((r) => {
+        const active = selected.has(r.botId);
+        return (
+          <button
+            key={r.botId}
+            type="button"
+            onClick={() => onToggle(r.botId)}
+            className={clsx(
+              "rounded-full px-2.5 py-1 border transition-colors",
+              active
+                ? "bg-[var(--color-accent)]/20 border-[var(--color-accent)]/60 text-[var(--color-text)]"
+                : "border-[rgba(255,255,255,0.1)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            )}
+            aria-pressed={active}
+            title={`Toggle ${r.name} in the compare view`}
+          >
+            {r.name}
+          </button>
+        );
+      })}
+      {selected.size > 0 && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[10px] text-[var(--color-muted)] hover:text-[var(--color-text)] underline-offset-2 hover:underline"
+        >
+          Show all
+        </button>
+      )}
     </div>
   );
 }

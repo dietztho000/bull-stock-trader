@@ -5,15 +5,19 @@ import { usePathname } from "next/navigation";
 import { motion, LayoutGroup } from "framer-motion";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { BullMascotNavCard } from "@/components/mascot/BullMascotNavCard";
+import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 
 type NavLink = {
   href: string;
   label: string;
   icon: (props: { className?: string }) => React.JSX.Element;
+  /** When true, render the "needs attention" red dot — Audit U11. */
+  attention?: boolean;
 };
 
-const links: NavLink[] = [
+const baseLinks: Omit<NavLink, "attention">[] = [
   { href: "/", label: "Overview", icon: OverviewIcon },
   { href: "/glance", label: "Glance", icon: GlanceIcon },
   { href: "/bots", label: "Bots", icon: BotsIcon },
@@ -25,9 +29,44 @@ const links: NavLink[] = [
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+type VaultHealth = {
+  usingFallback?: boolean;
+  rekeyDrift?: { drifted: boolean };
+  rotation?: { overdue?: boolean };
+};
+
+const fetcher = (u: string) => fetch(u).then((r) => r.json());
+
+/** Audit U11 — surfaces a single red dot on the Bots nav item when any of
+ *  the resolvable-from-/bots conditions is firing: vault on fallback key,
+ *  vault rotation overdue, post-rotation drift requiring restart, or any
+ *  bot with a sentinel-tripped record. Polls vault health every 60s; bot
+ *  state comes from the SettingsProvider so it updates on memory writes
+ *  via the existing chokidar watcher. */
+function useBotsNeedAttention(): boolean {
+  const { data } = useSWR<VaultHealth>("/api/vault/health", fetcher, {
+    refreshInterval: 60_000,
+    revalidateOnFocus: false,
+  });
+  const settings = useSettingsOptional();
+  const vaultIssue =
+    Boolean(data?.usingFallback) ||
+    Boolean(data?.rekeyDrift?.drifted) ||
+    Boolean(data?.rotation?.overdue);
+  const sentinelTripped = (settings?.bots ?? []).some(
+    (b) => (b.sentinelTrips ?? []).length > 0
+  );
+  return vaultIssue || sentinelTripped;
+}
+
 export function Nav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const botsNeedAttention = useBotsNeedAttention();
+  const links: NavLink[] = baseLinks.map((l) => ({
+    ...l,
+    attention: l.href === "/bots" && botsNeedAttention,
+  }));
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -77,7 +116,15 @@ export function Nav() {
                       : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="relative">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {l.attention && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--color-down)] ring-2 ring-[var(--bg)] motion-safe:animate-pulse"
+                        aria-label="needs attention"
+                      />
+                    )}
+                  </span>
                   <span>{l.label}</span>
                 </Link>
               </li>

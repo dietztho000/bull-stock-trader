@@ -374,6 +374,11 @@ function buildMonthGrid(monthStart: string): { iso: string; inMonth: boolean }[]
   if (!m) return [];
   const year = Number(m[1]);
   const monthIdx = Number(m[2]) - 1;
+  // Pure-ISO arithmetic on a calendar-grid offset — no time component, so
+  // the dashboard/CLAUDE.md "Pure ISO-date arithmetic is fine" carve-out
+  // applies. We deliberately use Date.UTC + getUTCDay() instead of the CT
+  // helpers because we want a stable Sunday-anchored grid that doesn't
+  // shift with America/Chicago DST transitions on the 1st of the month.
   const first = new Date(Date.UTC(year, monthIdx, 1));
   const startOffset = first.getUTCDay(); // 0 = Sunday
   const cells: { iso: string; inMonth: boolean }[] = [];

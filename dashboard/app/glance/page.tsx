@@ -2,6 +2,8 @@ import Link from "next/link";
 import { PnlHero } from "@/components/live/PnlHero";
 import { LivePositions } from "@/components/live/LivePositions";
 import { MarketClock } from "@/components/live/MarketClock";
+import { ForceExitBanner } from "@/components/live/ForceExitBanner";
+import { EarningsGateBanner } from "@/components/live/EarningsGateBanner";
 import { Card } from "@/components/ui/Card";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { resolveBotCtx } from "@/lib/resolveAccount";
@@ -52,6 +54,7 @@ export default async function GlancePage({
 }) {
   const sp = await searchParams;
   const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
+  const forceSymbol = typeof sp.force === "string" ? sp.force : null;
 
   const accounts = accountId ? await listAccounts() : [];
   const accountLabel =
@@ -92,6 +95,8 @@ export default async function GlancePage({
         </Link>
       </header>
 
+      {forceSymbol ? <ForceExitBanner symbol={forceSymbol} /> : null}
+
       <PnlHero
         mode={accountMode}
         accountId={accountId}
@@ -101,6 +106,8 @@ export default async function GlancePage({
         weekStartPortfolio={weekStart}
         spyPhasePct={spyPhasePct}
       />
+
+      <EarningsGateBanner />
 
       <Card title={`Market (${TZ_LABEL})`}>
         <MarketClock />

@@ -110,10 +110,12 @@ export function AllocationBar({
           />
         )}
         {overAllocated && (
+          // Striped overflow segment — solid red would read as "another bot"
+          // in the stack; the diagonal stripes mark it as a violation band.
           <div
-            className="h-full bg-[var(--color-down)]"
+            className="h-full bg-[var(--color-down)] [background-image:repeating-linear-gradient(45deg,transparent_0,transparent_3px,rgba(0,0,0,0.25)_3px,rgba(0,0,0,0.25)_6px)]"
             style={{ width: `${(-free / denom) * 100}%` }}
-            title={`Over by ${fmtMoney(-free)}`}
+            title={`Over-allocated by ${fmtMoney(-free)}`}
           />
         )}
       </div>
@@ -141,6 +143,13 @@ export function AllocationBar({
             <span className="tabular text-[var(--color-text)]">
               {fmtMoney(free)}
             </span>
+          </span>
+        )}
+        {overAllocated && (
+          <span className="flex items-center gap-1 text-[var(--color-down)]">
+            <span className="inline-block h-2 w-2 rounded-sm bg-[var(--color-down)] [background-image:repeating-linear-gradient(45deg,transparent_0,transparent_2px,rgba(0,0,0,0.3)_2px,rgba(0,0,0,0.3)_4px)]" />
+            Over
+            <span className="tabular">{fmtMoney(-free)}</span>
           </span>
         )}
       </div>

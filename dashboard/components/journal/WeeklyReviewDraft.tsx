@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { fmtClockCT } from "@/lib/time";
 
 type DraftResp = {
   draft: string;
@@ -63,7 +64,7 @@ export function WeeklyReviewDraft({ botId }: { botId: string }) {
         resp ? (
           <span className="text-[10px] text-[var(--color-muted)]">
             {resp.cacheHit ? "cached" : "fresh"} ·{" "}
-            {new Date(resp.generatedAt).toLocaleTimeString()}
+            {fmtClockCT(resp.generatedAt)}
           </span>
         ) : null
       }
