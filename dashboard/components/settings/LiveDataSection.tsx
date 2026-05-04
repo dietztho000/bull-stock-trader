@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import type { RedactedSettings } from "@/lib/settings.schema";
 import { FieldRow, NumberInput, Select, SectionFooter, Toggle } from "./_fields";
 import { ResetLink } from "./DiscordSection";
+import { useSettingsSection } from "./useSettingsSection";
 
 const POLL_PRESETS = [
   { value: "1000", label: "1 second (very fast)" },
@@ -25,37 +25,11 @@ export function LiveDataSection({
   onSaved: (next: RedactedSettings) => void;
   onResetSection: () => void;
 }) {
-  const [draft, setDraft] = useState<Draft>(initial);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDraft(initial);
-  }, [initial]);
-
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
-
-  async function save() {
-    setPending(true);
-    setError(null);
-    try {
-      const resp = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ live: draft }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        setError(data?.error ?? `HTTP ${resp.status}`);
-        return;
-      }
-      onSaved(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setPending(false);
-    }
-  }
+  const { draft, setDraft, pending, error, dirty, save } = useSettingsSection<Draft>(
+    "live",
+    initial,
+    onSaved
+  );
 
   const pollValue = String(draft.pollIntervalMs);
   const pollMatchesPreset = POLL_PRESETS.some((p) => p.value === pollValue);

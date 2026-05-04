@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { motion, LayoutGroup } from "framer-motion";
-import type { ReactNode } from "react";
+import { useCallback, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 type Tone = "neutral" | "accent" | "up" | "down" | "warn";
 
@@ -145,33 +145,94 @@ export function SegmentedGlass<T extends string>({
   onChange,
   layoutId,
   className,
+  ariaLabel,
 }: {
   options: { value: T; label: ReactNode }[];
   value: T;
   onChange: (next: T) => void;
   layoutId: string;
   className?: string;
+  ariaLabel?: string;
 }) {
+  // WAI-ARIA tablist roving tabindex (audit U10): only the active tab is in
+  // the document's tab order; arrows move focus + activate, Home/End jump to
+  // the ends. Tab/Shift-Tab moves to/from the tablist itself.
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const activeIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === value)
+  );
+
+  const focusAndActivate = useCallback(
+    (idx: number) => {
+      const next = options[idx];
+      if (!next) return;
+      tabRefs.current[idx]?.focus();
+      if (next.value !== value) onChange(next.value);
+    },
+    [onChange, options, value]
+  );
+
+  const handleKey = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
+      switch (e.key) {
+        case "ArrowRight":
+          e.preventDefault();
+          focusAndActivate((idx + 1) % options.length);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          focusAndActivate((idx - 1 + options.length) % options.length);
+          break;
+        case "Home":
+          e.preventDefault();
+          focusAndActivate(0);
+          break;
+        case "End":
+          e.preventDefault();
+          focusAndActivate(options.length - 1);
+          break;
+        case "Enter":
+        case " ":
+          e.preventDefault();
+          // Already focused — just commit (handles the "Tab to a non-active
+          // tab and press Enter" path; default `onClick` covers click).
+          if (options[idx].value !== value) onChange(options[idx].value);
+          break;
+        default:
+          break;
+      }
+    },
+    [focusAndActivate, onChange, options, value]
+  );
+
   return (
     <LayoutGroup id={layoutId}>
       <div
         role="tablist"
+        aria-label={ariaLabel}
         className={clsx(
           "glass inline-flex items-center gap-1 rounded-full p-1",
           className
         )}
       >
-        {options.map((opt) => {
+        {options.map((opt, idx) => {
           const active = opt.value === value;
           return (
             <button
               key={opt.value}
+              ref={(el) => {
+                tabRefs.current[idx] = el;
+              }}
               type="button"
               role="tab"
               aria-selected={active}
+              tabIndex={idx === activeIndex ? 0 : -1}
+              onKeyDown={(e) => handleKey(e, idx)}
               onClick={() => onChange(opt.value)}
               className={clsx(
                 "relative px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors z-10",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-1",
                 active
                   ? "text-[var(--color-text)]"
                   : "text-[var(--color-muted)] hover:text-[var(--color-text)]"

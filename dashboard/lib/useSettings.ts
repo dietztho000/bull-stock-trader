@@ -15,7 +15,7 @@ const fetcher = async (url: string) => {
 
 export type ClientSettings = Pick<
   DashboardSettings,
-  "display" | "live" | "defaults" | "notifications"
+  "display" | "live" | "defaults" | "notifications" | "mascot" | "strategy" | "alerts"
 >;
 
 export function useDashboardSettings(): {
@@ -41,12 +41,18 @@ export function useDashboardSettings(): {
         live: data.live,
         defaults: data.defaults,
         notifications: data.notifications,
+        mascot: data.mascot,
+        strategy: data.strategy,
+        alerts: data.alerts,
       }
     : {
         display: DEFAULTS.display,
         live: DEFAULTS.live,
         defaults: DEFAULTS.defaults,
         notifications: DEFAULTS.notifications,
+        mascot: DEFAULTS.mascot,
+        strategy: DEFAULTS.strategy,
+        alerts: DEFAULTS.alerts,
       };
 
   return {

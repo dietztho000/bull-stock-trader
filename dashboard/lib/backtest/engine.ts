@@ -17,15 +17,44 @@ import type {
 } from "./types";
 import type { EarningsEntry } from "@/lib/parsers/earningsCalendar.shared";
 
-const STOP_TRIGGER_PCT = 0.93;   // -7%
-const STOP_LIMIT_PCT = 0.92;     // -8%
-const PROMOTION_THRESHOLD = 0.01;
-const LADDER_THRESHOLD = 0.20;
-const TRAIL_TIGHTEN_AT_15 = 0.07;
-const TRAIL_TIGHTEN_AT_20 = 0.05;
-const DEFAULT_TRAIL = 0.10;
-const GAP_EXIT_PCT = -0.07;      // (open - prior_close) / prior_close <=
-const TRADE_WINDOW_CAP_DAYS = 30;
+/** Tunable exit-rule parameters. Cross-bot backtest (audit F8) lets the
+ *  caller swap these so a paper bot's ratchet thresholds can be replayed
+ *  against a live bot's trade history. Constants below are the defaults
+ *  matching the live rulebook in CLAUDE.md. */
+export type StrategyParams = {
+  /** Stop trigger as fraction of entry — 0.93 = -7%. */
+  stopTriggerPct: number;
+  /** Stop-limit floor as fraction of entry — 0.92 = -8%. */
+  stopLimitPct: number;
+  /** Unrealized P&L fraction at which the fixed stop promotes to a trailing stop (0.01 = +1%). */
+  promotionThreshold: number;
+  /** Take-profit ladder fires at this unrealized P&L (0.20 = +20%, sell half). */
+  ladderThreshold: number;
+  /** Trail tightens to this fraction once unrealized P&L >= 15%. */
+  trailTightenAt15: number;
+  /** Trail tightens to this fraction once unrealized P&L >= 20%. */
+  trailTightenAt20: number;
+  /** Initial trailing-stop distance after promotion (0.10 = 10%). */
+  defaultTrail: number;
+  /** Force-exit at open if overnight gap is this fraction or worse (-0.07 = -7%). */
+  gapExitPct: number;
+  /** Hard cap on simulated holding period in calendar days — beyond this we
+   *  surface as `still_open` so a forgotten position doesn't accrue
+   *  unbounded "what if" P&L. */
+  tradeWindowCapDays: number;
+};
+
+export const DEFAULT_STRATEGY_PARAMS: StrategyParams = {
+  stopTriggerPct: 0.93,
+  stopLimitPct: 0.92,
+  promotionThreshold: 0.01,
+  ladderThreshold: 0.2,
+  trailTightenAt15: 0.07,
+  trailTightenAt20: 0.05,
+  defaultTrail: 0.1,
+  gapExitPct: -0.07,
+  tradeWindowCapDays: 30,
+};
 
 type StopState = "stop_limit" | "trailing";
 
@@ -35,16 +64,17 @@ function daysBetween(a: string, b: string): number {
   return Math.round((db.getTime() - da.getTime()) / 86_400_000);
 }
 
-function trailPctFor(plPct: number): number {
-  if (plPct >= 0.20) return TRAIL_TIGHTEN_AT_20;
-  if (plPct >= 0.15) return TRAIL_TIGHTEN_AT_15;
-  return DEFAULT_TRAIL;
+function trailPctFor(plPct: number, params: StrategyParams): number {
+  if (plPct >= 0.2) return params.trailTightenAt20;
+  if (plPct >= 0.15) return params.trailTightenAt15;
+  return params.defaultTrail;
 }
 
 export function simulateTrade(
   trade: Trade,
   bars: Bar[],
-  earnings?: Map<string, EarningsEntry>
+  earnings?: Map<string, EarningsEntry>,
+  params: StrategyParams = DEFAULT_STRATEGY_PARAMS
 ): BacktestResult {
   const baseResult: Omit<BacktestResult, "simExitReason"> = {
     symbol: trade.symbol,
@@ -73,8 +103,8 @@ export function simulateTrade(
 
   // State machine
   let stopState: StopState = "stop_limit";
-  let stopPrice = trade.entryPrice * STOP_TRIGGER_PCT;
-  let limitPrice = trade.entryPrice * STOP_LIMIT_PCT;
+  let stopPrice = trade.entryPrice * params.stopTriggerPct;
+  const limitPrice = trade.entryPrice * params.stopLimitPct;
   let highestPrice = trade.entryPrice;
   let qty = trade.shares;
   let ladderFired = false;
@@ -94,7 +124,7 @@ export function simulateTrade(
   for (let i = 0; i < postEntryBars.length; i++) {
     const bar = postEntryBars[i];
     const heldDays = daysBetween(trade.entryDate, bar.date);
-    if (heldDays > TRADE_WINDOW_CAP_DAYS) {
+    if (heldDays > params.tradeWindowCapDays) {
       return finalize({
         baseResult,
         reason: "still_open",
@@ -114,7 +144,7 @@ export function simulateTrade(
     // 1. Gap check (rule #15) — overnight gap from prior close.
     if (priorClose > 0) {
       const gap = (bar.open - priorClose) / priorClose;
-      if (gap <= GAP_EXIT_PCT) {
+      if (gap <= params.gapExitPct) {
         return finalize({
           baseResult,
           reason: "gap_exit",
@@ -195,7 +225,7 @@ export function simulateTrade(
 
     // 4. Ladder fire (rule #16) — checked at close.
     const closePlPct = (bar.close - trade.entryPrice) / trade.entryPrice;
-    if (!ladderFired && closePlPct >= LADDER_THRESHOLD && qty >= 2) {
+    if (!ladderFired && closePlPct >= params.ladderThreshold && qty >= 2) {
       const sellQty = Math.floor(qty / 2);
       if (sellQty >= 1) {
         halfSellQty = sellQty;
@@ -208,17 +238,17 @@ export function simulateTrade(
     }
 
     // 5. Promotion (rule #4) — switch to trailing once green.
-    if (stopState === "stop_limit" && closePlPct >= PROMOTION_THRESHOLD) {
+    if (stopState === "stop_limit" && closePlPct >= params.promotionThreshold) {
       stopState = "trailing";
       highestPrice = Math.max(highestPrice, bar.high);
-      stopPrice = highestPrice * (1 - DEFAULT_TRAIL);
+      stopPrice = highestPrice * (1 - params.defaultTrail);
       // limitPrice no longer relevant for trailing stops.
     }
 
     // 6. Trail update — runs only after promotion.
     if (stopState === "trailing") {
       highestPrice = Math.max(highestPrice, bar.high);
-      const tp = trailPctFor(closePlPct);
+      const tp = trailPctFor(closePlPct, params);
       const newStop = highestPrice * (1 - tp);
       // Never move stop down (matches the live PATCH-in-place rule).
       if (newStop > stopPrice) stopPrice = newStop;

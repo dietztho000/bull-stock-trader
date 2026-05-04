@@ -6,11 +6,11 @@
 # the push lands on a per-run claude/* branch instead. Result: the
 # dashboard reads main and sees an empty memory/ dir.
 #
-# This script picks, per memory file, the newest claude/* branch that
-# touched it AND that touches ONLY memory/* (skips outlier branches that
-# also modified scripts or commands). It checks each file out into the
-# working tree (which also stages it) and stops — leaves the user to
-# review the diff and commit.
+# Per-bot layout: each (bot, strategy, file) tuple is checked independently.
+# A live-bot routine and a paper-bot routine push to separate branches
+# touching memory/<bot>/<strategy>/<file>; we cherry-pick each per file
+# rather than per branch so live + paper writes from different branches
+# can both land.
 #
 # Usage: bash scripts/sync-cloud-memory.sh
 
@@ -19,15 +19,37 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-MEMORY_FILES=(
+# Bot tuples come from the registry — each row is "<memory-dir>\t<strategy>".
+# memoryAlias wins over the bot id so seeded legacy bots (id=legacy-live,
+# memoryAlias=live) keep reading from memory/live/. include-disabled because
+# disabled bots may still receive scheduled cloud-routine writes mid-disable.
+BOT_TUPLES=()
+if [[ -f memory/shared/dashboard-settings.json ]] && command -v jq >/dev/null 2>&1; then
+  while IFS= read -r row; do
+    [[ -n "$row" ]] && BOT_TUPLES+=("$row")
+  done < <(jq -r '.bots[]? | "\((.memoryAlias // .id))\t\((.strategySlug // "default"))"' \
+    memory/shared/dashboard-settings.json 2>/dev/null | sort -u)
+fi
+# Legacy fallback: pre-registry installs and bare repos still need to sync.
+if [[ ${#BOT_TUPLES[@]} -eq 0 ]]; then
+  BOT_TUPLES=($'live\tdefault' $'paper\tdefault')
+fi
+
+PER_BOT_FILES=(
   RESEARCH-LOG.md
   TRADE-LOG.md
   BENCHMARK.md
-  PERPLEXITY-LOG.md
   RUN-LOG.jsonl
   SECTOR-LEDGER.md
-  SECTOR-MAP.md
   WEEKLY-REVIEW.md
+  EARNINGS-CALENDAR.md
+)
+
+SHARED_FILES=(
+  PERPLEXITY-LOG.md
+  SECTOR-MAP.md
+  ECONOMIC-CALENDAR.md
+  MARKET-EARNINGS.md
 )
 
 # -- Safety guards ----------------------------------------------------------
@@ -67,23 +89,42 @@ _branch_touches_non_memory() {
   fi
 }
 
-# Find the newest origin/claude/* ref that (a) touches memory/<file> AND
-# (b) touches only memory/* paths overall. Prints "<ref>|<iso-date>" or
-# nothing if no candidate exists.
-_newest_writer_for() {
-  local file="$1"
+# Find the newest origin/claude/* ref that (a) touches the given exact
+# memory path AND (b) touches only memory/* paths overall. Prints
+# "<ref>|<iso-date>" or nothing if no candidate exists.
+_newest_writer_for_path() {
+  local target_path="$1"
   while IFS='|' read -r date ref; do
     [[ -z "$ref" ]] && continue
     local base diff_files
     base="$(git merge-base "$ref" origin/main 2>/dev/null || true)"
     [[ -z "$base" ]] && continue
     diff_files="$(git diff --name-only "$base..$ref")"
-    grep -qx "memory/$file" <<<"$diff_files" || continue
+    grep -qx "$target_path" <<<"$diff_files" || continue
     grep -qv '^memory/' <<<"$diff_files" && continue
     printf '%s|%s\n' "$ref" "$date"
     return 0
   done < <(git for-each-ref --sort=-committerdate refs/remotes/origin/claude/ \
             --format='%(committerdate:iso-strict)|%(refname:short)')
+}
+
+_pick_one() {
+  local label="$1" path="$2"
+  local result ref date
+  result="$(_newest_writer_for_path "$path" || true)"
+  if [[ -z "$result" ]]; then
+    printf '  %-44s — no cloud writer found, leaving as-is\n' "$label"
+    return 1
+  fi
+  ref="${result%%|*}"
+  date="${result##*|}"
+  if [[ "$(_branch_touches_non_memory "$ref")" == "1" ]]; then
+    printf '  %-44s ⚠️  newest writer (%s) touches non-memory paths — skipped\n' "$label" "$ref"
+    return 1
+  fi
+  git checkout "$ref" -- "$path"
+  printf '  %-44s ← %s (%s)\n' "$label" "$ref" "$date"
+  return 0
 }
 
 # -- Main loop --------------------------------------------------------------
@@ -93,24 +134,24 @@ echo "Looking for cloud-side memory writes…"
 echo
 
 picked=0
-for f in "${MEMORY_FILES[@]}"; do
-  result="$(_newest_writer_for "$f" || true)"
-  if [[ -z "$result" ]]; then
-    printf '  %-20s — no cloud writer found, leaving as-is\n' "$f"
-    continue
+
+for tuple in "${BOT_TUPLES[@]}"; do
+  IFS=$'\t' read -r bot strategy <<<"$tuple"
+  for f in "${PER_BOT_FILES[@]}"; do
+    label="$bot/$strategy/$f"
+    path="memory/$bot/$strategy/$f"
+    if _pick_one "$label" "$path"; then
+      picked=$((picked + 1))
+    fi
+  done
+done
+
+for f in "${SHARED_FILES[@]}"; do
+  label="shared/$f"
+  path="memory/shared/$f"
+  if _pick_one "$label" "$path"; then
+    picked=$((picked + 1))
   fi
-  ref="${result%%|*}"
-  date="${result##*|}"
-  # If this branch is the newest writer but it ALSO touches non-memory files,
-  # warn instead of pulling — the per-file _newest_writer_for already filters
-  # those out, but defense-in-depth in case the data shape changes.
-  if [[ "$(_branch_touches_non_memory "$ref")" == "1" ]]; then
-    printf '  %-20s ⚠️  newest writer (%s) touches non-memory paths — skipped\n' "$f" "$ref"
-    continue
-  fi
-  git checkout "$ref" -- "memory/$f"
-  printf '  %-20s ← %s (%s)\n' "$f" "$ref" "$date"
-  picked=$((picked + 1))
 done
 
 echo

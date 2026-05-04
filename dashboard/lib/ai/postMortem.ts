@@ -5,6 +5,7 @@ import { buildBotContext } from "./context";
 import { logCacheUsage } from "./promptCache";
 import { loadTradeLog } from "../parsers/tradeLog";
 import { loadSectorLedger } from "../parsers/sectorLedger";
+import type { MemoryCtx } from "../memoryPath";
 
 export type PostMortemResult =
   | { ok: true; text: string; generatedAt: string; cacheHit: boolean }
@@ -16,14 +17,15 @@ const TTL_MS = 6 * 60 * 60 * 1000;
 
 export async function getPostMortem(
   rawSymbol: string,
-  entryDate: string | null
+  entryDate: string | null,
+  ctx: MemoryCtx
 ): Promise<PostMortemResult> {
   const symbol = rawSymbol.trim().toUpperCase();
   if (!symbol) return { ok: false, error: "symbol required", status: 400 };
 
   const [tradeLog, ledger] = await Promise.all([
-    loadTradeLog(),
-    loadSectorLedger(),
+    loadTradeLog(ctx),
+    loadSectorLedger(ctx),
   ]);
 
   const closed = ledger.closed.find(
@@ -42,7 +44,7 @@ export async function getPostMortem(
   }
 
   const sig = signatureOf(closed, entry);
-  const key = `${symbol}:${entryDate ?? ""}`;
+  const key = `${ctx.bot}:${ctx.strategy ?? "default"}:${symbol}:${entryDate ?? ""}`;
   const hit = cache.get(key);
   if (
     hit &&
@@ -55,7 +57,7 @@ export async function getPostMortem(
   let client, context;
   try {
     client = getAnthropic();
-    context = await buildBotContext();
+    context = await buildBotContext(ctx);
   } catch (err) {
     return {
       ok: false,

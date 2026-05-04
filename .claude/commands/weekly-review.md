@@ -8,17 +8,44 @@ DATE=$(date +%Y-%m-%d).
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
 <!-- STEPS-BEGIN -->
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting weekly-review"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    bash scripts/auth-preflight.sh weekly-review --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
+NOTE: pre-market does Perplexity research that is conceptually shared
+across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
+the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
+when today's answer is already cached. daily-summary and weekly-review
+post one Discord summary per bot in this Phase 1 implementation; a Phase
+2 refactor aggregates them into a single multi-bot summary.
+
 STEP 1 — Read memory for full week context:
-- memory/WEEKLY-REVIEW.md (match existing template exactly)
-- ALL this week's entries in memory/TRADE-LOG.md
-- ALL this week's entries in memory/RESEARCH-LOG.md
-- memory/BENCHMARK.md (last 7 daily rows for the alpha trend)
-- memory/SECTOR-LEDGER.md (sector rotation health check)
-- memory/TRADING-STRATEGY.md
+- memory/$BOT_ID/$STRATEGY/WEEKLY-REVIEW.md (match existing template exactly)
+- ALL this week's entries in memory/$BOT_ID/$STRATEGY/TRADE-LOG.md
+- ALL this week's entries in memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md
+- memory/$BOT_ID/$STRATEGY/BENCHMARK.md (last 7 daily rows for the alpha trend)
+- memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md (sector rotation health check)
+- memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
 
 STEP 2 — Pull week-end state:
-  bash scripts/alpaca.sh account
-  bash scripts/alpaca.sh positions
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" account
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
 
 STEP 3 — Compute the week's metrics:
 - Starting portfolio (Monday AM equity)
@@ -34,7 +61,7 @@ STEP 3 — Compute the week's metrics:
 - Profit factor (sum winners / |sum losers|)
 - Render a 7-day ASCII sparkline of alpha_phase from BENCHMARK.md
 
-STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md.
+STEP 4 — Append full review section to memory/$BOT_ID/$STRATEGY/WEEKLY-REVIEW.md.
 **Idempotency guard:** grep for `## Week ending $DATE` first. If a section
 for this week already exists (routine re-fired, or you ran it manually
 earlier), REPLACE it in place. Never duplicate a weekly entry.
@@ -53,7 +80,7 @@ The review should include:
 - Overall letter grade (A-F)
 
 STEP 5 — If a rule needs to change (proven out for 2+ weeks, or failed
-badly), also update memory/TRADING-STRATEGY.md and call out the change
+badly), also update memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md and call out the change
 in the review.
 
 STEP 6 — Send ONE Discord weekly message. Preserve format exactly:

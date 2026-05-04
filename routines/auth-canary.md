@@ -6,38 +6,99 @@ You are running this workflow as a CLOUD ROUTINE. Resolve today's date via:
 DATE=$(date +%Y-%m-%d).
 
 IMPORTANT — ENVIRONMENT VARIABLES:
-- Every API key is ALREADY exported as a process env var (ALPACA_API_KEY,
-  ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, DISCORD_WEBHOOK_URL).
-- There is NO .env file in this repo and you MUST NOT create, write, or
-  source one. The wrapper scripts read directly from the process env.
-- If a wrapper prints "required env var(s) not set" -> STOP, send one
-  Discord alert naming the missing var, and exit.
+- One credential set per Alpaca account is exported as namespaced env vars:
+  ALPACA_<NS>_API_KEY, ALPACA_<NS>_SECRET_KEY, optional ALPACA_<NS>_ENDPOINT.
+  <NS> is the account id uppercased with hyphens replaced by underscores
+  (account `paper-100k` → ALPACA_PAPER_100K_API_KEY etc).
+- Shared external creds: PERPLEXITY_API_KEY, PERPLEXITY_MODEL,
+  DISCORD_WEBHOOK_URL.
+- There is NO .env file in the cloud and you MUST NOT create, write, or
+  source one. The wrapper scripts read directly from process env.
+- If a wrapper prints "required env var(s) not set" or
+  "--account-id=… requires …", STOP that bot's iteration, send one Discord
+  --type=error post naming the missing var, and continue to the next bot.
 
 IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
-HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+IMPORTANT — PER-BOT MEMORY LAYOUT:
+- Per-bot files live at memory/$BOT_ID/$STRATEGY/<FILE>. The per-bot
+  fan-out below sets BOT_ID and STRATEGY for each iteration.
+- Cross-bot files (calendars, sector cache, perplexity log, dashboard
+  prefs) live at memory/shared/<FILE>.
+- Per-bot files: TRADING-STRATEGY.md, TRADE-LOG.md, RUN-LOG.jsonl,
+  BENCHMARK.md, RESEARCH-LOG.md, SECTOR-LEDGER.md, WEEKLY-REVIEW.md,
+  EARNINGS-CALENDAR.md, BACKTEST-RESULTS.{md,json}.
+- Shared files: SECTOR-MAP.md, ECONOMIC-CALENDAR.md, MARKET-EARNINGS.md,
+  PERPLEXITY-LOG.md, DASHBOARD-AUDIT.jsonl, dashboard-settings.json.
+
+PER-BOT FAN-OUT — every routine that touches per-bot state runs once per
+enabled bot. The registry lives in memory/shared/dashboard-settings.json
+and is queried via:
+
+  bash scripts/bots.sh list
+
+This emits TAB-separated rows: `bot_id  account_id  strategy  allocation
+mode`. Each STEP block below runs inside this loop:
+
+  while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    # Per-bot preflight (each account checked independently — one bad
+    # account must not abort the others):
+    if ! bash scripts/auth-preflight.sh auth-canary --account-id="$ACCOUNT_ID"; then
+      continue   # helper already posted Discord error + RUN-LOG entry
+    fi
+    # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
+    # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+  done < <(bash scripts/bots.sh list)
+
+If the registry is empty, abort with one Discord error and exit:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting auth-canary"
+    exit 0
+  fi
+
+HEARTBEAT — log routine start ONCE before the per-bot loop (so a crash
+leaves a trace even if no bot ever ran):
   bash scripts/run-log.sh start auth-canary
 
-PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
-  bash scripts/auth-preflight.sh auth-canary
-If that command exits non-zero, the helper has ALREADY logged the failure
-to RUN-LOG.jsonl and posted a Discord --type=error containing the
-underlying cause (HTTP code, response body, or missing-env-var message).
-Exit immediately without further work. Do NOT continue to research, do NOT
-call Perplexity, do NOT write to memory. Trading without account state is
-unsafe and Perplexity calls cost real money.
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting auth-canary"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    bash scripts/auth-preflight.sh auth-canary --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
+NOTE: pre-market does Perplexity research that is conceptually shared
+across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
+the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
+when today's answer is already cached. daily-summary and weekly-review
+post one Discord summary per bot in this Phase 1 implementation; a Phase
+2 refactor aggregates them into a single multi-bot summary.
 
 STEP 1 — Alpaca account check (broker auth — most critical). Capture
 result for STEP 5:
-  bash scripts/alpaca.sh account
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" account
 Stash: ALPACA_ACCOUNT_OK = (true|false), ACCOUNT_NUMBER = "PA…" or empty,
 ALPACA_ACCOUNT_ERR = "<HTTP code or message>" if false.
 
 STEP 2 — Alpaca data feed check. Capture result:
-  bash scripts/alpaca.sh quote SPY
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" quote SPY
 Stash: ALPACA_DATA_OK, SPY_PRICE = "$X.XX" (the .quote.ap value), DATA_ERR.
 
 STEP 3 — Perplexity check. Capture result:
@@ -78,7 +139,7 @@ prefix the title with ⚠️ instead of 📡. Example failed Perplexity:
 Action: rotate PERPLEXITY_API_KEY."
 
 STEP 6 — On any failure in STEP 1-3, ALSO write a one-line audit entry to
-memory/TRADE-LOG.md so the audit trail captures the outage. Idempotency
+memory/$BOT_ID/$STRATEGY/TRADE-LOG.md so the audit trail captures the outage. Idempotency
 guard per CLAUDE.md: grep for `### $DATE HH:MM — Auth canary` first; if a
 section for this minute already exists, skip the append.
 
@@ -87,13 +148,19 @@ section for this minute already exists, skip the append.
   - Alpaca data:    <ok|FAIL: 5xx>
   - Perplexity:     <ok|FAIL: 401>
 
-FINAL STEP — log heartbeat end + COMMIT AND PUSH:
+FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
+per-bot loop completes — captures every bot's writes in a single commit):
   bash scripts/run-log.sh end auth-canary ok
-  git add memory/TRADE-LOG.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
-  git commit -m "auth-canary $DATE"
-  git push origin main
-Always commit at least RUN-LOG.jsonl (even on a passing run) so the EOD
-watchdog can see the canary fired. On push failure (rule #21): retry up
-to 3 times — `git pull --rebase origin main && git push origin main`,
-sleeping ~3s between attempts. If still failing after 3 tries, exit
-with an error Discord post; never force-push.
+  # `memory/` includes every per-bot subdir touched in the loop plus the
+  # shared writes (PERPLEXITY-LOG, calendars, sector cache, audit log).
+  git add memory/
+  if git diff --cached --quiet; then
+    echo "no memory changes to commit"
+  else
+    git commit -m "auth-canary $DATE ($(bash scripts/bots.sh count) bots)"
+    git push origin main
+  fi
+On push failure (rule #21): retry up to 3 times — `git pull --rebase
+origin main && git push origin main`, sleeping ~3s between attempts.
+If still failing after 3 tries, exit with an error Discord post;
+never force-push.

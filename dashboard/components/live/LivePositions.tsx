@@ -12,18 +12,13 @@ import {
   daysUntilEarnings,
   type EarningsEntry,
 } from "@/lib/parsers/earningsCalendar.shared";
+import {
+  type AlpacaPosition,
+  type AlpacaErrorEnvelope,
+  isAlpacaError,
+} from "@/lib/types/alpaca";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
-
-type Position = {
-  symbol: string;
-  qty: string;
-  avg_entry_price: string;
-  current_price: string;
-  market_value: string;
-  unrealized_pl: string;
-  unrealized_plpc: string;
-};
 
 // Earnings map is loaded server-side and passed in. Stays in sync because
 // the chokidar SSE stream calls router.refresh() on every memory file change.
@@ -108,11 +103,13 @@ function LadderCell({
 
 export function LivePositions({
   mode,
+  accountId,
   earnings,
   overnightGaps,
   ladder,
 }: {
   mode?: AlpacaMode;
+  accountId?: string | null;
   earnings?: EarningsMapJson;
   overnightGaps?: Record<string, number | null>;
   ladder?: LadderJson;
@@ -121,16 +118,20 @@ export function LivePositions({
   const settingsCtx = useSettingsOptional();
   const display = settingsCtx?.settings.display;
   const live = settingsCtx?.settings.live;
+  const effectiveAccountId = accountId ?? ctx?.accountId ?? null;
   const effectiveMode = mode ?? ctx?.account;
   const liveOpts = useLiveSwr(5000);
-  const { data, error, isLoading } = useSWR<Position[] | { error: string }>(
-    alpacaApiUrl("positions", effectiveMode),
+  const { data, error, isLoading } = useSWR<AlpacaPosition[] | AlpacaErrorEnvelope>(
+    alpacaApiUrl(
+      "positions",
+      effectiveAccountId ? { accountId: effectiveAccountId } : { mode: effectiveMode }
+    ),
     fetcher,
     { ...liveOpts, keepPreviousData: true }
   );
 
-  if (error || (data && "error" in data)) {
-    const msg = error?.message ?? (data as { error: string })?.error;
+  if (error || (data && isAlpacaError(data))) {
+    const msg = error?.message ?? (isAlpacaError(data) ? data.error : undefined);
     return (
       <div className="text-xs text-[var(--color-down)]">
         Alpaca: {msg ?? "failed to load"}
@@ -140,7 +141,7 @@ export function LivePositions({
   if (isLoading || !data) {
     return <div className="text-xs text-[var(--color-muted)]">Loading positions…</div>;
   }
-  const allPositions = data as Position[];
+  const allPositions = data;
   if (!allPositions.length) {
     return <div className="text-xs text-[var(--color-muted)]">No open positions.</div>;
   }

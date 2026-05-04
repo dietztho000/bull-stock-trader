@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 
 export type WeeklyReview = {
   weekEnding: string;
@@ -7,8 +7,8 @@ export type WeeklyReview = {
   grade: string | null;
 };
 
-export async function loadWeeklyReviews(): Promise<WeeklyReview[]> {
-  const content = await readMemory("WEEKLY-REVIEW.md");
+export async function loadWeeklyReviews(ctx: MemoryCtx): Promise<WeeklyReview[]> {
+  const content = await readMemory("WEEKLY-REVIEW.md", ctx);
   const lines = content.split("\n");
   const out: WeeklyReview[] = [];
   let cur: { weekEnding: string; body: string[] } | null = null;

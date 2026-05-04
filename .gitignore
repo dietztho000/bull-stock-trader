@@ -22,10 +22,15 @@ __pycache__/
 # match on Windows would otherwise hide routines/daily-summary.md etc)
 /DAILY-SUMMARY.md
 
-# price-monitor.sh runtime artifacts (state cache, not memory)
+# price-monitor.sh runtime artifacts (state cache, per-bot, not memory).
+# Glob covers memory/<bot>/<strategy>/.price-monitor-* and the legacy
+# flat memory/.price-monitor-* paths (kept for the migration window).
+memory/**/.price-monitor-state.json
+memory/**/.price-monitor.log
 memory/.price-monitor-state.json
 memory/.price-monitor.log
 
 # Dashboard per-machine settings (Discord webhook overrides, etc.)
-# Holds secrets — never commit.
+# Holds secrets — never commit. Lives under memory/shared/ post-migration.
+memory/shared/dashboard-settings.json
 memory/dashboard-settings.json

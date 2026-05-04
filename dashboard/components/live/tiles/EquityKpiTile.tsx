@@ -5,8 +5,11 @@ import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function EquityKpiTile({ mode }: { mode?: AlpacaMode }) {
-  const s = useAccountSummary(mode);
+export function EquityKpiTile({
+  mode,
+  accountId,
+}: { mode?: AlpacaMode; accountId?: string | null }) {
+  const s = useAccountSummary({ mode, accountId });
   const label = mode === "paper" ? "Equity (paper)" : "Equity (live)";
 
   if (s.loading) return <Kpi label={label} value="—" />;

@@ -14,33 +14,90 @@ _load_env "$ROOT"
 _require_jq
 
 # -- Mode + credentials -----------------------------------------------------
-# Optional --mode=paper|live override (must be the first arg, before the
-# subcommand). Lets the dashboard query both accounts in parallel without
-# touching BOT_MODE, which still controls what the *bot* trades against.
+# All flags below are optional, must appear before the subcommand, and may
+# be combined freely. Order doesn't matter.
+#
+#   --mode=paper|live     Picks the legacy ALPACA_* (live) or ALPACA_PAPER_*
+#                         (paper) credential set from env. Default: $BOT_MODE
+#                         or "live".
+#
+#   --account-id=<slug>   Multi-account: looks up creds via namespaced env
+#                         vars derived from the slug. Hyphens become
+#                         underscores, slug uppercased. Slug "paper-100k"
+#                         resolves to ALPACA_PAPER_100K_API_KEY,
+#                         ALPACA_PAPER_100K_SECRET_KEY, and (optional)
+#                         ALPACA_PAPER_100K_ENDPOINT. Overrides --mode-based
+#                         creds when set.
+#
+#   --bot-id=<slug>       Tags submit-order's client_order_id with
+#                         "<slug>-" prefix so the dashboard can attribute
+#                         fills back to a specific bot for soft-allocation
+#                         P&L. Ignored by non-write subcommands.
 MODE="${BOT_MODE:-live}"
-if [[ "${1:-}" == --mode=* ]]; then
-  MODE="${1#--mode=}"
-  shift
-fi
-case "$MODE" in
-  paper)
-    : "${ALPACA_PAPER_API_KEY:?ALPACA_PAPER_API_KEY required when BOT_MODE=paper}"
-    : "${ALPACA_PAPER_SECRET_KEY:?ALPACA_PAPER_SECRET_KEY required when BOT_MODE=paper}"
+BOT_ID=""
+ACCOUNT_ID=""
+while true; do
+  case "${1:-}" in
+    --mode=*)       MODE="${1#--mode=}"; shift ;;
+    --bot-id=*)     BOT_ID="${1#--bot-id=}"; shift ;;
+    --account-id=*) ACCOUNT_ID="${1#--account-id=}"; shift ;;
+    *)              break ;;
+  esac
+done
+
+# When --account-id is set, derive the namespaced env var names and use
+# those creds. Falls back to legacy ALPACA_* / ALPACA_PAPER_* based on
+# --mode so local execution keeps working with the user's existing .env
+# (where they have ALPACA_API_KEY but not ALPACA_LIVE_MAIN_API_KEY).
+# Cloud routines must always set the namespaced vars.
+if [[ -n "$ACCOUNT_ID" ]]; then
+  ns="$(printf '%s' "$ACCOUNT_ID" | tr '[:lower:]-' '[:upper:]_')"
+  key_var="ALPACA_${ns}_API_KEY"
+  sec_var="ALPACA_${ns}_SECRET_KEY"
+  ep_var="ALPACA_${ns}_ENDPOINT"
+  if [[ -n "${!key_var:-}" && -n "${!sec_var:-}" ]]; then
+    KEY="${!key_var}"
+    SEC="${!sec_var}"
+    if [[ -n "${!ep_var:-}" ]]; then
+      API="${!ep_var}"
+    elif [[ "$MODE" == "paper" ]]; then
+      API="https://paper-api.alpaca.markets/v2"
+    else
+      API="https://api.alpaca.markets/v2"
+    fi
+  elif [[ "$MODE" == "paper" && -n "${ALPACA_PAPER_API_KEY:-}" ]]; then
     KEY="$ALPACA_PAPER_API_KEY"
     SEC="$ALPACA_PAPER_SECRET_KEY"
     API="${ALPACA_PAPER_ENDPOINT:-https://paper-api.alpaca.markets/v2}"
-    ;;
-  live)
-    _require_env ALPACA_API_KEY ALPACA_SECRET_KEY
+  elif [[ "$MODE" == "live" && -n "${ALPACA_API_KEY:-}" ]]; then
     KEY="$ALPACA_API_KEY"
     SEC="$ALPACA_SECRET_KEY"
     API="${ALPACA_ENDPOINT:-https://api.alpaca.markets/v2}"
-    ;;
-  *)
-    echo "ERROR: BOT_MODE must be 'live' or 'paper' (got '$MODE')" >&2
+  else
+    echo "ERROR: --account-id=$ACCOUNT_ID requires \$$key_var and \$$sec_var (or legacy ALPACA_${MODE^^}_API_KEY) to be set in env" >&2
     exit 1
-    ;;
-esac
+  fi
+else
+  case "$MODE" in
+    paper)
+      : "${ALPACA_PAPER_API_KEY:?ALPACA_PAPER_API_KEY required when BOT_MODE=paper}"
+      : "${ALPACA_PAPER_SECRET_KEY:?ALPACA_PAPER_SECRET_KEY required when BOT_MODE=paper}"
+      KEY="$ALPACA_PAPER_API_KEY"
+      SEC="$ALPACA_PAPER_SECRET_KEY"
+      API="${ALPACA_PAPER_ENDPOINT:-https://paper-api.alpaca.markets/v2}"
+      ;;
+    live)
+      _require_env ALPACA_API_KEY ALPACA_SECRET_KEY
+      KEY="$ALPACA_API_KEY"
+      SEC="$ALPACA_SECRET_KEY"
+      API="${ALPACA_ENDPOINT:-https://api.alpaca.markets/v2}"
+      ;;
+    *)
+      echo "ERROR: BOT_MODE must be 'live' or 'paper' (got '$MODE')" >&2
+      exit 1
+      ;;
+  esac
+fi
 DATA="${ALPACA_DATA_ENDPOINT:-https://data.alpaca.markets/v2}"
 
 H_KEY="APCA-API-KEY-ID: $KEY"
@@ -130,7 +187,10 @@ case "$cmd" in
       echo "usage: submit-order --symbol SYM --qty N --side buy|sell [--type market|limit|stop|trailing_stop] [--tif day|gtc] [--limit-price X] [--stop-price X] [--trail-percent X] [--trail-price X] [--client-order-id ID]" >&2
       exit 1
     }
-    [[ -n "$coid" ]] || coid="$(_gen_client_id)"
+    if [[ -z "$coid" ]]; then
+      coid="$(_gen_client_id)"
+      [[ -n "$BOT_ID" ]] && coid="${BOT_ID}-${coid}"
+    fi
     body="$(jq -n \
       --arg s "$sym" --arg q "$qty" --arg side "$side" \
       --arg t "$otype" --arg tif "$tif" --arg coid "$coid" \
@@ -168,7 +228,7 @@ case "$cmd" in
     body="$(jq -n \
       --arg q "$qty" --arg lp "$limit_price" --arg sp "$stop_price" \
       --arg tp "$trail_pct" --arg tprice "$trail_price" --arg tif "$tif" \
-      --arg coid "$(_gen_client_id)" '
+      --arg coid "$([[ -n "$BOT_ID" ]] && printf '%s-' "$BOT_ID")$(_gen_client_id)" '
       {client_order_id:$coid}
       | (if $q  != "" then .qty = $q else . end)
       | (if $lp != "" then .limit_price = $lp else . end)

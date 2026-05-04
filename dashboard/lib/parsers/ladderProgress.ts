@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 
 export type LadderState = {
   symbol: string;
@@ -15,8 +15,8 @@ export type LadderState = {
 // section that includes a `- SYM: rung-1 fired @+X.X%` bullet — we use
 // either marker but prefer the explicit `take-profit-50:` line because
 // the bot is required to write it (idempotency check depends on it).
-export async function loadLadderProgress(): Promise<Map<string, LadderState>> {
-  const content = await readMemory("TRADE-LOG.md");
+export async function loadLadderProgress(ctx: MemoryCtx): Promise<Map<string, LadderState>> {
+  const content = await readMemory("TRADE-LOG.md", ctx);
   const out = new Map<string, LadderState>();
   const lines = content.split("\n");
   // Track the most recent ticker mentioned in a ladder section so a

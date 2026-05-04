@@ -19,20 +19,18 @@ import {
   type EconomicEvent,
 } from "@/lib/parsers/economicCalendar";
 import { loadLadderProgress, type LadderState } from "@/lib/parsers/ladderProgress";
-import { runAlpaca } from "@/lib/alpaca";
+import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
 import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { mergeEarnings } from "@/lib/calendar/events";
-import { readBotMode } from "@/lib/mode";
-import { activeTab } from "@/lib/activeTab";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import { resolveBotCtx } from "@/lib/resolveAccount";
+import { listAccounts } from "@/lib/settings";
 import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
 import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
 import { todayInCT, isTradingDayCT, currentWeekMondayCT } from "@/lib/time";
+import { consecutiveWinningDays } from "@/lib/mascot/streak";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const ACCOUNT_TABS = ["live", "paper"] as const;
 
 function lastPortfolio(rows: { portfolio: number | null }[]): number | null {
   for (let i = rows.length - 1; i >= 0; i--) {
@@ -58,10 +56,20 @@ export default async function OverviewPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
-  const defaultMode = await readBotMode();
-  const accountMode = activeTab<AlpacaMode>(sp, "account", ACCOUNT_TABS, defaultMode);
+  // Multi-bot context: `botId` keys all memory loads (BENCHMARK, RESEARCH-LOG,
+  // EARNINGS-CALENDAR, ladder progress) and `accountId` scopes Alpaca queries
+  // to the bot's bound account — fixes audit C1/7.2 where the legacy
+  // `ACCOUNT_TABS = ["live","paper"]` literal silently rendered the env
+  // account for any new registry-defined bot.
+  const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
+  const memCtx = { bot: botId, strategy };
+  const runOpts: RunAlpacaOpts = accountId ? { accountId } : { mode: accountMode };
 
-  const benchmark = await loadBenchmark();
+  const accounts = accountId ? await listAccounts() : [];
+  const accountLabel =
+    accountId ? accounts.find((a) => a.id === accountId)?.label ?? null : null;
+
+  const benchmark = await loadBenchmark(memCtx);
 
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
   const yesterday = lastPortfolio(benchmark.rows);
@@ -86,11 +94,11 @@ export default async function OverviewPage({
     research,
     ladderMap,
   ] = await Promise.all([
-    loadEarningsCalendar().catch(() => new Map<string, EarningsEntry>()),
+    loadEarningsCalendar(memCtx).catch(() => new Map<string, EarningsEntry>()),
     loadMarketEarnings().catch((): EarningsEntry[] => []),
     loadEconomicCalendar().catch((): EconomicEvent[] => []),
-    loadResearchLog().catch(() => []),
-    loadLadderProgress().catch(() => new Map<string, LadderState>()),
+    loadResearchLog(memCtx).catch(() => []),
+    loadLadderProgress(memCtx).catch(() => new Map<string, LadderState>()),
   ]);
 
   let earnings: Record<string, EarningsEntry> | undefined;
@@ -102,7 +110,7 @@ export default async function OverviewPage({
 
   let overnightGaps: Record<string, number | null> | undefined;
   try {
-    const positions = (await runAlpaca("positions", [], { mode: accountMode })) as Array<{
+    const positions = (await runAlpaca("positions", [], runOpts)) as Array<{
       symbol: string;
     }>;
     const symbols = positions.map((p) => p.symbol);
@@ -123,10 +131,15 @@ export default async function OverviewPage({
 
   const ctx: OverviewCtx = {
     accountMode,
+    accountId,
+    botId,
+    strategy,
+    accountLabel,
     benchmark,
     yesterdayPortfolio: yesterday,
     weekStartPortfolio: weekStart,
     spyPhasePct,
+    winStreak: consecutiveWinningDays(benchmark.rows),
     earnings,
     overnightGaps,
     ladder,

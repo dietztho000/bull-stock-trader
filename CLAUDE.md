@@ -7,15 +7,21 @@ short bullets, no fluff.
 
 ## Read-Me-First (every session)
 
-Open these in order before doing anything:
+Memory layout: per-bot files live at `memory/<bot>/<strategy>/` where
+`<bot>` is `live` or `paper` (matching `BOT_MODE`) and `<strategy>` is
+the strategy slug (default: `default`). Cross-bot files live at
+`memory/shared/`.
 
-- memory/TRADING-STRATEGY.md   — Your rulebook. Never violate.
-- memory/TRADE-LOG.md          — Tail for open positions, entries, stops.
-- memory/RESEARCH-LOG.md       — Today's research before any trade.
-- memory/BENCHMARK.md          — YTD-vs-SPY tracker. The mission scoreboard.
-- memory/SECTOR-LEDGER.md      — Last 2 trade outcomes per sector (rule #10).
-- memory/SECTOR-MAP.md         — Cached GICS sector per ticker.
-- memory/WEEKLY-REVIEW.md      — Friday afternoons; template for new entries.
+Open these in order before doing anything (substitute `<bot>` and
+`<strategy>` for the bot you're operating):
+
+- memory/<bot>/<strategy>/TRADING-STRATEGY.md   — Your rulebook. Never violate.
+- memory/<bot>/<strategy>/TRADE-LOG.md          — Tail for open positions, entries, stops.
+- memory/<bot>/<strategy>/RESEARCH-LOG.md       — Today's research before any trade.
+- memory/<bot>/<strategy>/BENCHMARK.md          — YTD-vs-SPY tracker. The mission scoreboard.
+- memory/<bot>/<strategy>/SECTOR-LEDGER.md      — Last 2 trade outcomes per sector (rule #10).
+- memory/<bot>/<strategy>/WEEKLY-REVIEW.md      — Friday afternoons; template for new entries.
+- memory/shared/SECTOR-MAP.md                   — Cached GICS sector per ticker.
 
 ## Daily Workflows
 
@@ -72,8 +78,15 @@ error.
 ## Mode switching
 
 `BOT_MODE=paper` swaps the Alpaca creds to `ALPACA_PAPER_*` and the endpoint
-to `paper-api.alpaca.markets`. Use this to run a parallel paper bot when
-testing rule changes for ~30 days before promoting them.
+to `paper-api.alpaca.markets` AND scopes per-bot memory writes to
+`memory/paper/<strategy>/`. Use this to run a parallel paper bot when
+testing rule changes for ~30 days before promoting them. Promotion = copy
+`memory/paper/<strategy>/TRADING-STRATEGY.md` over the live equivalent
+and commit.
+
+Default `BOT_MODE` is `live`; default `STRATEGY` slug is `default`. Both
+bot-side scripts and cloud routines resolve these from environment so
+nothing branches at the script layer.
 
 ## Memory write idempotency (mandatory for all routines)
 
@@ -89,8 +102,10 @@ REPLACE it in place instead of appending a duplicate.
 This applies to: RESEARCH-LOG.md, TRADE-LOG.md (EOD snapshots and
 reconciliation rows — individual trade rows are naturally unique by
 client_order_id), BENCHMARK.md, WEEKLY-REVIEW.md, SECTOR-LEDGER.md
-(reset/snapshot rows). RUN-LOG.jsonl is intentionally append-only —
-two starts means the routine fired twice, which is what we want to know.
+(reset/snapshot rows). All idempotency lives within a single
+`memory/<bot>/<strategy>/<file>` — never grep across bots.
+RUN-LOG.jsonl is intentionally append-only — two starts means the
+routine fired twice, which is what we want to know.
 
 ## Communication Style
 

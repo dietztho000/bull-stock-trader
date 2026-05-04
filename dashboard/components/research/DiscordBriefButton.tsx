@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import clsx from "clsx";
 import { Badge } from "@/components/ui/Card";
+import { useToastOptional } from "@/components/providers/ToastProvider";
+
+type Warning = { source: string; message: string };
 
 type FetchState =
   | { kind: "idle" }
@@ -10,6 +13,7 @@ type FetchState =
   | {
       kind: "ready";
       message: string;
+      warnings: Warning[];
       stats: { earningsToday: number; economicToday: number; positions: number; hasHighImpact: boolean };
     }
   | { kind: "error"; message: string };
@@ -21,6 +25,7 @@ type SendState =
   | { kind: "error"; message: string };
 
 export function DiscordBriefButton() {
+  const toast = useToastOptional();
   const [open, setOpen] = useState(false);
   const [fetchState, setFetchState] = useState<FetchState>({ kind: "idle" });
   const [sendState, setSendState] = useState<SendState>({ kind: "idle" });
@@ -37,7 +42,12 @@ export function DiscordBriefButton() {
         setFetchState({ kind: "error", message: data?.error ?? `HTTP ${resp.status}` });
         return;
       }
-      setFetchState({ kind: "ready", message: data.message, stats: data.stats });
+      setFetchState({
+        kind: "ready",
+        message: data.message,
+        warnings: Array.isArray(data.warnings) ? data.warnings : [],
+        stats: data.stats,
+      });
     } catch (err) {
       setFetchState({
         kind: "error",
@@ -72,7 +82,11 @@ export function DiscordBriefButton() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
-      // ignore — show no-op state, user can manually copy
+      toast?.push({
+        tone: "error",
+        title: "Couldn't copy to clipboard",
+        detail: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -83,15 +97,25 @@ export function DiscordBriefButton() {
       const resp = await fetch("/api/discord/brief", { method: "POST" });
       const data = await resp.json();
       if (!resp.ok) {
-        setSendState({ kind: "error", message: data?.error ?? `HTTP ${resp.status}` });
+        const msg = data?.error ?? `HTTP ${resp.status}`;
+        setSendState({ kind: "error", message: msg });
+        toast?.push({ tone: "error", title: "Discord send failed", detail: msg });
         return;
       }
       setSendState({ kind: "sent", delivery: data.delivery });
+      if (data.delivery === "webhook") {
+        toast?.push({ tone: "success", title: "Brief sent to Discord" });
+      } else if (data.delivery === "fallback-file") {
+        toast?.push({
+          tone: "warn",
+          title: "Webhook not set",
+          detail: "Brief was appended to memory/DAILY-SUMMARY.md instead.",
+        });
+      }
     } catch (err) {
-      setSendState({
-        kind: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      const msg = err instanceof Error ? err.message : String(err);
+      setSendState({ kind: "error", message: msg });
+      toast?.push({ tone: "error", title: "Discord send failed", detail: msg });
     }
   }
 
@@ -171,6 +195,21 @@ export function DiscordBriefButton() {
                     <Badge tone="neutral">{fetchState.stats.positions} positions</Badge>
                     {fetchState.stats.hasHighImpact && <Badge tone="warn">high impact</Badge>}
                   </div>
+                  {fetchState.warnings.length > 0 && (
+                    <div className="mb-3 rounded border border-[var(--color-warn)]/30 bg-[var(--color-warn)]/10 p-2.5">
+                      <div className="text-[11px] text-[var(--color-warn)] font-semibold mb-1">
+                        Some sources failed to load — brief may be incomplete
+                      </div>
+                      <ul className="space-y-0.5">
+                        {fetchState.warnings.map((w, i) => (
+                          <li key={i} className="text-[11px] text-[var(--color-muted)]">
+                            <span className="font-medium text-[var(--color-text)]">{w.source}:</span>{" "}
+                            <span className="font-mono break-all">{w.message}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <pre className="whitespace-pre-wrap text-xs leading-relaxed font-mono bg-[var(--color-panel-2)] border border-[var(--color-border)] rounded p-3 text-[var(--color-text)]">
                     {fetchState.message}
                   </pre>

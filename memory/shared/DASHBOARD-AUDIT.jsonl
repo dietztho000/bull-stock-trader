@@ -1,0 +1,2 @@
+{"ts":"2026-05-03T00:22:25.423Z","action":"submit-order","mode":"paper","accountId":"paper-main","botId":"momentum-test","symbol":"AAPL","detail":{"qty":1,"side":"buy","type":"market","tif":"day"},"ok":true}
+{"ts":"2026-05-03T00:22:25.737Z","action":"submit-order","mode":"paper","symbol":"MSFT","detail":{"qty":1,"side":"buy","type":"market","tif":"day"},"ok":true}

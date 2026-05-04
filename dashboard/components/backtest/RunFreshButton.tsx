@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export function RunFreshButton({ mode = "paper" }: { mode?: "paper" | "live" }) {
+export function RunFreshButton({ accountParam }: { accountParam?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -12,9 +12,8 @@ export function RunFreshButton({ mode = "paper" }: { mode?: "paper" | "live" }) 
   async function onClick() {
     setError(null);
     try {
-      const resp = await fetch(`/api/backtest/run?mode=${mode}`, {
-        method: "POST",
-      });
+      const qs = accountParam ? `?bot=${encodeURIComponent(accountParam)}` : "";
+      const resp = await fetch(`/api/backtest/run${qs}`, { method: "POST" });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
         setError(body?.error ?? `HTTP ${resp.status}`);

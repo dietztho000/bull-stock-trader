@@ -5,6 +5,10 @@ import { Card } from "@/components/ui/Card";
 import type { RedactedSettings } from "@/lib/settings.schema";
 import { FieldRow, NumberInput, Select, SectionFooter } from "./_fields";
 import { ResetLink } from "./DiscordSection";
+import {
+  hasSessionLiveConfirmation,
+  revokeSessionLiveConfirmation,
+} from "@/lib/tradingAccountContext";
 
 const THEMES = [
   { value: "dark", label: "Dark" },
@@ -138,6 +142,8 @@ export function DisplaySection({
             />
           </div>
         </FieldRow>
+
+        <LiveConfirmRevokeRow />
       </div>
 
       <SectionFooter
@@ -148,5 +154,42 @@ export function DisplaySection({
         onReset={onResetSection}
       />
     </Card>
+  );
+}
+
+function LiveConfirmRevokeRow() {
+  const [confirmed, setConfirmed] = useState(false);
+  const [justRevoked, setJustRevoked] = useState(false);
+
+  useEffect(() => {
+    setConfirmed(hasSessionLiveConfirmation());
+  }, []);
+
+  function revoke() {
+    revokeSessionLiveConfirmation();
+    setConfirmed(false);
+    setJustRevoked(true);
+    setTimeout(() => setJustRevoked(false), 1800);
+  }
+
+  return (
+    <FieldRow
+      label="Live trading confirmation"
+      description="Switching to a live account in this session prompts a one-time I-CONFIRM-LIVE dialog. Revoke to require confirmation again on the next switch."
+    >
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-[var(--color-muted)]">
+          {confirmed ? "Confirmed for this session" : "Not confirmed"}
+        </span>
+        <button
+          type="button"
+          onClick={revoke}
+          disabled={!confirmed}
+          className="glass rounded-full px-3 py-1 text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {justRevoked ? "✓ Revoked" : "Revoke"}
+        </button>
+      </div>
+    </FieldRow>
   );
 }

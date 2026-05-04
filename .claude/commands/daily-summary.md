@@ -8,18 +8,45 @@ DATE=$(date +%Y-%m-%d).
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
 <!-- STEPS-BEGIN -->
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting daily-summary"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    bash scripts/auth-preflight.sh daily-summary --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
+NOTE: pre-market does Perplexity research that is conceptually shared
+across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
+the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
+when today's answer is already cached. daily-summary and weekly-review
+post one Discord summary per bot in this Phase 1 implementation; a Phase
+2 refactor aggregates them into a single multi-bot summary.
+
 STEP 1 — Read memory for continuity:
-- tail of memory/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's
+- tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's
   equity, needed for Day P&L)
-- tail of memory/BENCHMARK.md (for YTD-vs-SPY phase delta)
+- tail of memory/$BOT_ID/$STRATEGY/BENCHMARK.md (for YTD-vs-SPY phase delta)
 - Count TRADE-LOG entries dated today (for "Trades today")
 - Count trades Mon-today this week (for 3/week cap)
 
 STEP 2 — Pull final state of the day:
-  bash scripts/alpaca.sh account
-  bash scripts/alpaca.sh positions
-  bash scripts/alpaca.sh orders
-  bash scripts/alpaca.sh quote SPY   # SPY close for benchmark row
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" account
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" orders
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" quote SPY   # SPY close for benchmark row
 
 STEP 3 — Compute metrics:
 - Day P&L ($ and %) = today_equity - yesterday_equity
@@ -30,7 +57,7 @@ STEP 3 — Compute metrics:
 - Alpha phase = portfolio_phase_return - SPY_phase_return
 - Trades today (list or "none"); trades this week (running total)
 
-STEP 4 — Append EOD snapshot to memory/TRADE-LOG.md.
+STEP 4 — Append EOD snapshot to memory/$BOT_ID/$STRATEGY/TRADE-LOG.md.
 **Idempotency guard:** grep for `### $DATE — EOD Snapshot` first. If a
 section for today already exists (e.g. routine retried), REPLACE it in place.
 Never append a duplicate EOD row — tomorrow's Day P&L reads "yesterday equity"
@@ -42,7 +69,7 @@ from the most recent EOD anchor; a stale duplicate corrupts the metric.
 | Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
 **Notes:** one-paragraph plain-english summary.
 
-STEP 5 — Append a row to memory/BENCHMARK.md.
+STEP 5 — Append a row to memory/$BOT_ID/$STRATEGY/BENCHMARK.md.
 **Idempotency guard:** grep for `| $DATE |` first; if a row for today exists,
 REPLACE it in place rather than appending. Match the table header already in
 the file:
@@ -50,7 +77,7 @@ the file:
 Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
-STEP 6 — Run-log watchdog. Read memory/RUN-LOG.jsonl and compute, for today:
+STEP 6 — Run-log watchdog. Read memory/$BOT_ID/$STRATEGY/RUN-LOG.jsonl and compute, for today:
   EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
               midday, stops, afternoon, daily-summary}
             (all weekdays; add `weekly-review` to EXPECTED on Fridays)
@@ -71,7 +98,7 @@ This goes to the auth-canary (bot-health) channel so it sits alongside
 the morning auth checks instead of mixing with in-flight workflow errors.
 This catches silent no-ops that look identical to legitimate quiet days.
 
-STEP 7 — Perplexity cost tally. Read memory/PERPLEXITY-LOG.md and count
+STEP 7 — Perplexity cost tally. Read memory/shared/PERPLEXITY-LOG.md and count
 rows whose timestamp starts with $DATE. Estimate cost as
 (count * $0.0005). Compute the rolling 14-day median count from prior
 days' rows. Stash COUNT, COST, MEDIAN for STEP 8's EOD post.

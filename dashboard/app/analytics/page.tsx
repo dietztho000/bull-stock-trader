@@ -15,6 +15,8 @@ import {
 import { BacktestTable } from "@/components/backtest/BacktestTable";
 import { BacktestCurve } from "@/components/backtest/BacktestCurve";
 import { RunFreshButton } from "@/components/backtest/RunFreshButton";
+import { CrossBotBacktestPanel } from "@/components/backtest/CrossBotBacktestPanel";
+import { BacktestSnapshotCompare } from "@/components/backtest/BacktestSnapshotCompare";
 import { DashboardGrid } from "@/components/layout/DashboardGrid";
 import { LayoutProvider } from "@/components/layout/LayoutEditContext";
 import { EditLayoutToggle } from "@/components/layout/EditLayoutToggle";
@@ -39,6 +41,7 @@ import {
   fmtPctFraction,
   fmtSignedMoney,
 } from "@/lib/format";
+import { resolveBotCtx } from "@/lib/resolveAccount";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -63,6 +66,7 @@ export default async function AnalyticsPage({
 }) {
   const sp = await searchParams;
   const tab = activeTab<Tab>(sp, "tab", TABS, "curve");
+  const { botId, strategy } = await resolveBotCtx(sp);
 
   return (
     <div className="space-y-5">
@@ -82,15 +86,15 @@ export default async function AnalyticsPage({
         </div>
       </header>
 
-      {tab === "curve" && <CurveTab />}
-      {tab === "risk" && <RiskTab />}
-      {tab === "backtest" && <BacktestTab />}
+      {tab === "curve" && <CurveTab botId={botId} strategy={strategy} />}
+      {tab === "risk" && <RiskTab botId={botId} strategy={strategy} />}
+      {tab === "backtest" && <BacktestTab botId={botId} strategy={strategy} />}
     </div>
   );
 }
 
-async function CurveTab() {
-  const benchmark = await loadBenchmark();
+async function CurveTab({ botId, strategy }: { botId: string; strategy: string }) {
+  const benchmark = await loadBenchmark({ bot: botId, strategy });
   const rets = dailyReturns(benchmark.rows, benchmark.startingEquity);
   const dd = drawdownSeries(benchmark.rows);
   const maxDd = maxDrawdown(dd);
@@ -171,10 +175,11 @@ async function CurveTab() {
   );
 }
 
-async function RiskTab() {
-  const benchmark = await loadBenchmark();
-  const ledger = await loadSectorLedger();
-  const tradeLog = await loadTradeLog();
+async function RiskTab({ botId, strategy }: { botId: string; strategy: string }) {
+  const ctx = { bot: botId, strategy };
+  const benchmark = await loadBenchmark(ctx);
+  const ledger = await loadSectorLedger(ctx);
+  const tradeLog = await loadTradeLog(ctx);
 
   const rets = dailyReturns(benchmark.rows, benchmark.startingEquity);
   const dd = drawdownSeries(benchmark.rows);
@@ -391,14 +396,15 @@ async function RiskTab() {
   );
 }
 
-async function BacktestTab() {
+async function BacktestTab({ botId, strategy }: { botId: string; strategy: string }) {
   // Read cached snapshot only — never auto-run the backtest engine on page
   // load (it's a multi-second Alpaca-bound operation per closed trade).
   // Users explicitly trigger fresh runs via the RunFreshButton.
+  const ctx = { bot: botId, strategy };
   const [ledger, tradeLog, snapshot] = await Promise.all([
-    loadSectorLedger(),
-    loadTradeLog(),
-    readBacktestSnapshot(),
+    loadSectorLedger(ctx),
+    loadTradeLog(ctx),
+    readBacktestSnapshot(ctx),
   ]);
 
   const summary = snapshot?.summary ?? null;
@@ -441,6 +447,10 @@ async function BacktestTab() {
       (x): x is { result: (typeof results)[number]; trade: Trade } => x !== null
     );
 
+  const provenance = summary && (summary.tradeSourceBot || summary.strategySourceBot)
+    ? `trades: ${summary.tradeSourceBot ?? "—"} · strategy: ${summary.strategySourceBot ?? "default"}`
+    : null;
+
   const headerTile = (
     <div className="flex items-center justify-between gap-3 frost rounded-2xl p-4">
       <p className="text-xs text-[var(--color-muted)] max-w-2xl">
@@ -449,8 +459,8 @@ async function BacktestTab() {
         Runs in paper mode against Alpaca historical bars.{" "}
         {snapshot ? (
           <span className="text-[var(--color-muted)]">
-            Showing cached results from {summary?.runDate}. Click Run fresh to
-            re-run.
+            Showing cached results from {summary?.runDate}.
+            {provenance && <> · {provenance}</>}
           </span>
         ) : (
           <span className="text-[var(--color-warn)]">
@@ -458,7 +468,7 @@ async function BacktestTab() {
           </span>
         )}
       </p>
-      <RunFreshButton mode="paper" />
+      <RunFreshButton accountParam={botId} />
     </div>
   );
 
@@ -493,6 +503,12 @@ async function BacktestTab() {
         <EditLayoutToggle />
       </div>
       <DashboardGrid tiles={tiles} />
+      <div className="mt-4">
+        <CrossBotBacktestPanel defaultBotId={botId} />
+      </div>
+      <div className="mt-4">
+        <BacktestSnapshotCompare botId={botId} />
+      </div>
     </LayoutProvider>
   );
 }

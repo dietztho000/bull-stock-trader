@@ -6,7 +6,7 @@ Print a clean ad-hoc benchmark snapshot. No state changes, no orders, no file wr
 
 The bot's mission is to BEAT THE S&P 500. This is the dashboard for that mission.
 
-1. Read memory/BENCHMARK.md (last 30 daily rows + first row for phase start).
+1. Read memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md (last 30 daily rows + first row for phase start).
 2. Pull a fresh equity number:
      bash scripts/alpaca.sh account
 3. Pull SPY's latest close:
@@ -24,11 +24,11 @@ Verdict: [BEATING / TRACKING / TRAILING] the index by ±X.X% over N days.
 5. Render the sparkline using these blocks:
    ▁ ▂ ▃ ▄ ▅ ▆ ▇ █  (8 levels). Map min(alpha) → ▁, max(alpha) → █.
 
-6. Backfill check: if memory/BENCHMARK.md has fewer than 5 rows (first
+6. Backfill check: if memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md has fewer than 5 rows (first
    run), print "Backfilling from Alpaca portfolio history..." and run:
      bash scripts/alpaca.sh portfolio-history 1A 1D
    Combined with daily SPY closes (perplexity.sh fallback if needed),
-   write a backfilled table to memory/BENCHMARK.md and warn the user
+   write a backfilled table to memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md and warn the user
    that this routine is read-only — they need to commit the backfill
    manually.
 

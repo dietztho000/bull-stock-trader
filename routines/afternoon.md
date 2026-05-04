@@ -6,71 +6,126 @@ You are running this workflow as a CLOUD ROUTINE. Resolve today's date via:
 DATE=$(date +%Y-%m-%d).
 
 IMPORTANT — ENVIRONMENT VARIABLES:
-- Every API key is ALREADY exported as a process env var (ALPACA_API_KEY,
-  ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, DISCORD_WEBHOOK_URL).
-- There is NO .env file in this repo and you MUST NOT create, write, or
-  source one. The wrapper scripts read directly from the process env.
-- If a wrapper prints "required env var(s) not set" -> STOP, send one
-  Discord alert naming the missing var, and exit.
+- One credential set per Alpaca account is exported as namespaced env vars:
+  ALPACA_<NS>_API_KEY, ALPACA_<NS>_SECRET_KEY, optional ALPACA_<NS>_ENDPOINT.
+  <NS> is the account id uppercased with hyphens replaced by underscores
+  (account `paper-100k` → ALPACA_PAPER_100K_API_KEY etc).
+- Shared external creds: PERPLEXITY_API_KEY, PERPLEXITY_MODEL,
+  DISCORD_WEBHOOK_URL.
+- There is NO .env file in the cloud and you MUST NOT create, write, or
+  source one. The wrapper scripts read directly from process env.
+- If a wrapper prints "required env var(s) not set" or
+  "--account-id=… requires …", STOP that bot's iteration, send one Discord
+  --type=error post naming the missing var, and continue to the next bot.
 
 IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
   The COMMIT AND PUSH step at the end is mandatory.
 
-HEARTBEAT — log routine start (do this FIRST so a crash leaves a trace):
+IMPORTANT — PER-BOT MEMORY LAYOUT:
+- Per-bot files live at memory/$BOT_ID/$STRATEGY/<FILE>. The per-bot
+  fan-out below sets BOT_ID and STRATEGY for each iteration.
+- Cross-bot files (calendars, sector cache, perplexity log, dashboard
+  prefs) live at memory/shared/<FILE>.
+- Per-bot files: TRADING-STRATEGY.md, TRADE-LOG.md, RUN-LOG.jsonl,
+  BENCHMARK.md, RESEARCH-LOG.md, SECTOR-LEDGER.md, WEEKLY-REVIEW.md,
+  EARNINGS-CALENDAR.md, BACKTEST-RESULTS.{md,json}.
+- Shared files: SECTOR-MAP.md, ECONOMIC-CALENDAR.md, MARKET-EARNINGS.md,
+  PERPLEXITY-LOG.md, DASHBOARD-AUDIT.jsonl, dashboard-settings.json.
+
+PER-BOT FAN-OUT — every routine that touches per-bot state runs once per
+enabled bot. The registry lives in memory/shared/dashboard-settings.json
+and is queried via:
+
+  bash scripts/bots.sh list
+
+This emits TAB-separated rows: `bot_id  account_id  strategy  allocation
+mode`. Each STEP block below runs inside this loop:
+
+  while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    # Per-bot preflight (each account checked independently — one bad
+    # account must not abort the others):
+    if ! bash scripts/auth-preflight.sh afternoon --account-id="$ACCOUNT_ID"; then
+      continue   # helper already posted Discord error + RUN-LOG entry
+    fi
+    # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
+    # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+  done < <(bash scripts/bots.sh list)
+
+If the registry is empty, abort with one Discord error and exit:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting afternoon"
+    exit 0
+  fi
+
+HEARTBEAT — log routine start ONCE before the per-bot loop (so a crash
+leaves a trace even if no bot ever ran):
   bash scripts/run-log.sh start afternoon
 
-PREFLIGHT — AUTH SANITY CHECK (run this BEFORE any other API call):
-  bash scripts/auth-preflight.sh afternoon
-If that command exits non-zero, the helper has ALREADY logged the failure
-to RUN-LOG.jsonl and posted a Discord --type=error containing the
-underlying cause (HTTP code, response body, or missing-env-var message).
-Exit immediately without further work. Do NOT continue to research, do NOT
-call Perplexity, do NOT write to memory. Trading without account state is
-unsafe and Perplexity calls cost real money.
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting afternoon"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    # Per-account preflight: skip this bot if its account creds are bad.
+    bash scripts/auth-preflight.sh afternoon --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, and $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
 
 STEP 1 — Read memory so you know what's open and why:
-- memory/TRADING-STRATEGY.md (exit rules)
-- tail of memory/TRADE-LOG.md (entries, original thesis per position, stops)
-- today's memory/RESEARCH-LOG.md entry
-- memory/EARNINGS-CALENDAR.md (rule #13 — earnings exit)
+- memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md (exit rules)
+- tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (entries, original thesis per position, stops)
+- today's memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md entry
+- memory/$BOT_ID/$STRATEGY/EARNINGS-CALENDAR.md (rule #13 — earnings exit)
 
 STEP 2 — Pull current state:
-  bash scripts/alpaca.sh positions
-  bash scripts/alpaca.sh orders
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" orders
 
 STEP 3a — Earnings exit (rule #13). For each open position whose
 EARNINGS-CALENDAR.md row has `Next Earnings Date == today`, force-exit
 at market. Re-fetch positions first to avoid double-cuts:
-  bash scripts/alpaca.sh positions   # confirm still open
-  bash scripts/alpaca.sh close SYM
-  bash scripts/alpaca.sh cancel ORDER_ID
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions   # confirm still open
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" close SYM
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" cancel ORDER_ID
 Log to TRADE-LOG: "exit: pre-earnings forced-close". Append a closed-trade
-row to memory/SECTOR-LEDGER.md.
+row to memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md.
 
 STEP 3 — Cut losers as a safety-net only. The fixed -7% stop GTC placed
 at entry should have already fired on Alpaca's exchange. Before any close,
 re-fetch positions to avoid double-cuts. For every position still open
 with unrealized_plpc <= -0.07:
-  bash scripts/alpaca.sh positions   # confirm still open
-  bash scripts/alpaca.sh close SYM
-  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its stop
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions   # confirm still open
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" close SYM
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" cancel ORDER_ID   # cancel its stop
 Log the exit to TRADE-LOG: exit price, realized P&L, "cut at -7% (exchange
 stop missed — illiquid/race)". Append a closed-trade row to
-memory/SECTOR-LEDGER.md with sector + outcome (L).
+memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md with sector + outcome (L).
 
 STEP 4a — Promote fixed entry stops to a 10% trailing stop once green.
 For every position with unrealized_plpc >= +0.01 whose lone open stop
 order has type IN {"stop", "stop_limit"}, PATCH it in place:
-  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 10
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" replace-order ORDER_ID --trail-percent 10
 Idempotent: skip if type is already "trailing_stop".
 
 STEP 4b — Tighten trailing stops on winners. Only operates on stops with
 type == "trailing_stop". Use replace-order in place:
 - Up >= +20% -> trail_percent: "5"
 - Up >= +15% -> trail_percent: "7"
-  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" replace-order ORDER_ID --trail-percent 5
 Never tighten within 3% of current price. Never move a stop down (log
 "skipped: would-move-down"). Per stops.md, never PATCH within 5 minutes
 of close — at 14:00 we're well outside that window, so this is safe.
@@ -79,7 +134,7 @@ STEP 4c — Take-profit ladder rung 1 (rule #16). For every position with
 unrealized_plpc >= +0.20 AND no `take-profit-50` annotation in TRADE-LOG
 for this position's entry, sell half at market. Round qty/2 down to int;
 skip if half_qty < 1.
-  bash scripts/alpaca.sh submit-order --symbol SYM --qty $half_qty --side sell --type market --tif day
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" submit-order --symbol SYM --qty $half_qty --side sell --type market --tif day
 Append to TRADE-LOG so this rung never fires twice:
   ### MMM DD HH:MM — Take-profit ladder
   - SYM: rung-1 fired @+X.X% — sold $half_qty/$total_qty (proceeds \$X.XX)
@@ -117,13 +172,19 @@ If there are no open positions at all, end the second template with
 
 The post is mandatory either way — no silent runs.
 
-FINAL STEP — log heartbeat end + COMMIT AND PUSH:
+FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
+per-bot loop completes — captures every bot's writes in a single commit):
   bash scripts/run-log.sh end afternoon ok
-  git add memory/TRADE-LOG.md memory/RESEARCH-LOG.md memory/SECTOR-LEDGER.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
-  git commit -m "afternoon scan $DATE"
-  git push origin main
-Always commit at least RUN-LOG.jsonl + PERPLEXITY-LOG.md (even on no-op runs)
-so the heartbeat trace persists. On push failure (rule #21): retry up to 3 times — `git pull --rebase
+  # `memory/` includes every per-bot subdir touched in the loop plus the
+  # shared writes (PERPLEXITY-LOG, sector cache, audit log).
+  git add memory/
+  if git diff --cached --quiet; then
+    echo "no memory changes to commit"
+  else
+    git commit -m "afternoon $DATE ($(bash scripts/bots.sh count) bots)"
+    git push origin main
+  fi
+On push failure (rule #21): retry up to 3 times — `git pull --rebase
 origin main && git push origin main`, sleeping ~3s between attempts.
 If still failing after 3 tries, exit with an error Discord post;
 never force-push.

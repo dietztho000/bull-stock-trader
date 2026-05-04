@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 import { parseMdTable } from "./parseMdTable";
 import { parseMoney, parsePercent, isPlaceholder } from "./numbers";
 
@@ -27,8 +27,8 @@ export type SectorLedger = {
   streaks: SectorStreak[];
 };
 
-export async function loadSectorLedger(): Promise<SectorLedger> {
-  const content = await readMemory("SECTOR-LEDGER.md");
+export async function loadSectorLedger(ctx: MemoryCtx): Promise<SectorLedger> {
+  const content = await readMemory("SECTOR-LEDGER.md", ctx);
 
   const closedRows = parseMdTable(content, {
     heading: /^##\s+Closed trades/i,

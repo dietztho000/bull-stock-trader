@@ -1,19 +1,23 @@
 import "server-only";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { MEMORY_DIR } from "./memoryPath";
+import { resolveMemoryFile, setMemoryAliases } from "./memoryPath";
 import {
   DEFAULTS,
   REDACTED_MASK,
   settingsSchema,
+  type Account,
+  type Bot,
   type DashboardSettings,
   type ExportedSettings,
+  type RedactedAccount,
   type RedactedField,
   type RedactedSettings,
   type SectionKey,
   type SettingsPatch,
   isRedactedMask,
 } from "./settings.schema";
+import { credentialHint } from "./accountVault";
 
 export {
   DEFAULTS,
@@ -27,8 +31,11 @@ export {
   settingsSchema,
 } from "./settings.schema";
 export type {
+  Account,
+  Bot,
   DashboardSettings,
   ExportedSettings,
+  RedactedAccount,
   RedactedField,
   RedactedSettings,
   SectionKey,
@@ -45,20 +52,28 @@ export type {
   SuppressionReason,
 } from "./settings.schema";
 
-const FILE = path.join(MEMORY_DIR, "dashboard-settings.json");
+const FILE = resolveMemoryFile("dashboard-settings.json");
 
 const EMPTY: DashboardSettings = DEFAULTS;
 
 export async function loadSettings(): Promise<DashboardSettings> {
+  let next: DashboardSettings = EMPTY;
   try {
     const raw = await fs.readFile(FILE, "utf8");
     const parsed = JSON.parse(raw);
     const result = settingsSchema.safeParse(parsed);
-    if (!result.success) return EMPTY;
-    return result.data;
+    if (result.success) next = result.data;
   } catch {
-    return EMPTY;
+    // fall through to EMPTY
   }
+  // Audit A1 — keep the bot → memory-directory cache in sync with the
+  // current bot list. Cheap (one Map rebuild per settings read).
+  setMemoryAliases(
+    next.bots
+      .filter((b) => b.memoryAlias && b.memoryAlias !== b.id)
+      .map((b) => [b.id, b.memoryAlias!] as const)
+  );
+  return next;
 }
 
 async function writeFile(next: DashboardSettings) {
@@ -78,6 +93,17 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
       webhookCategoryFilters: { ...current.notifications.webhookCategoryFilters },
       quietHours: { ...current.notifications.quietHours },
     },
+    mascot: { ...current.mascot },
+    strategy: { ...current.strategy },
+    alerts: {
+      ...current.alerts,
+      rules: current.alerts.rules.map((r) => ({
+        ...r,
+        channels: { ...r.channels },
+      })),
+    },
+    accounts: current.accounts.map((a) => ({ ...a })),
+    bots: current.bots.map((b) => ({ ...b })),
   };
 
   if (patch.discord) {
@@ -95,6 +121,24 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
   if (patch.display) Object.assign(next.display, patch.display);
   if (patch.live) Object.assign(next.live, patch.live);
   if (patch.defaults) Object.assign(next.defaults, patch.defaults);
+  if (patch.mascot) Object.assign(next.mascot, patch.mascot);
+  if (patch.strategy) Object.assign(next.strategy, patch.strategy);
+  if (patch.alerts) {
+    if (patch.alerts.enabled !== undefined) next.alerts.enabled = patch.alerts.enabled;
+    if (patch.alerts.rules !== undefined) {
+      next.alerts.rules = patch.alerts.rules.map((r) => ({
+        id: r.id,
+        enabled: r.enabled ?? true,
+        type: r.type,
+        daysThreshold: r.daysThreshold ?? 2,
+        channels: {
+          toast: r.channels?.toast ?? true,
+          discord: r.channels?.discord ?? false,
+          ntfy: r.channels?.ntfy ?? false,
+        },
+      }));
+    }
+  }
   if (patch.notifications) {
     if (patch.notifications.webhookCategoryFilters) {
       Object.assign(
@@ -110,17 +154,139 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
         patch.notifications.desktopNotificationsEnabled;
     }
   }
+  if (patch.accounts !== undefined) next.accounts = patch.accounts.map((a) => ({ ...a }));
+  if (patch.bots !== undefined) next.bots = patch.bots.map((b) => ({ ...b }));
 
+  assertReferentialIntegrity(next);
   await writeFile(next);
   return next;
 }
 
-/** Reset a single section (or all) to schema defaults. */
+/** Throws if a bot references a missing account, or if account/bot ids are
+ *  duplicated. Allocation overruns are allowed (warned in UI, not blocked). */
+function assertReferentialIntegrity(s: DashboardSettings): void {
+  const accountIds = new Set<string>();
+  for (const a of s.accounts) {
+    if (accountIds.has(a.id)) throw new Error(`Duplicate account id: ${a.id}`);
+    accountIds.add(a.id);
+  }
+  const botIds = new Set<string>();
+  for (const b of s.bots) {
+    if (botIds.has(b.id)) throw new Error(`Duplicate bot id: ${b.id}`);
+    botIds.add(b.id);
+    if (!accountIds.has(b.accountId)) {
+      throw new Error(`Bot "${b.id}" references missing account "${b.accountId}"`);
+    }
+  }
+}
+
+// ─── Account-level mutations (used by /api/accounts routes) ──────────────
+
+export async function listAccounts(): Promise<Account[]> {
+  return (await loadSettings()).accounts;
+}
+
+export async function listBots(): Promise<Bot[]> {
+  return (await loadSettings()).bots;
+}
+
+export async function addAccount(account: Account): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  if (current.accounts.some((a) => a.id === account.id)) {
+    throw new Error(`Account id "${account.id}" already exists`);
+  }
+  return saveSettings({ accounts: [...current.accounts, account] });
+}
+
+export async function updateAccount(
+  id: string,
+  patch: Partial<
+    Pick<Account, "label" | "totalCapital" | "endpoint" | "apiKeyEnc" | "secretKeyEnc">
+  >
+): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  const idx = current.accounts.findIndex((a) => a.id === id);
+  if (idx < 0) throw new Error(`Account "${id}" not found`);
+  const nextAccounts = current.accounts.slice();
+  nextAccounts[idx] = { ...nextAccounts[idx], ...patch };
+  return saveSettings({ accounts: nextAccounts });
+}
+
+export async function deleteAccount(id: string): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  const blockingBots = current.bots.filter((b) => b.accountId === id).map((b) => b.id);
+  if (blockingBots.length > 0) {
+    throw new Error(
+      `Cannot delete account "${id}" — bots still bound to it: ${blockingBots.join(", ")}. Delete those bots first.`
+    );
+  }
+  return saveSettings({ accounts: current.accounts.filter((a) => a.id !== id) });
+}
+
+export async function addBot(bot: Bot): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  if (current.bots.some((b) => b.id === bot.id)) {
+    throw new Error(`Bot id "${bot.id}" already exists`);
+  }
+  return saveSettings({ bots: [...current.bots, bot] });
+}
+
+export async function updateBot(
+  id: string,
+  patch: Partial<
+    Pick<
+      Bot,
+      | "name"
+      | "allocation"
+      | "strategySlug"
+      | "enabled"
+      | "accountId"
+      | "discordWebhookUrl"
+      | "sentinel"
+      | "sentinelTrips"
+    >
+  >
+): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  const idx = current.bots.findIndex((b) => b.id === id);
+  if (idx < 0) throw new Error(`Bot "${id}" not found`);
+  const nextBots = current.bots.slice();
+  nextBots[idx] = { ...nextBots[idx], ...patch };
+  return saveSettings({ bots: nextBots });
+}
+
+export async function deleteBot(id: string): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  return saveSettings({ bots: current.bots.filter((b) => b.id !== id) });
+}
+
+export function redactAccount(a: Account): RedactedAccount {
+  return {
+    id: a.id,
+    label: a.label,
+    mode: a.mode,
+    endpoint: a.endpoint,
+    apiKeyHint: credentialHint(a.apiKeyEnc),
+    totalCapital: a.totalCapital ?? null,
+    createdAt: a.createdAt,
+  };
+}
+
+/** Reset a single section (or all) to schema defaults.
+ *  `accounts` and `bots` are explicitly excluded — wiping them via the
+ *  generic reset path would silently destroy encrypted credentials and
+ *  registered bots. Use the dedicated /api/accounts and /api/bots DELETE
+ *  routes instead. */
 export async function resetSection(section: SectionKey | "all"): Promise<DashboardSettings> {
+  if (section === "accounts" || section === "bots") {
+    throw new Error(
+      `Refusing to reset "${section}" via resetSection — use DELETE /api/${section}/[id] for individual records.`
+    );
+  }
   const current = await loadSettings();
   let next: DashboardSettings;
   if (section === "all") {
-    next = DEFAULTS;
+    next = { ...DEFAULTS, accounts: current.accounts, bots: current.bots };
   } else {
     next = { ...current, [section]: DEFAULTS[section] } as DashboardSettings;
   }
@@ -208,6 +374,11 @@ export async function loadRedactedSettings(): Promise<RedactedSettings> {
     live: s.live,
     defaults: s.defaults,
     notifications: s.notifications,
+    mascot: s.mascot,
+    strategy: s.strategy,
+    alerts: s.alerts,
+    accounts: s.accounts.map(redactAccount),
+    bots: s.bots,
   };
 }
 

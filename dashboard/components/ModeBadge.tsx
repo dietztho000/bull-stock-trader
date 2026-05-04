@@ -4,11 +4,15 @@ import useSWR from "swr";
 import clsx from "clsx";
 import { useTradingAccount } from "@/lib/tradingAccountContext";
 import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import {
+  type AlpacaAccount,
+  type AlpacaErrorEnvelope,
+  isAlpacaError,
+} from "@/lib/types/alpaca";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
-type Account = { account_number?: string };
-type Resp = Account | { error: string };
+type Resp = AlpacaAccount | AlpacaErrorEnvelope;
 
 const CONFIG: Record<
   AlpacaMode,
@@ -29,11 +33,12 @@ const CONFIG: Record<
 };
 
 export function ModeBadge() {
-  const { account } = useTradingAccount();
-  // Secondary fetch purely for the tooltip — surfaces the Alpaca account_number
-  // for the currently selected account. Visible label/tint come from context.
+  const { account, accountId, accountRecord, bot } = useTradingAccount();
+  // Tooltip query — route through the bot's bound accountId when known so
+  // multi-paper-account installs surface the right account_number, not
+  // whichever happens to be in the legacy ALPACA_PAPER_* env slot.
   const { data, error } = useSWR<Resp>(
-    alpacaApiUrl("account", account),
+    alpacaApiUrl("account", accountId ? { accountId } : { mode: account }),
     fetcher,
     {
       refreshInterval: 60000,
@@ -46,10 +51,10 @@ export function ModeBadge() {
 
   const config = CONFIG[account];
   const accountNumber =
-    data && !("error" in data) ? data.account_number ?? null : null;
+    data && !isAlpacaError(data) ? data.account_number ?? null : null;
   const probeError =
     error?.message ??
-    (data && "error" in data ? data.error : null);
+    (data && isAlpacaError(data) ? data.error : null);
 
   return (
     <div
@@ -58,7 +63,9 @@ export function ModeBadge() {
         config.tint
       )}
       title={[
-        accountNumber && `acct: ${accountNumber}`,
+        bot && `bot: ${bot.name}`,
+        accountRecord && `account: ${accountRecord.label}`,
+        accountNumber && `acct #: ${accountNumber}`,
         probeError && `error: ${String(probeError).slice(0, 120)}`,
       ]
         .filter(Boolean)

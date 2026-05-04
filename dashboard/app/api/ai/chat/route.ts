@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAnthropic, MODELS } from "@/lib/ai/client";
 import { buildBotContext } from "@/lib/ai/context";
 import { logCacheUsage } from "@/lib/ai/promptCache";
+import { readBotParam, resolveBotCtx } from "@/lib/resolveAccount";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,10 +23,14 @@ export async function POST(req: NextRequest) {
     return new Response("expected last message to be user", { status: 400 });
   }
 
+  const { botId, strategy } = await resolveBotCtx({
+    account: readBotParam(req.nextUrl.searchParams) ?? undefined,
+  });
+
   let client, context;
   try {
     client = getAnthropic();
-    context = await buildBotContext();
+    context = await buildBotContext({ bot: botId, strategy });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "setup failed";
     return new Response(msg, { status: 500 });

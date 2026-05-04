@@ -4,8 +4,11 @@ import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function DeployedKpiTile({ mode }: { mode?: AlpacaMode }) {
-  const s = useAccountSummary(mode);
+export function DeployedKpiTile({
+  mode,
+  accountId,
+}: { mode?: AlpacaMode; accountId?: string | null }) {
+  const s = useAccountSummary({ mode, accountId });
   if (s.loading) return <Kpi label="Deployed" value="—" />;
   if ("error" in s)
     return (

@@ -6,11 +6,13 @@ import type { LadderState } from "@/lib/parsers/ladderProgress";
 
 export function PositionsTile({
   mode,
+  accountId,
   earnings,
   overnightGaps,
   ladder,
 }: {
   mode: AlpacaMode;
+  accountId?: string | null;
   earnings?: Record<string, EarningsEntry>;
   overnightGaps?: Record<string, number | null>;
   ladder?: Record<string, LadderState>;
@@ -19,6 +21,7 @@ export function PositionsTile({
     <Card title="Positions" subtitle="Refreshes every 5s from Alpaca">
       <LivePositions
         mode={mode}
+        accountId={accountId}
         earnings={earnings}
         overnightGaps={overnightGaps}
         ladder={ladder}

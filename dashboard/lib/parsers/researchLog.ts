@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 
 export type ResearchEntry = {
   date: string;
@@ -7,8 +7,8 @@ export type ResearchEntry = {
   body: string;
 };
 
-export async function loadResearchLog(): Promise<ResearchEntry[]> {
-  const content = await readMemory("RESEARCH-LOG.md");
+export async function loadResearchLog(ctx: MemoryCtx): Promise<ResearchEntry[]> {
+  const content = await readMemory("RESEARCH-LOG.md", ctx);
   const lines = content.split("\n");
   const entries: ResearchEntry[] = [];
   let cur: { date: string; body: string[] } | null = null;

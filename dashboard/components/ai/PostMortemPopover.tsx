@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { marked } from "marked";
+import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 
 type State =
   | { kind: "idle" }
@@ -9,8 +10,8 @@ type State =
   | { kind: "ready"; text: string }
   | { kind: "error"; message: string };
 
-function cacheKey(symbol: string, entryDate: string | null) {
-  return `pm:${symbol.toUpperCase()}:${entryDate ?? ""}`;
+function cacheKey(symbol: string, entryDate: string | null, botId: string | null) {
+  return `pm:${botId ?? "default"}:${symbol.toUpperCase()}:${entryDate ?? ""}`;
 }
 
 export function PostMortemButton({
@@ -20,19 +21,22 @@ export function PostMortemButton({
   symbol: string;
   entryDate: string | null;
 }) {
+  const ctx = useTradingAccountOptional();
+  const botId = ctx?.botId ?? null;
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>({ kind: "idle" });
 
   useEffect(() => {
     if (!open || state.kind !== "idle") return;
-    const cached = sessionStorage.getItem(cacheKey(symbol, entryDate));
+    const cached = sessionStorage.getItem(cacheKey(symbol, entryDate, botId));
     if (cached) {
       setState({ kind: "ready", text: cached });
       return;
     }
     let cancelled = false;
     setState({ kind: "loading" });
-    fetch("/api/ai/post-mortem", {
+    const qs = botId ? `?bot=${encodeURIComponent(botId)}` : "";
+    fetch(`/api/ai/post-mortem${qs}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ symbol, entryDate }),
@@ -44,7 +48,7 @@ export function PostMortemButton({
           setState({ kind: "error", message: data.error ?? `HTTP ${r.status}` });
           return;
         }
-        sessionStorage.setItem(cacheKey(symbol, entryDate), data.text);
+        sessionStorage.setItem(cacheKey(symbol, entryDate, botId), data.text);
         setState({ kind: "ready", text: data.text });
       })
       .catch((err) => {
@@ -57,7 +61,7 @@ export function PostMortemButton({
     return () => {
       cancelled = true;
     };
-  }, [open, state.kind, symbol, entryDate]);
+  }, [open, state.kind, symbol, entryDate, botId]);
 
   return (
     <div className="relative inline-block">

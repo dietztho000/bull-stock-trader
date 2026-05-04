@@ -13,14 +13,41 @@ Be terse internally; the Discord post is the user-facing surface and follows
 a strict format (see STEP 5).
 
 <!-- STEPS-BEGIN -->
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting auth-canary"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    bash scripts/auth-preflight.sh auth-canary --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
+NOTE: pre-market does Perplexity research that is conceptually shared
+across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
+the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
+when today's answer is already cached. daily-summary and weekly-review
+post one Discord summary per bot in this Phase 1 implementation; a Phase
+2 refactor aggregates them into a single multi-bot summary.
+
 STEP 1 — Alpaca account check (broker auth — most critical). Capture
 result for STEP 5:
-  bash scripts/alpaca.sh account
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" account
 Stash: ALPACA_ACCOUNT_OK = (true|false), ACCOUNT_NUMBER = "PA…" or empty,
 ALPACA_ACCOUNT_ERR = "<HTTP code or message>" if false.
 
 STEP 2 — Alpaca data feed check. Capture result:
-  bash scripts/alpaca.sh quote SPY
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" quote SPY
 Stash: ALPACA_DATA_OK, SPY_PRICE = "$X.XX" (the .quote.ap value), DATA_ERR.
 
 STEP 3 — Perplexity check. Capture result:
@@ -61,7 +88,7 @@ prefix the title with ⚠️ instead of 📡. Example failed Perplexity:
 Action: rotate PERPLEXITY_API_KEY."
 
 STEP 6 — On any failure in STEP 1-3, ALSO write a one-line audit entry to
-memory/TRADE-LOG.md so the audit trail captures the outage. Idempotency
+memory/$BOT_ID/$STRATEGY/TRADE-LOG.md so the audit trail captures the outage. Idempotency
 guard per CLAUDE.md: grep for `### $DATE HH:MM — Auth canary` first; if a
 section for this minute already exists, skip the append.
 

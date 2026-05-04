@@ -19,6 +19,10 @@ import { BuyingPowerKpiTile } from "@/components/live/tiles/BuyingPowerKpiTile";
 import { DayTradesKpiTile } from "@/components/live/tiles/DayTradesKpiTile";
 import { PositionsTile } from "@/components/live/tiles/PositionsTile";
 import { OrdersTile } from "@/components/live/tiles/OrdersTile";
+import { BullMascotTile } from "@/components/mascot/BullMascotTile";
+import { EarningsGateBanner } from "@/components/live/EarningsGateBanner";
+import { OrderEntryTile } from "@/components/live/OrderEntryTile";
+import { PositionManagementTile } from "@/components/live/PositionManagementTile";
 
 import type { PageLayoutSpec } from "@/components/layout/defaults";
 import type { AlpacaMode } from "@/lib/alpacaMode";
@@ -30,10 +34,23 @@ import type { EconomicEvent } from "@/lib/parsers/economicCalendar";
 
 export type OverviewCtx = {
   accountMode: AlpacaMode;
+  /** The bot's bound account id, when resolved from the registry. Live tiles
+   *  prefer this over `accountMode` so a `momentum-10k → paper-100k` bot
+   *  queries the right Alpaca account, not whichever paper happens to live in
+   *  `ALPACA_PAPER_*`. Null on legacy installs without the registry. */
+  accountId: string | null;
+  /** Bot id resolved from `?account=`. Threaded into write paths so tagged
+   *  client_order_id prefixes apply for soft-allocation P&L attribution. */
+  botId: string;
+  /** Strategy slug for memory paths (`memory/<bot>/<strategy>/`). */
+  strategy: string;
+  /** Display label for the bot's bound account, when resolved. */
+  accountLabel: string | null;
   benchmark: BenchmarkData;
   yesterdayPortfolio: number | null;
   weekStartPortfolio: number | null;
   spyPhasePct: number | null;
+  winStreak: number | null;
   earnings?: Record<string, EarningsEntry>;
   overnightGaps?: Record<string, number | null>;
   ladder?: Record<string, LadderState>;
@@ -63,7 +80,12 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     defaultLayout: { x: 0, y: 0, w: 4, h: 4, minW: 3, minH: 3 },
     render: (ctx) => (
       <Suspense fallback={<div className="frost rounded-2xl h-32 animate-pulse" />}>
-        <AccountIdentityTile mode={ctx.accountMode} />
+        <AccountIdentityTile
+          mode={ctx.accountMode}
+          accountId={ctx.accountId}
+          accountLabel={ctx.accountLabel}
+          botId={ctx.botId}
+        />
       </Suspense>
     ),
   },
@@ -74,6 +96,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     render: (ctx) => (
       <PnlHero
         mode={ctx.accountMode}
+        accountId={ctx.accountId}
         startingEquity={ctx.benchmark.startingEquity}
         phaseStart={ctx.benchmark.phaseStart}
         yesterdayPortfolio={ctx.yesterdayPortfolio}
@@ -86,37 +109,43 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     id: "equity-kpi",
     title: "Equity",
     defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <EquityKpiTile mode={ctx.accountMode} />,
+    render: (ctx) => <EquityKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
   },
   {
     id: "cash-kpi",
     title: "Cash",
     defaultLayout: { x: 3, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <CashKpiTile mode={ctx.accountMode} />,
+    render: (ctx) => <CashKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
   },
   {
     id: "deployed-kpi",
     title: "Deployed",
     defaultLayout: { x: 6, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <DeployedKpiTile mode={ctx.accountMode} />,
+    render: (ctx) => <DeployedKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
   },
   {
     id: "buying-power-kpi",
     title: "Buying power",
     defaultLayout: { x: 9, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <BuyingPowerKpiTile mode={ctx.accountMode} />,
+    render: (ctx) => <BuyingPowerKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
   },
   {
     id: "day-trades-kpi",
     title: "Day trades",
     defaultLayout: { x: 0, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <DayTradesKpiTile mode={ctx.accountMode} />,
+    render: (ctx) => <DayTradesKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+  },
+  {
+    id: "risk-gate",
+    title: "Risk gate",
+    defaultLayout: { x: 0, y: 7, w: 12, h: 5, minW: 4, minH: 3 },
+    render: () => <EarningsGateBanner />,
   },
   {
     id: "drawdown-narrator",
     title: "Drawdown narrator",
-    defaultLayout: { x: 3, y: 7, w: 9, h: 3, minW: 4, minH: 2 },
-    render: () => (
+    defaultLayout: { x: 3, y: 12, w: 9, h: 3, minW: 4, minH: 2 },
+    render: (ctx) => (
       <Suspense
         fallback={
           <Card title="Drawdown context (AI)">
@@ -129,7 +158,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
           </Card>
         }
       >
-        <DrawdownNarrator />
+        <DrawdownNarrator account={ctx.accountMode} botId={ctx.botId} strategy={ctx.strategy} />
       </Suspense>
     ),
   },
@@ -160,6 +189,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     render: (ctx) => (
       <PositionsTile
         mode={ctx.accountMode}
+        accountId={ctx.accountId}
         earnings={ctx.earnings}
         overnightGaps={ctx.overnightGaps}
         ladder={ctx.ladder}
@@ -167,15 +197,27 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     ),
   },
   {
+    id: "order-entry",
+    title: "Order entry",
+    defaultLayout: { x: 0, y: 18, w: 6, h: 8, minW: 4, minH: 6 },
+    render: () => <OrderEntryTile />,
+  },
+  {
+    id: "position-management",
+    title: "Position management",
+    defaultLayout: { x: 6, y: 18, w: 6, h: 8, minW: 4, minH: 6 },
+    render: () => <PositionManagementTile />,
+  },
+  {
     id: "orders",
     title: "Open orders",
-    defaultLayout: { x: 0, y: 18, w: 12, h: 5, minW: 4, minH: 4 },
-    render: (ctx) => <OrdersTile mode={ctx.accountMode} />,
+    defaultLayout: { x: 0, y: 26, w: 12, h: 5, minW: 4, minH: 4 },
+    render: (ctx) => <OrdersTile mode={ctx.accountMode} accountId={ctx.accountId} />,
   },
   {
     id: "upcoming-events",
     title: "Upcoming events",
-    defaultLayout: { x: 0, y: 23, w: 7, h: 8, minW: 3, minH: 4 },
+    defaultLayout: { x: 0, y: 31, w: 7, h: 8, minW: 3, minH: 4 },
     render: (ctx) => (
       <UpcomingEventsCard earnings={ctx.upcomingEarnings} economic={ctx.economic} />
     ),
@@ -183,8 +225,28 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "latest-brief",
     title: "Latest brief",
-    defaultLayout: { x: 7, y: 23, w: 5, h: 8, minW: 3, minH: 4 },
+    defaultLayout: { x: 7, y: 31, w: 5, h: 8, minW: 3, minH: 4 },
     render: (ctx) => <LatestBriefSection latest={ctx.latestBrief} />,
+  },
+  {
+    id: "bull-mascot",
+    title: "Trader Max",
+    defaultLayout: { x: 0, y: 39, w: 4, h: 6, minW: 3, minH: 5 },
+    render: (ctx) => (
+      <BullMascotTile
+        mode={ctx.accountMode}
+        accountId={ctx.accountId}
+        ctxOverride={{
+          winStreak: ctx.winStreak,
+          spyPhasePct: ctx.spyPhasePct,
+          phaseStart: ctx.benchmark.phaseStart,
+          startingEquity: ctx.benchmark.startingEquity,
+          recentRows: ctx.benchmark.rows
+            .slice(-7)
+            .map((r) => ({ date: r.date, portfolio: r.portfolio })),
+        }}
+      />
+    ),
   },
 ];
 

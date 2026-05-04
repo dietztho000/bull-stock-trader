@@ -4,7 +4,7 @@
 
 import path from "node:path";
 import fs from "node:fs/promises";
-import { MEMORY_DIR } from "@/lib/memoryPath";
+import { resolveMemoryFile, type MemoryCtx } from "@/lib/memoryPath";
 import type { BacktestResult, BacktestSummary } from "./types";
 import { fmtSignedMoney } from "@/lib/format";
 
@@ -86,9 +86,11 @@ ${tradeRows || "| — | — | — | — | — | — | — | — |"}
 // "### Per-trade detail" subtree with the new latest-run block.
 export async function writeBacktestResults(
   summary: BacktestSummary,
-  results: BacktestResult[]
+  results: BacktestResult[],
+  ctx: MemoryCtx
 ): Promise<void> {
-  const filePath = path.join(MEMORY_DIR, FILE_NAME);
+  const filePath = resolveMemoryFile(FILE_NAME, ctx);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   let existing = "";
   try {
     existing = await fs.readFile(filePath, "utf8");

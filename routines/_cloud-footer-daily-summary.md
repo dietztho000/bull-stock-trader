@@ -1,9 +1,15 @@
-FINAL STEP — log heartbeat end + COMMIT AND PUSH (mandatory — tomorrow's
-Day P&L depends on this commit landing):
+FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
+per-bot loop completes — captures every bot's writes in a single commit):
   bash scripts/run-log.sh end {{ROUTINE}} ok
-  git add memory/TRADE-LOG.md memory/BENCHMARK.md memory/RUN-LOG.jsonl memory/PERPLEXITY-LOG.md
-  git commit -m "EOD snapshot $DATE"
-  git push origin main
+  # `memory/` includes every per-bot subdir touched in the loop plus the
+  # shared writes (PERPLEXITY-LOG, calendars, sector cache, audit log).
+  git add memory/
+  if git diff --cached --quiet; then
+    echo "no memory changes to commit"
+  else
+    git commit -m "{{ROUTINE}} $DATE ($(bash scripts/bots.sh count) bots)"
+    git push origin main
+  fi
 On push failure (rule #21): retry up to 3 times — `git pull --rebase
 origin main && git push origin main`, sleeping ~3s between attempts.
 If still failing after 3 tries, exit with an error Discord post;

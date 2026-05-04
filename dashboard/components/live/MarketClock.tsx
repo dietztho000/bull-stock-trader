@@ -4,15 +4,20 @@ import useSWR from "swr";
 import clsx from "clsx";
 import { fmtTimeOfDayCT, fmtWeekdayTimeCT } from "@/lib/time";
 import { useLiveSwr } from "@/lib/useLiveSwr";
+import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
+import { alpacaApiUrl } from "@/lib/alpacaMode";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 type Clock = { is_open: boolean; next_open: string; next_close: string };
 
 export function MarketClock() {
+  const ctx = useTradingAccountOptional();
+  const accountId = ctx?.accountId ?? null;
+  const mode = ctx?.account;
   const liveOpts = useLiveSwr(30000);
   const { data } = useSWR<Clock | { error: string }>(
-    "/api/alpaca/clock",
+    alpacaApiUrl("clock", accountId ? { accountId } : { mode }),
     fetcher,
     liveOpts
   );

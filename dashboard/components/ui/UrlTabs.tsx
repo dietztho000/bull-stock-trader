@@ -9,11 +9,15 @@ export function UrlTabs<T extends string>({
   options,
   fallback,
   layoutId,
+  ariaLabel,
 }: {
   param?: string;
   options: { value: T; label: string }[];
   fallback: T;
   layoutId: string;
+  /** Read by screen readers as the tablist's name (audit U10). Defaults to a
+   *  human-friendly form of the layoutId so existing call sites keep working. */
+  ariaLabel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -33,12 +37,16 @@ export function UrlTabs<T extends string>({
     });
   }
 
+  const label =
+    ariaLabel ?? layoutId.replace(/-/g, " ").replace(/\btabs\b/i, "tabs");
+
   return (
     <SegmentedGlass<T>
       layoutId={layoutId}
       value={valid}
       onChange={setTab}
       options={options}
+      ariaLabel={label}
     />
   );
 }

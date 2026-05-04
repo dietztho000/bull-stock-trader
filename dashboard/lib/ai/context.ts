@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 
 const VOICE_RULES = `Voice rules (MUST follow):
 - Ultra concise. Short bullets. No preamble. No "Sure!", no "Here is...".
@@ -16,7 +16,7 @@ export type BotContext = {
   researchLogText: string;
 };
 
-export async function buildBotContext(): Promise<BotContext> {
+export async function buildBotContext(ctx: MemoryCtx): Promise<BotContext> {
   const [
     strategyText,
     tradeLogText,
@@ -24,11 +24,11 @@ export async function buildBotContext(): Promise<BotContext> {
     benchmarkText,
     researchLogText,
   ] = await Promise.all([
-    readMemory("TRADING-STRATEGY.md"),
-    readMemory("TRADE-LOG.md"),
-    readMemory("SECTOR-LEDGER.md"),
-    readMemory("BENCHMARK.md"),
-    readMemory("RESEARCH-LOG.md"),
+    readMemory("TRADING-STRATEGY.md", ctx),
+    readMemory("TRADE-LOG.md", ctx),
+    readMemory("SECTOR-LEDGER.md", ctx),
+    readMemory("BENCHMARK.md", ctx),
+    readMemory("RESEARCH-LOG.md", ctx),
   ]);
 
   const system: Anthropic.TextBlockParam[] = [

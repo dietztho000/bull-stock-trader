@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 import { dateInCT } from "../time";
 
 export type RunStatus = "ok" | "error" | "unknown";
@@ -34,8 +34,8 @@ function normalizeStatus(raw: string | undefined): RunStatus {
  * flight, or crashed before writing the end). An unpaired `end` is dropped —
  * old logs may be truncated above their `start`.
  */
-export async function loadRunLog(): Promise<RunRecord[]> {
-  const raw = await readMemory("RUN-LOG.jsonl");
+export async function loadRunLog(ctx: MemoryCtx): Promise<RunRecord[]> {
+  const raw = await readMemory("RUN-LOG.jsonl", ctx);
   if (!raw.trim()) return [];
 
   const entries: RawEntry[] = [];
@@ -156,4 +156,70 @@ export function summarizeToday(
     expected: true,
     lastRun: todaysRuns.get(routine) ?? null,
   }));
+}
+
+/** One bot's column in the cross-bot routine matrix (audit F6). For each
+ *  expected routine, surfaces today's latest fire and the count of error
+ *  fires in the last `lookbackDays` trading days so the UI can flag
+ *  "midday failed for momentum-10k 3 days running" patterns. */
+export type RoutineMatrixCell = {
+  routine: string;
+  /** Latest fire today (CT), if any — drives the primary status badge. */
+  todayRun: RunRecord | null;
+  /** Distinct CT calendar dates within the lookback window where this
+   *  routine ended in `error` status. Sorted oldest → newest. */
+  errorDates: string[];
+};
+
+export type RoutineMatrixColumn = {
+  botId: string;
+  cells: RoutineMatrixCell[];
+};
+
+export function buildRoutineMatrix(
+  perBotRuns: Array<{ botId: string; runs: RunRecord[] }>,
+  todayCT: string,
+  isFriday: boolean,
+  lookbackDays = 5
+): {
+  routines: string[];
+  columns: RoutineMatrixColumn[];
+} {
+  const routines: string[] = [...DAILY_ROUTINES];
+  if (isFriday) routines.push(FRIDAY_ROUTINE);
+
+  // Build the rolling lookback window of CT dates so a Monday morning view
+  // doesn't ignore Friday's failures by counting only "the last 5 calendar
+  // days" — we just count distinct error dates rather than slot per day.
+  const cutoffMs = Date.now() - lookbackDays * 86_400_000;
+
+  const columns: RoutineMatrixColumn[] = perBotRuns.map(({ botId, runs }) => {
+    const todaysByRoutine = new Map<string, RunRecord>();
+    const errorsByRoutine = new Map<string, Set<string>>();
+
+    for (const r of runs) {
+      const stamp = r.endTs ?? r.startTs;
+      if (!stamp) continue;
+      const dateCT = dateInCT(stamp);
+      if (dateCT === todayCT && !todaysByRoutine.has(r.routine)) {
+        todaysByRoutine.set(r.routine, r);
+      }
+      const ms = Date.parse(stamp);
+      if (Number.isFinite(ms) && ms >= cutoffMs && r.status === "error") {
+        const set = errorsByRoutine.get(r.routine) ?? new Set<string>();
+        set.add(dateCT);
+        errorsByRoutine.set(r.routine, set);
+      }
+    }
+
+    const cells: RoutineMatrixCell[] = routines.map((routine) => ({
+      routine,
+      todayRun: todaysByRoutine.get(routine) ?? null,
+      errorDates: Array.from(errorsByRoutine.get(routine) ?? []).sort(),
+    }));
+
+    return { botId, cells };
+  });
+
+  return { routines, columns };
 }

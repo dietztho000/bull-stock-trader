@@ -1,23 +1,23 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import { Card, Badge } from "@/components/ui/Card";
 import {
   type CalendarEvent,
   type CalendarFilter,
-  mergeEvents,
-  filterEvents,
-  eventsByDate,
-  isoToday,
-  addDaysIso,
   isHighImpact,
 } from "@/lib/calendar/events";
-import type { EarningsEntry } from "@/lib/parsers/earningsCalendar.shared";
+import {
+  type EarningsEntry,
+  daysUntilEarnings,
+} from "@/lib/parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "@/lib/parsers/economicCalendar.shared";
 import { etTimeStringToCT } from "@/lib/time";
 import { RefreshEconomicButton } from "./RefreshEconomicButton";
 import { RefreshMarketEarningsButton } from "./RefreshMarketEarningsButton";
+import { useCalendarFilters } from "./useCalendarFilters";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -32,14 +32,18 @@ type Props = {
 };
 
 export function CalendarView({ earnings, economic, refreshedAt }: Props) {
-  const [filter, setFilter] = useState<CalendarFilter>("all");
-  const today = useMemo(() => isoToday(), []);
-  const [cursor, setCursor] = useState(() => isoFirstOfMonth(today));
-  const [selected, setSelected] = useState<string | null>(null);
-
-  const allEvents = useMemo(() => mergeEvents(earnings, economic), [earnings, economic]);
-  const filtered = useMemo(() => filterEvents(allEvents, filter), [allEvents, filter]);
-  const byDate = useMemo(() => eventsByDate(filtered), [filtered]);
+  const {
+    filter,
+    setFilter,
+    today,
+    cursor,
+    setCursor,
+    selected,
+    setSelected,
+    byDate,
+    selectedEvents,
+    upcoming,
+  } = useCalendarFilters(earnings, economic);
 
   const grid = useMemo(() => buildMonthGrid(cursor), [cursor]);
   const monthLabel = useMemo(() => {
@@ -47,24 +51,6 @@ export function CalendarView({ earnings, economic, refreshedAt }: Props) {
     if (!m) return cursor;
     return `${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
   }, [cursor]);
-
-  // Default-select today (or first event after today) on first render.
-  useEffect(() => {
-    if (selected) return;
-    if (byDate.has(today)) {
-      setSelected(today);
-      return;
-    }
-    const next = filtered.find((e) => e.date >= today);
-    if (next) setSelected(next.date);
-  }, [byDate, filtered, selected, today]);
-
-  const selectedEvents = selected ? byDate.get(selected) ?? [] : [];
-
-  const upcoming = useMemo(() => {
-    const horizon = addDaysIso(today, 30);
-    return filtered.filter((e) => e.date >= today && e.date <= horizon).slice(0, 60);
-  }, [filtered, today]);
 
   return (
     <div className="space-y-5">
@@ -290,6 +276,17 @@ function ImportanceBadge({ importance }: { importance: string }) {
 function EventDetail({ event }: { event: CalendarEvent }) {
   if (event.kind === "earnings") {
     const e = event.entry;
+    const days = daysUntilEarnings(e.date);
+    const dayBadge =
+      days != null && days >= 0 ? (
+        days === 0 ? (
+          <Badge tone="down">EPS today</Badge>
+        ) : days <= 2 ? (
+          <Badge tone="down">T-{days}</Badge>
+        ) : days <= 5 ? (
+          <Badge tone="warn">T-{days}</Badge>
+        ) : null
+      ) : null;
     return (
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
@@ -297,12 +294,27 @@ function EventDetail({ event }: { event: CalendarEvent }) {
           <div className="text-base font-semibold tabular">{e.symbol}</div>
           {e.type && <Badge tone="neutral">{e.type}</Badge>}
           {e.isHeld && <Badge tone="up">held</Badge>}
+          {dayBadge}
         </div>
         {e.company && <Detail label="Company" value={e.company} />}
         <Detail label="Date" value={e.date} mono />
         {e.epsEstimate && <Detail label="EPS estimate" value={e.epsEstimate} mono />}
         {e.source && <Detail label="Source" value={e.source} />}
         {e.refreshed && <Detail label="Refreshed" value={e.refreshed} mono />}
+        {e.isHeld && (
+          <div className="pt-2 mt-2 border-t border-[rgba(255,255,255,0.05)]">
+            <Link
+              href={`/trades?force=${encodeURIComponent(e.symbol)}`}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full glass glass-interactive glass-tint-down font-semibold"
+            >
+              ⚠️ Force-exit at close (rule #13)
+            </Link>
+            <p className="mt-1.5 text-[10px] text-[var(--color-muted)]">
+              Bot routine market-open auto-exits the day before; this CTA jumps
+              to Trades for a manual override.
+            </p>
+          </div>
+        )}
       </div>
     );
   }

@@ -1,15 +1,107 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import type { BotId } from "./alpacaMode";
 
 const ROOT = path.resolve(process.cwd(), "..");
-export const MEMORY_DIR = path.join(ROOT, "memory");
+export const MEMORY_ROOT = path.join(ROOT, "memory");
 export const SCRIPTS_DIR = path.join(ROOT, "scripts");
 export const BOT_ROOT = ROOT;
+export const SHARED_MEMORY_DIR = path.join(MEMORY_ROOT, "shared");
+export const DEFAULT_STRATEGY = "default";
 
-export async function readMemory(file: string): Promise<string> {
-  const p = path.join(MEMORY_DIR, file);
+/** Audit A1 — bot id → on-disk memory directory mapping.
+ *
+ *  The seed-from-env migration creates `legacy-live` / `legacy-paper`
+ *  bots whose memory still lives at `memory/live/` and `memory/paper/`
+ *  (because the cron-side bot writes there based on `BOT_MODE`, regardless
+ *  of dashboard naming). The `memoryAlias` field on each Bot expresses
+ *  this relationship; this module-global cache lets every memory-resolving
+ *  call honor it without threading the alias through every MemoryCtx.
+ *
+ *  Populated by `loadSettings` on every read, so the cache is always
+ *  fresh after the first settings access and there's no stale-data
+ *  window in practice. Aliases that match the bot id (or are unset) are
+ *  omitted — the cache only carries actual rename mappings. */
+declare global {
+  // eslint-disable-next-line no-var
+  var __memoryAliasMap: Map<string, string> | undefined;
+}
+function aliasMap(): Map<string, string> {
+  if (!globalThis.__memoryAliasMap) globalThis.__memoryAliasMap = new Map();
+  return globalThis.__memoryAliasMap;
+}
+export function setMemoryAliases(entries: Iterable<[string, string]>): void {
+  const next = new Map<string, string>();
+  for (const [k, v] of entries) {
+    if (k && v && k !== v) next.set(k, v);
+  }
+  globalThis.__memoryAliasMap = next;
+}
+function resolveMemoryDir(bot: BotId): string {
+  return aliasMap().get(bot) ?? bot;
+}
+
+export function botMemoryDir(bot: BotId, strategy: string = DEFAULT_STRATEGY): string {
+  return path.join(MEMORY_ROOT, resolveMemoryDir(bot), strategy);
+}
+
+export function sharedMemoryDir(): string {
+  return SHARED_MEMORY_DIR;
+}
+
+export type MemoryCtx = { bot: BotId; strategy?: string };
+
+type FileScope =
+  | { scope: "shared" }
+  | { scope: "per-bot" }
+  | { scope: "per-bot-runtime"; gitignored: true };
+
+const MEMORY_FILE_SCOPE: Record<string, FileScope> = {
+  "TRADING-STRATEGY.md": { scope: "per-bot" },
+  "TRADE-LOG.md": { scope: "per-bot" },
+  "RUN-LOG.jsonl": { scope: "per-bot" },
+  "BENCHMARK.md": { scope: "per-bot" },
+  "RESEARCH-LOG.md": { scope: "per-bot" },
+  "SECTOR-LEDGER.md": { scope: "per-bot" },
+  "WEEKLY-REVIEW.md": { scope: "per-bot" },
+  "EARNINGS-CALENDAR.md": { scope: "per-bot" },
+  "BACKTEST-RESULTS.md": { scope: "per-bot" },
+  "BACKTEST-RESULTS.json": { scope: "per-bot" },
+  ".price-monitor-state.json": { scope: "per-bot-runtime", gitignored: true },
+  "SECTOR-MAP.md": { scope: "shared" },
+  "ECONOMIC-CALENDAR.md": { scope: "shared" },
+  "MARKET-EARNINGS.md": { scope: "shared" },
+  "PERPLEXITY-LOG.md": { scope: "shared" },
+  "DASHBOARD-AUDIT.jsonl": { scope: "shared" },
+  "dashboard-settings.json": { scope: "shared" },
+};
+
+export function memoryFileScope(file: string): FileScope {
+  const scope = MEMORY_FILE_SCOPE[file];
+  if (!scope) {
+    throw new Error(
+      `memoryPath: unknown memory file "${file}". Add it to MEMORY_FILE_SCOPE in lib/memoryPath.ts.`
+    );
+  }
+  return scope;
+}
+
+export function resolveMemoryFile(file: string, ctx?: MemoryCtx): string {
+  const scope = memoryFileScope(file);
+  if (scope.scope === "shared") {
+    return path.join(SHARED_MEMORY_DIR, file);
+  }
+  if (!ctx) {
+    throw new Error(
+      `memoryPath: per-bot file "${file}" requires a bot ctx. Pass { bot: "live" | "paper" }.`
+    );
+  }
+  return path.join(botMemoryDir(ctx.bot, ctx.strategy), file);
+}
+
+export async function readMemory(file: string, ctx?: MemoryCtx): Promise<string> {
   try {
-    return await fs.readFile(p, "utf8");
+    return await fs.readFile(resolveMemoryFile(file, ctx), "utf8");
   } catch {
     return "";
   }

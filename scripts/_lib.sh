@@ -7,17 +7,49 @@
 #   2 = runtime error (API failure after retries)
 #   3 = missing-key fallback (caller branches on this — currently only perplexity.sh)
 
+# Per-bot/per-strategy memory directory.
+# Layout: memory/<bot>/<strategy>/  e.g. memory/live/default/, memory/momentum-10k/default/
+#
+# Precedence: BOT_ID (registry slug, e.g. "momentum-10k") wins when set so
+# custom-named bots get their own memory tree. Falls back to BOT_MODE
+# (account mode "live"|"paper") for legacy single-bot callers, then to "live".
+memory_dir_for() {
+  local root="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+  local bot="${BOT_ID:-${BOT_MODE:-live}}"
+  local strategy="${STRATEGY:-default}"
+  printf '%s/memory/%s/%s' "$root" "$bot" "$strategy"
+}
+
+# Cross-bot shared memory directory (calendars, sector cache, dashboard prefs).
+shared_memory_dir() {
+  local root="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+  printf '%s/memory/shared' "$root"
+}
+
 # _load_env: source $REPO_ROOT/.env if present so wrappers work both locally and
 # in cloud routines (cloud has env vars exported directly; .env is absent there).
+#
+# Existing env vars WIN — .env values only fill in what's not already set.
+# This lets the dashboard pass per-account credentials via spawn(env: …)
+# without .env clobbering them. (Cloud routines already work this way: env
+# is set first, .env is absent.)
 _load_env() {
   local root="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
   local env_file="$root/.env"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$env_file"
-    set +a
-  fi
+  [[ -f "$env_file" ]] || return 0
+  local line key val
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      val="${BASH_REMATCH[2]}"
+      # strip surrounding quotes
+      [[ "$val" =~ ^\"(.*)\"$ ]] && val="${BASH_REMATCH[1]}"
+      [[ "$val" =~ ^\'(.*)\'$ ]] && val="${BASH_REMATCH[1]}"
+      # only set if not already in env
+      [[ -z "${!key:-}" ]] && export "$key=$val"
+    fi
+  done < "$env_file"
 }
 
 # _require_env VAR1 VAR2 …  exits 1 with a uniform message if any are unset.

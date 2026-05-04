@@ -12,6 +12,14 @@ const config: NextConfig = {
       { source: "/sectors", destination: "/trades?tab=sectors", permanent: false },
       { source: "/research", destination: "/journal?tab=research", permanent: false },
       { source: "/weekly", destination: "/journal?tab=weekly", permanent: false },
+      // Stale client bundles can land on /journal?tab=calendar (no such tab exists);
+      // bounce to the real /calendar route.
+      {
+        source: "/journal",
+        has: [{ type: "query", key: "tab", value: "calendar" }],
+        destination: "/calendar",
+        permanent: false,
+      },
     ];
   },
 };

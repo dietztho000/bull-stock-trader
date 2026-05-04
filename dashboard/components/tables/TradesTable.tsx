@@ -5,9 +5,11 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type PaginationState,
   type SortingState,
 } from "@tanstack/react-table";
 import clsx from "clsx";
@@ -29,6 +31,10 @@ export function TradesTable({ trades }: { trades: ClosedTradeWithSizing[] }) {
   ]);
   const [sectorFilter, setSectorFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 50,
+  });
 
   const sectors = useMemo(
     () => Array.from(new Set(trades.map((t) => t.sector).filter(Boolean))).sort(),
@@ -146,11 +152,13 @@ export function TradesTable({ trades }: { trades: ClosedTradeWithSizing[] }) {
   const table = useReactTable({
     data: filtered,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   if (!trades.length) {
@@ -221,6 +229,61 @@ export function TradesTable({ trades }: { trades: ClosedTradeWithSizing[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+      <Pagination table={table} totalRows={filtered.length} />
+    </div>
+  );
+}
+
+function Pagination<T>({
+  table,
+  totalRows,
+}: {
+  table: ReturnType<typeof useReactTable<T>>;
+  totalRows: number;
+}) {
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const pageCount = table.getPageCount();
+  const start = pageIndex * pageSize + 1;
+  const end = Math.min(start + pageSize - 1, totalRows);
+  if (totalRows <= pageSize && pageIndex === 0) return null;
+  return (
+    <div className="flex items-center justify-between flex-wrap gap-2 text-[11px] text-[var(--color-muted)]">
+      <span className="tabular">
+        {totalRows === 0 ? "0 of 0" : `${start}–${end} of ${totalRows}`}
+      </span>
+      <div className="flex items-center gap-1">
+        <select
+          value={pageSize}
+          onChange={(e) => table.setPageSize(Number(e.target.value))}
+          className="bg-[var(--color-panel-2)] border border-[var(--color-border)] rounded px-2 py-1 text-[11px]"
+        >
+          {[25, 50, 100, 250].map((s) => (
+            <option key={s} value={s}>
+              {s} / page
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+          className="px-2 py-1 rounded glass disabled:opacity-50"
+        >
+          ‹ Prev
+        </button>
+        <span className="px-2 tabular">
+          Page {pageIndex + 1} / {Math.max(1, pageCount)}
+        </span>
+        <button
+          type="button"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+          className="px-2 py-1 rounded glass disabled:opacity-50"
+        >
+          Next ›
+        </button>
       </div>
     </div>
   );

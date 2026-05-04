@@ -10,9 +10,9 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
 2. For BUY, validate (in this order — STOP and print failed checks if any fail):
    - Drawdown circuit breaker (rule #14): compute day_pl and week_pl from
      account.equity (live) minus the most recent EOD-snapshot equity in
-     memory/BENCHMARK.md. REFUSE if day_pl < -0.02 OR week_pl < -0.04.
+     memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md. REFUSE if day_pl < -0.02 OR week_pl < -0.04.
      Print "BLOCKED: drawdown circuit breaker tripped (day X.X%, week Y.Y%)".
-   - Earnings gate (rule #13): read memory/EARNINGS-CALENDAR.md row for
+   - Earnings gate (rule #13): read memory/${BOT_MODE:-live}/${STRATEGY:-default}/EARNINGS-CALENDAR.md row for
      SYMBOL. If `Next Earnings Date` is within 2 trading days of today,
      REFUSE. Print "BLOCKED: earnings within 2 trading days
      ($earnings_date $bmo_amc)". If row missing, query perplexity.sh and
@@ -32,9 +32,9 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
      (high-volatility regime — wait for VIX < 22 before opening new risk)".
      This replaces the old standalone /risk command.
    - Catalyst documented (ask for thesis if not in today's RESEARCH-LOG)
-   - Sector rotation: look up SYMBOL's sector in memory/SECTOR-MAP.md.
+   - Sector rotation: look up SYMBOL's sector in memory/shared/SECTOR-MAP.md.
      If unknown, run perplexity.sh "What is the GICS sector for $SYMBOL?"
-     and append the answer to SECTOR-MAP.md. Then read memory/SECTOR-LEDGER.md
+     and append the answer to SECTOR-MAP.md. Then read memory/${BOT_MODE:-live}/${STRATEGY:-default}/SECTOR-LEDGER.md
      and refuse the trade if this sector has 2+ consecutive losses in last
      30 days. Print "BLOCKED: sector rotation rule (last 2 X-sector trades
      were losses)".
@@ -42,13 +42,13 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
      SECTOR-MAP.md. REFUSE if this entry would push that sector to > 3
      positions. Print "BLOCKED: sector concentration cap reached (3/3 in
      $sector)".
-   - Re-entry guard (rule #20): grep memory/SECTOR-LEDGER.md for closed
+   - Re-entry guard (rule #20): grep memory/${BOT_MODE:-live}/${STRATEGY:-default}/SECTOR-LEDGER.md for closed
      trades of SYMBOL with outcome `L` in the last 3 trading days. If
      found AND today's RESEARCH-LOG has no fresh dated catalyst for
      SYMBOL (added today, distinct from the prior thesis), REFUSE.
      Print "BLOCKED: re-entry cooldown (stopped out YYYY-MM-DD, no new
      catalyst)".
-   - Entry Scorer (rubric in memory/TRADING-STRATEGY.md): score 1-10 each:
+   - Entry Scorer (rubric in memory/${BOT_MODE:-live}/${STRATEGY:-default}/TRADING-STRATEGY.md): score 1-10 each:
        catalyst (clarity + freshness)
        momentum (price + sector trend)
        risk_reward (target / stop distance, must be >= 2:1)
@@ -77,9 +77,9 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
    The intraday routines will PATCH this into a 10% trailing stop once
    the position is green.
      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type stop_limit --stop-price X.XX --limit-price Y.YY --tif gtc
-7. Log to memory/TRADE-LOG.md with full thesis, entry, stop, target, R:R,
+7. Log to memory/${BOT_MODE:-live}/${STRATEGY:-default}/TRADE-LOG.md with full thesis, entry, stop, target, R:R,
    sector, and the entry-scorer JSON block:
      entry_scorer: {catalyst:X, momentum:X, risk_reward:X, stop_distance:X, total:X/10}
-8. For SELLs, append a closed-trade row to memory/SECTOR-LEDGER.md with
+8. For SELLs, append a closed-trade row to memory/${BOT_MODE:-live}/${STRATEGY:-default}/SECTOR-LEDGER.md with
    the realized outcome (W/L) so rule #10 stays accurate.
 9. bash scripts/discord.sh --type=fill with trade details.

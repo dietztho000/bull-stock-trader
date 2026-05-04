@@ -15,9 +15,22 @@ export async function GET() {
           /* closed */
         }
       }, 15000);
-      const unsub = subscribe((file) => {
+      const unsub = subscribe((batch) => {
+        // Trim per-event detail to keep the SSE payload small. Clients only
+        // need: which bots changed (for filtering router.refresh), and which
+        // memory files (for diagnostics).
+        const payload = {
+          bots: batch.bots,
+          firstAt: batch.firstAt,
+          events: batch.events.map((e) => ({
+            file: e.file,
+            bot: e.bot,
+            strategy: e.strategy,
+            relPath: e.relPath,
+          })),
+        };
         try {
-          controller.enqueue(enc.encode(`data: ${JSON.stringify({ file })}\n\n`));
+          controller.enqueue(enc.encode(`data: ${JSON.stringify(payload)}\n\n`));
         } catch {
           /* closed */
         }

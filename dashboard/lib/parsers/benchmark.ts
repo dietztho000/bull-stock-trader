@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 import { parseMdTable } from "./parseMdTable";
 import { parseMoney, parsePercent, isPlaceholder } from "./numbers";
 
@@ -20,8 +20,8 @@ export type BenchmarkData = {
   rows: BenchmarkRow[];
 };
 
-export async function loadBenchmark(): Promise<BenchmarkData> {
-  const content = await readMemory("BENCHMARK.md");
+export async function loadBenchmark(ctx: MemoryCtx): Promise<BenchmarkData> {
+  const content = await readMemory("BENCHMARK.md", ctx);
   const phaseStart =
     content.match(/Phase start:\s*(\S+)/)?.[1]?.replace(/[*_`]/g, "") ?? null;
   const startingEquity = parseMoney(

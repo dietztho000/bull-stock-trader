@@ -1,4 +1,4 @@
-import { readMemory } from "../memoryPath";
+import { readMemory, type MemoryCtx } from "../memoryPath";
 import { parseMoney, parsePercent } from "./numbers";
 
 export type EntryScorer = {
@@ -274,8 +274,8 @@ function parseEntries(content: string): TradeEntry[] {
   return entries;
 }
 
-export async function loadTradeLog(): Promise<TradeLogData> {
-  const content = await readMemory("TRADE-LOG.md");
+export async function loadTradeLog(memCtx: MemoryCtx): Promise<TradeLogData> {
+  const content = await readMemory("TRADE-LOG.md", memCtx);
   const blocks = splitSnapshots(content);
   const snapshots = blocks
     .map(parseSnapshot)

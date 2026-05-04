@@ -1,9 +1,9 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import { MEMORY_DIR } from "../memoryPath";
+import { resolveMemoryFile } from "../memoryPath";
 import type { EarningsEntry } from "./earningsCalendar.shared";
 
-const FILE = path.join(MEMORY_DIR, "MARKET-EARNINGS.md");
+const FILE = resolveMemoryFile("MARKET-EARNINGS.md");
 
 const HEADER = `| Symbol | Company | Earnings Date | BMO/AMC | EPS Estimate | Source | Date refreshed |\n|--------|---------|---------------|---------|--------------|--------|----------------|`;
 
@@ -88,6 +88,7 @@ export async function writeMarketEarnings(
   });
 
   const body = `${prelude}\n${HEADER}\n${sorted.join("\n")}\n`;
+  await fs.mkdir(path.dirname(FILE), { recursive: true });
   await fs.writeFile(FILE, body, "utf8");
 
   return { added, replaced, dropped, total: merged.size };

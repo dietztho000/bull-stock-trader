@@ -73,4 +73,13 @@ export type BacktestSummary = {
   // anchor points: cumulative actual vs cumulative sim P&L by date.
   cumulativeActual: { date: string; pnl: number }[];
   cumulativeSim: { date: string; pnl: number }[];
+  /** Bot whose TRADE-LOG / SECTOR-LEDGER provided the closed trades. Optional
+   *  for back-compat with snapshots written before audit F8. */
+  tradeSourceBot?: string;
+  /** Bot whose strategy params were used for simulation. May equal
+   *  `tradeSourceBot` (same-bot replay) or differ for cross-bot experiments. */
+  strategySourceBot?: string;
+  /** Snapshot of the exit-rule params used. Surfaced in the UI so users can
+   *  tell which overrides produced this run (audit F8 cross-bot framing). */
+  strategyParamsUsed?: Record<string, number>;
 };

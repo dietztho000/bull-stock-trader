@@ -1,9 +1,9 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import { MEMORY_DIR } from "../memoryPath";
+import { resolveMemoryFile } from "../memoryPath";
 import type { EconomicEvent } from "./economicCalendar.shared";
 
-const FILE = path.join(MEMORY_DIR, "ECONOMIC-CALENDAR.md");
+const FILE = resolveMemoryFile("ECONOMIC-CALENDAR.md");
 
 const HEADER = `| Date | Time (ET) | Event | Importance | Forecast | Previous | Source | Date refreshed |\n|------|-----------|-------|------------|----------|----------|--------|----------------|`;
 
@@ -96,6 +96,7 @@ export async function writeEconomicCalendar(
   });
 
   const body = `${prelude}\n${HEADER}\n${sorted.join("\n")}\n`;
+  await fs.mkdir(path.dirname(FILE), { recursive: true });
   await fs.writeFile(FILE, body, "utf8");
 
   return { added, replaced, dropped, total: merged.size };

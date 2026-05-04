@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { loadMemoryFreshness } from "@/lib/memoryFreshness";
 import { fmtRelativeTime } from "@/lib/format";
 import { fmtDateTimeCT } from "@/lib/time";
+import type { BotId } from "@/lib/alpacaMode";
 
 const DOT: Record<"fresh" | "warn" | "stale", string> = {
   fresh: "bg-[var(--color-up)]",
@@ -15,8 +16,8 @@ const TINT: Record<"fresh" | "warn" | "stale", string> = {
   stale: "glass-tint-down",
 };
 
-export async function MemoryFreshness() {
-  const f = await loadMemoryFreshness();
+export async function MemoryFreshness({ botId }: { botId: BotId }) {
+  const f = await loadMemoryFreshness({ bot: botId });
   const ageLabel = f.syncMtimeMs != null ? fmtRelativeTime(f.syncMtimeMs) : "—";
   const mtimeStamp =
     f.syncMtimeMs != null ? fmtDateTimeCT(f.syncMtimeMs) : "—";

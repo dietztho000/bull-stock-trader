@@ -5,7 +5,11 @@ import { runAlpaca, type AlpacaMode } from "@/lib/alpaca";
 import { loadSectorLedger, type ClosedTrade } from "@/lib/parsers/sectorLedger";
 import { loadTradeLog, type TradeEntry } from "@/lib/parsers/tradeLog";
 import { loadEarningsCalendar } from "@/lib/parsers/earningsCalendar";
-import { simulateTrade } from "./engine";
+import {
+  DEFAULT_STRATEGY_PARAMS,
+  simulateTrade,
+  type StrategyParams,
+} from "./engine";
 import type {
   Bar,
   BacktestResult,
@@ -116,27 +120,62 @@ async function fetchBars(
   }
 }
 
-export async function runBacktest(
-  mode: AlpacaMode = "paper"
-): Promise<{ summary: BacktestSummary; results: BacktestResult[] }> {
+export async function runBacktest(opts: {
+  /** Alpaca account mode for the historical-bars fetch. The memory context
+   *  (which TRADE-LOG / SECTOR-LEDGER to replay) is keyed by `bot`, not
+   *  `mode` — soft-allocated bots and the legacy live/paper bots share the
+   *  same `mode` slot but very different trade histories. */
+  mode: AlpacaMode;
+  /** Bot whose memory provides the trade history to replay. */
+  bot: string;
+  strategy?: string;
+  /** Cross-bot params (audit F8): exit-rule overrides applied during
+   *  simulation. Defaults to the live rulebook constants. Letting callers
+   *  pass these enables "replay live bot's trades using paper bot's
+   *  trail/ladder thresholds" experiments without forking the engine. */
+  strategyParams?: Partial<StrategyParams>;
+}): Promise<{ summary: BacktestSummary; results: BacktestResult[] }> {
+  const { mode, bot, strategy } = opts;
+  const params: StrategyParams = { ...DEFAULT_STRATEGY_PARAMS, ...(opts.strategyParams ?? {}) };
+  const ctx = { bot, strategy };
   const [ledger, tradeLog, earnings] = await Promise.all([
-    loadSectorLedger(),
-    loadTradeLog(),
-    loadEarningsCalendar().catch(() => new Map()),
+    loadSectorLedger(ctx),
+    loadTradeLog(ctx),
+    loadEarningsCalendar(ctx).catch(() => new Map()),
   ]);
 
   const trades = ledger.closed
     .map((c) => joinTrade(c, tradeLog.entries))
     .filter((t): t is Trade => t !== null);
 
+  // Bar-fetching is the dominant cost (one Alpaca shell-out per trade). Run
+  // it in batches of 5 to keep the API request budget reasonable while still
+  // shrinking total wall-clock time roughly 5×. A larger concurrency would
+  // risk Alpaca rate limits in extended-history runs.
+  const CONCURRENCY = 5;
+  type Bars = Awaited<ReturnType<typeof fetchBars>>;
+  const barsPerTrade: Bars[] = new Array(trades.length);
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < trades.length) {
+      const idx = cursor++;
+      const t = trades[idx];
+      barsPerTrade[idx] = await fetchBars(
+        t.symbol,
+        t.entryDate,
+        t.actualExitDate,
+        mode
+      );
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, trades.length) }, () => worker())
+  );
+
   const results: BacktestResult[] = [];
-  for (const trade of trades) {
-    const bars = await fetchBars(
-      trade.symbol,
-      trade.entryDate,
-      trade.actualExitDate,
-      mode
-    );
+  for (let i = 0; i < trades.length; i++) {
+    const trade = trades[i];
+    const bars = barsPerTrade[i] ?? [];
     if (bars.length === 0) {
       // No bars — skip with a "still_open" placeholder so the row appears
       // in the table with a "no data" badge.
@@ -157,7 +196,7 @@ export async function runBacktest(
       });
       continue;
     }
-    results.push(simulateTrade(trade, bars, earnings));
+    results.push(simulateTrade(trade, bars, earnings, params));
   }
 
   // Aggregate
@@ -193,6 +232,9 @@ export async function runBacktest(
       reasonBreakdown,
       cumulativeActual: cumActual,
       cumulativeSim: cumSim,
+      tradeSourceBot: bot,
+      strategySourceBot: opts.strategyParams ? "custom" : bot,
+      strategyParamsUsed: { ...params },
     },
     results,
   };

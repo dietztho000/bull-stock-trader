@@ -1,6 +1,5 @@
-import path from "node:path";
 import fs from "node:fs/promises";
-import { MEMORY_DIR } from "./memoryPath";
+import { resolveMemoryFile, type MemoryCtx } from "./memoryPath";
 import { loadBenchmark } from "./parsers/benchmark";
 import { todayInCT, isTradingDayCT } from "./time";
 
@@ -12,13 +11,13 @@ export type MemoryFreshness = {
   status: "fresh" | "warn" | "stale";
 };
 
-export async function loadMemoryFreshness(): Promise<MemoryFreshness> {
+export async function loadMemoryFreshness(ctx: MemoryCtx): Promise<MemoryFreshness> {
   const todayCT = todayInCT();
   const tradingDay = isTradingDayCT(todayCT);
 
   let syncMtimeMs: number | null = null;
   try {
-    const stat = await fs.stat(path.join(MEMORY_DIR, "BENCHMARK.md"));
+    const stat = await fs.stat(resolveMemoryFile("BENCHMARK.md", ctx));
     syncMtimeMs = stat.mtimeMs;
   } catch {
     syncMtimeMs = null;
@@ -26,7 +25,7 @@ export async function loadMemoryFreshness(): Promise<MemoryFreshness> {
 
   let latestRowDate: string | null = null;
   try {
-    const bench = await loadBenchmark();
+    const bench = await loadBenchmark(ctx);
     latestRowDate = bench.rows.at(-1)?.date ?? null;
   } catch {
     latestRowDate = null;

@@ -16,6 +16,7 @@ const optionalWebhook = webhookUrlSchema.nullable().optional();
 const themeSchema = z.enum(["dark", "light", "auto"]);
 const landingPageSchema = z.enum([
   "overview",
+  "bots",
   "trades",
   "calendar",
   "journal",
@@ -61,9 +62,12 @@ const webhookCategoryFiltersSchema = z
     research: z.boolean().default(true),
     fill: z.boolean().default(true),
     midday: z.boolean().default(true),
+    stops: z.boolean().default(true),
     eod: z.boolean().default(true),
     weekly: z.boolean().default(true),
     error: z.boolean().default(true),
+    "auth-canary": z.boolean().default(true),
+    alert: z.boolean().default(false),
   })
   .default({});
 
@@ -86,6 +90,157 @@ const notificationsSchema = z
   })
   .default({});
 
+const mascotSchema = z
+  .object({
+    name: z.string().min(1).max(40).default("Trader Max"),
+    confettiOnWin: z.boolean().default(true),
+    showInNav: z.boolean().default(true),
+    soundsEnabled: z.boolean().default(false),
+    seasonalOutfits: z.boolean().default(true),
+    idleAnimations: z.boolean().default(true),
+  })
+  .default({});
+
+/**
+ * Strategy thresholds. These mirror the hard rules in
+ * `memory/TRADING-STRATEGY.md` and previously lived as inline constants
+ * across components. Surfacing them here lets a paper-bot operator tweak
+ * the dashboard's enforcement view without forking the bot's rulebook —
+ * the bot's CLI routines still read from `.env` and `TRADING-STRATEGY.md`.
+ */
+const strategySchema = z
+  .object({
+    sectorCap: z.number().int().min(1).max(10).default(3),
+    maxOpenPositions: z.number().int().min(1).max(20).default(6),
+    dayBreakerPct: z.number().min(-20).max(0).default(-2),
+    weekBreakerPct: z.number().min(-30).max(0).default(-4),
+    celebrateThresholdPct: z.number().min(0).max(20).default(1.5),
+    bullishThresholdPct: z.number().min(0).max(20).default(0.3),
+    bearishThresholdPct: z.number().min(-20).max(0).default(-1.5),
+    targetDeployedLowPct: z.number().min(0).max(100).default(75),
+    targetDeployedHighPct: z.number().min(0).max(100).default(85),
+    earningsGateDays: z.number().int().min(0).max(10).default(2),
+    entryScoreMin: z.number().int().min(0).max(10).default(7),
+  })
+  .default({});
+
+/** Alert rules. The dashboard evaluates these against `useStrategyState`
+ *  and surfaces matching alerts in the toast system. Server-side dispatch
+ *  to Discord/ntfy is a follow-up. */
+const alertRuleSchema = z.object({
+  id: z.string().min(1).max(64),
+  enabled: z.boolean().default(true),
+  type: z.enum([
+    "earnings-gate-T-N",
+    "drawdown-breaker",
+    "sector-cap-reached",
+    "sector-blocked",
+    "cooldown-expiring",
+    "rule-violation",
+  ]),
+  /** Trigger threshold in days for "earnings-gate-T-N" / "cooldown-expiring",
+   *  ignored otherwise. */
+  daysThreshold: z.number().int().min(0).max(30).default(2),
+  channels: z
+    .object({
+      toast: z.boolean().default(true),
+      discord: z.boolean().default(false),
+      ntfy: z.boolean().default(false),
+    })
+    .default({}),
+});
+
+const alertsSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    rules: z.array(alertRuleSchema).default([]),
+  })
+  .default({});
+
+// ─── Multi-bot: accounts (Alpaca credential sets) and bots ─────────────
+
+/** Slug used as a stable id for accounts and bots — lowercase, hyphenated,
+ *  safe to embed in URLs and filesystem paths (memory/<bot>/<strategy>/). */
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(40)
+  .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, digits, and hyphens (e.g. paper-100k)");
+
+/** A single Alpaca credential set. May be live or paper. Multiple bots can
+ *  bind to the same account when soft-allocating capital. Credentials are
+ *  encrypted at rest (see lib/accountVault.ts). */
+const accountSchema = z.object({
+  id: slugSchema,
+  label: z.string().min(1).max(60),
+  mode: z.enum(["live", "paper"]),
+  endpoint: z.string().url(),
+  /** Encrypted ciphertext blobs ("v1.<iv>.<tag>.<ct>" base64 segments).
+   *  Decrypt server-side only via accountVault.resolveAccountCreds. */
+  apiKeyEnc: z.string().min(1),
+  secretKeyEnc: z.string().min(1),
+  /** Account's full capital — used by the allocation UI to show
+   *  available-vs-allocated. Not enforced; user can over-commit. */
+  totalCapital: z.number().positive().optional(),
+  createdAt: z.string(),
+});
+
+/** A named trading agent bound to an account. `allocation` null = sole
+ *  occupant of the account (use raw equity); a number = soft slice in $
+ *  (sizing math + virtual equity computed via tagged client_order_id).
+ *
+ *  `memoryAlias` (audit A1): when set, the dashboard reads/writes this
+ *  bot's memory under `memory/<memoryAlias>/<strategySlug>/` instead of
+ *  `memory/<id>/<strategySlug>/`. Used by the seed-from-env migration to
+ *  reserve the `live`/`paper` slugs as user-creatable while still pointing
+ *  the seeded bots at the legacy on-disk memory tree. */
+const botSchema = z.object({
+  id: slugSchema,
+  name: z.string().min(1).max(60),
+  accountId: slugSchema,
+  allocation: z.number().positive().nullable(),
+  strategySlug: z.string().min(1).max(40).default("default"),
+  memoryAlias: slugSchema.optional(),
+  enabled: z.boolean().default(true),
+  /** Per-bot Discord webhook override (audit F10). When set, dashboard-
+   *  originated sends scoped to this bot use this webhook instead of the
+   *  global `discord.webhookUrl`. Optional and back-compat — bots without
+   *  the field fall through to the global webhook. */
+  discordWebhookUrl: webhookUrlSchema.nullable().optional(),
+  /** Sandbox sentinel (audit F7) — auto-disables this bot when the
+   *  configured number of consecutive losses fires. `null` = disabled. */
+  sentinel: z
+    .object({
+      enabled: z.boolean().default(false),
+      consecutiveLossesCap: z.number().int().min(2).max(20).default(3),
+    })
+    .nullable()
+    .optional(),
+  /** Audit F5 — trip history. Each entry is one auto-disable event the
+   *  sentinel fired. The UI uses the most recent entry to distinguish
+   *  "auto-disabled by sentinel" from "manually disabled" on the bot card.
+   *  Bounded server-side to the last 20 trips so the array can't grow
+   *  unbounded over the bot's lifetime. `reason` distinguishes the two
+   *  trip categories (consecutive losses vs. consecutive healthcheck
+   *  failures) so the UI can label them appropriately. `detail` carries
+   *  the credential error for healthcheck-failure trips. */
+  sentinelTrips: z
+    .array(
+      z.object({
+        trippedAt: z.string(),
+        cap: z.number().int().positive(),
+        symbols: z.array(z.string()),
+        reason: z
+          .enum(["consecutive-losses", "healthcheck-failure"])
+          .default("consecutive-losses"),
+        detail: z.string().optional(),
+      })
+    )
+    .default([])
+    .optional(),
+  createdAt: z.string(),
+});
+
 export const settingsSchema = z.object({
   discord: z
     .object({
@@ -98,6 +253,11 @@ export const settingsSchema = z.object({
   live: liveSchema,
   defaults: defaultsSchema,
   notifications: notificationsSchema,
+  mascot: mascotSchema,
+  strategy: strategySchema,
+  alerts: alertsSchema,
+  accounts: z.array(accountSchema).default([]),
+  bots: z.array(botSchema).default([]),
 });
 
 export type DashboardSettings = z.infer<typeof settingsSchema>;
@@ -109,8 +269,21 @@ export type AccountModeDefault = z.infer<typeof accountModeSchema>;
 export type ChartDateRange = z.infer<typeof chartRangeSchema>;
 export type TradesFilter = z.infer<typeof tradesFilterSchema>;
 export type WebhookCategory = keyof z.infer<typeof webhookCategoryFiltersSchema>;
+export type Account = z.infer<typeof accountSchema>;
+export type Bot = z.infer<typeof botSchema>;
 
-export const SECTION_KEYS = ["discord", "display", "live", "defaults", "notifications"] as const;
+export const SECTION_KEYS = [
+  "discord",
+  "display",
+  "live",
+  "defaults",
+  "notifications",
+  "mascot",
+  "strategy",
+  "alerts",
+  "accounts",
+  "bots",
+] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 
 /** Defaults synthesized from the schema — used by reset and the client. */
@@ -157,9 +330,12 @@ export const settingsPatchSchema = z.object({
           research: z.boolean().optional(),
           fill: z.boolean().optional(),
           midday: z.boolean().optional(),
+          stops: z.boolean().optional(),
           eod: z.boolean().optional(),
           weekly: z.boolean().optional(),
           error: z.boolean().optional(),
+          "auth-canary": z.boolean().optional(),
+          alert: z.boolean().optional(),
         })
         .optional(),
       quietHours: z
@@ -172,9 +348,87 @@ export const settingsPatchSchema = z.object({
       desktopNotificationsEnabled: z.boolean().optional(),
     })
     .optional(),
+  mascot: z
+    .object({
+      name: z.string().min(1).max(40).optional(),
+      confettiOnWin: z.boolean().optional(),
+      showInNav: z.boolean().optional(),
+      soundsEnabled: z.boolean().optional(),
+      seasonalOutfits: z.boolean().optional(),
+      idleAnimations: z.boolean().optional(),
+    })
+    .optional(),
+  strategy: z
+    .object({
+      sectorCap: z.number().int().min(1).max(10).optional(),
+      maxOpenPositions: z.number().int().min(1).max(20).optional(),
+      dayBreakerPct: z.number().min(-20).max(0).optional(),
+      weekBreakerPct: z.number().min(-30).max(0).optional(),
+      celebrateThresholdPct: z.number().min(0).max(20).optional(),
+      bullishThresholdPct: z.number().min(0).max(20).optional(),
+      bearishThresholdPct: z.number().min(-20).max(0).optional(),
+      targetDeployedLowPct: z.number().min(0).max(100).optional(),
+      targetDeployedHighPct: z.number().min(0).max(100).optional(),
+      earningsGateDays: z.number().int().min(0).max(10).optional(),
+      entryScoreMin: z.number().int().min(0).max(10).optional(),
+    })
+    .optional(),
+  alerts: z
+    .object({
+      enabled: z.boolean().optional(),
+      rules: z
+        .array(
+          z.object({
+            id: z.string().min(1).max(64),
+            enabled: z.boolean().default(true),
+            type: z.enum([
+              "earnings-gate-T-N",
+              "drawdown-breaker",
+              "sector-cap-reached",
+              "sector-blocked",
+              "cooldown-expiring",
+              "rule-violation",
+            ]),
+            daysThreshold: z.number().int().min(0).max(30).default(2),
+            channels: z
+              .object({
+                toast: z.boolean().default(true),
+                discord: z.boolean().default(false),
+                ntfy: z.boolean().default(false),
+              })
+              .default({}),
+          })
+        )
+        .optional(),
+    })
+    .optional(),
+  /** Full replacement of the accounts list. Mutations go through dedicated
+   *  /api/accounts routes that handle encryption + validation; this branch
+   *  exists for /api/settings/import. */
+  accounts: z.array(accountSchema).optional(),
+  /** Full replacement of the bots list. Same rationale as `accounts`. */
+  bots: z.array(botSchema).optional(),
 });
 
+export type AlertRule = z.infer<typeof alertRuleSchema>;
+
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
+
+// ─── Redacted account view (returned by GET /api/accounts) ──────────────
+
+/** A safe-for-client account: encrypted credential blobs replaced with a
+ *  short hint ("…last4") so the UI can show "Set" without ever surfacing
+ *  ciphertext (which would still be useless without the vault key, but
+ *  there's no reason to ship it). */
+export type RedactedAccount = {
+  id: string;
+  label: string;
+  mode: "live" | "paper";
+  endpoint: string;
+  apiKeyHint: string | null;
+  totalCapital: number | null;
+  createdAt: string;
+};
 
 // ─── Redacted (returned by GET /api/settings) ────────────────────────────────
 
@@ -196,6 +450,11 @@ export type RedactedSettings = {
   live: DashboardSettings["live"];
   defaults: DashboardSettings["defaults"];
   notifications: DashboardSettings["notifications"];
+  mascot: DashboardSettings["mascot"];
+  strategy: DashboardSettings["strategy"];
+  alerts: DashboardSettings["alerts"];
+  accounts: RedactedAccount[];
+  bots: DashboardSettings["bots"];
 };
 
 /** Mask token used in exported JSON for secret fields. */
@@ -250,5 +509,15 @@ export function getSuppressionReason(
 }
 
 export function isWebhookCategory(value: string): value is WebhookCategory {
-  return ["research", "fill", "midday", "eod", "weekly", "error"].includes(value);
+  return [
+    "research",
+    "fill",
+    "midday",
+    "stops",
+    "eod",
+    "weekly",
+    "error",
+    "auth-canary",
+    "alert",
+  ].includes(value);
 }

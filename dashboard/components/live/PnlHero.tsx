@@ -6,21 +6,19 @@ import { motion } from "framer-motion";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 import { useLiveSwr } from "@/lib/useLiveSwr";
+import {
+  type AlpacaAccount,
+  type AlpacaErrorEnvelope,
+  type AlpacaPosition,
+  isAlpacaError,
+} from "@/lib/types/alpaca";
 import { BreakerPills } from "./BreakerPills";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
-type Account = {
-  equity: string;
-  last_equity: string;
-  cash: string;
-  portfolio_value: string;
-};
-
-type Position = { symbol: string };
-
 export function PnlHero({
   mode = "live",
+  accountId,
   startingEquity,
   phaseStart,
   yesterdayPortfolio,
@@ -28,6 +26,7 @@ export function PnlHero({
   spyPhasePct,
 }: {
   mode?: AlpacaMode;
+  accountId?: string | null;
   startingEquity: number | null;
   phaseStart: string | null;
   yesterdayPortfolio: number | null;
@@ -35,19 +34,20 @@ export function PnlHero({
   spyPhasePct: number | null;
 }) {
   const liveOpts = useLiveSwr(5000);
-  const { data: account } = useSWR<Account | { error: string }>(
-    alpacaApiUrl("account", mode),
+  const idOpts = accountId ? { accountId } : { mode };
+  const { data: account } = useSWR<AlpacaAccount | AlpacaErrorEnvelope>(
+    alpacaApiUrl("account", idOpts),
     fetcher,
     liveOpts
   );
-  const { data: positions } = useSWR<Position[] | { error: string }>(
-    alpacaApiUrl("positions", mode),
+  const { data: positions } = useSWR<AlpacaPosition[] | AlpacaErrorEnvelope>(
+    alpacaApiUrl("positions", idOpts),
     fetcher,
     liveOpts
   );
 
-  const isError = !account || "error" in account;
-  const equity = !isError ? Number((account as Account).equity) : null;
+  const isError = !account || isAlpacaError(account);
+  const equity = !isError ? Number(account.equity) : null;
 
   const dayPnl =
     equity != null && yesterdayPortfolio != null ? equity - yesterdayPortfolio : null;
@@ -132,11 +132,11 @@ export function PnlHero({
           />
           <Stat
             label="Cash"
-            value={!isError ? fmtMoney(Number((account as Account).cash)) : "—"}
+            value={!isError ? fmtMoney(Number(account.cash)) : "—"}
             tone={null}
             hint={
               !isError && equity != null && equity > 0
-                ? `${(((equity - Number((account as Account).cash)) / equity) * 100).toFixed(0)}% deployed`
+                ? `${(((equity - Number(account.cash)) / equity) * 100).toFixed(0)}% deployed`
                 : undefined
             }
           />

@@ -5,8 +5,11 @@ import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney } from "@/lib/format";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function CashKpiTile({ mode }: { mode?: AlpacaMode }) {
-  const s = useAccountSummary(mode);
+export function CashKpiTile({
+  mode,
+  accountId,
+}: { mode?: AlpacaMode; accountId?: string | null }) {
+  const s = useAccountSummary({ mode, accountId });
   if (s.loading) return <Kpi label="Cash" value="—" />;
   if ("error" in s)
     return (

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { runAlpaca, type AlpacaMode } from "./alpaca";
 import { BOT_ROOT } from "./memoryPath";
+import { loadSettings } from "./settings";
 
 export type Mode = "paper" | "live" | "unknown";
 export type ModeSource = "account-number" | "bot-mode-env" | "endpoint" | "unknown";
@@ -121,6 +122,42 @@ export async function detectAccountInfo(target: AlpacaMode): Promise<AccountProb
       configured: true,
       accountNumber: null,
       endpoint,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Multi-account variant: probe an account from the encrypted vault by id.
+ *  Used by the new /bots page and /api/accounts/[id]/test. */
+export async function detectAccountInfoById(accountId: string): Promise<AccountProbe> {
+  const settings = await loadSettings();
+  const account = settings.accounts.find((a) => a.id === accountId);
+  if (!account) {
+    return {
+      target: "paper",
+      configured: false,
+      accountNumber: null,
+      endpoint: null,
+      error: `account "${accountId}" not found`,
+    };
+  }
+  try {
+    const result = (await runAlpaca("account", [], { accountId })) as {
+      account_number?: string;
+    };
+    return {
+      target: account.mode,
+      configured: true,
+      accountNumber: result?.account_number ?? null,
+      endpoint: account.endpoint,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      target: account.mode,
+      configured: true,
+      accountNumber: null,
+      endpoint: account.endpoint,
       error: err instanceof Error ? err.message : String(err),
     };
   }

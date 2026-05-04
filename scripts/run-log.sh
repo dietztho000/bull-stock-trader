@@ -14,7 +14,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LOG="$ROOT/memory/RUN-LOG.jsonl"
+# shellcheck source=_lib.sh
+source "$ROOT/scripts/_lib.sh"
+LOG="$(memory_dir_for "$ROOT")/RUN-LOG.jsonl"
 
 action="${1:-}"
 routine="${2:-}"

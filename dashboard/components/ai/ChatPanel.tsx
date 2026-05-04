@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { marked } from "marked";
+import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -13,6 +14,8 @@ const STARTER_PROMPTS = [
 ];
 
 export function ChatPanel({ onClose }: { onClose: () => void }) {
+  const ctx = useTradingAccountOptional();
+  const botId = ctx?.botId;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -38,7 +41,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     setTurns((t) => [...t, { role: "assistant", content: "" }]);
 
     try {
-      const resp = await fetch("/api/ai/chat", {
+      // Scope chat to the active bot — without it the route falls back to
+      // BOT_MODE env, so a question asked in a paper-bot tab silently
+      // answers about the live bot's memory (audit C5).
+      const qs = botId ? `?bot=${encodeURIComponent(botId)}` : "";
+      const resp = await fetch(`/api/ai/chat${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),

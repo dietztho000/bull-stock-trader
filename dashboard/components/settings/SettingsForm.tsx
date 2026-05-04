@@ -8,6 +8,9 @@ import { DisplaySection } from "./DisplaySection";
 import { LiveDataSection } from "./LiveDataSection";
 import { DefaultsSection } from "./DefaultsSection";
 import { NotificationsSection } from "./NotificationsSection";
+import { MascotSection } from "./MascotSection";
+import { StrategySection } from "./StrategySection";
+import { AlertsSection } from "./AlertsSection";
 import { SettingsImportExport } from "./SettingsImportExport";
 
 export function SettingsForm({ initial }: { initial: RedactedSettings }) {
@@ -41,6 +44,20 @@ export function SettingsForm({ initial }: { initial: RedactedSettings }) {
         </Card>
       )}
 
+      <Card title="Accounts & Bots">
+        <div className="text-xs text-[var(--color-muted)] leading-relaxed">
+          Alpaca accounts, bot definitions, capital allocations, and the
+          encrypted credential vault are all managed at{" "}
+          <a
+            href="/bots"
+            className="text-[var(--color-accent)] font-semibold hover:underline"
+          >
+            /bots
+          </a>
+          . Settings on this page only cover dashboard preferences.
+        </div>
+      </Card>
+
       <DisplaySection
         initial={redacted.display}
         onSaved={setRedacted}
@@ -61,6 +78,21 @@ export function SettingsForm({ initial }: { initial: RedactedSettings }) {
         onSaved={setRedacted}
         onResetSection={() => resetSection("notifications")}
       />
+      <MascotSection
+        initial={redacted.mascot}
+        onSaved={setRedacted}
+        onResetSection={() => resetSection("mascot")}
+      />
+      <StrategySection
+        initial={redacted.strategy}
+        onSaved={setRedacted}
+        onResetSection={() => resetSection("strategy")}
+      />
+      <AlertsSection
+        initial={redacted.alerts}
+        onSaved={setRedacted}
+        onResetSection={() => resetSection("alerts")}
+      />
       <DiscordSection
         redacted={redacted}
         onChange={setRedacted}
@@ -72,7 +104,7 @@ export function SettingsForm({ initial }: { initial: RedactedSettings }) {
         <div className="text-xs text-[var(--color-muted)] leading-relaxed space-y-2">
           <p>
             Settings are stored in{" "}
-            <code className="font-mono text-[var(--color-text)]">memory/dashboard-settings.json</code>{" "}
+            <code className="font-mono text-[var(--color-text)]">memory/shared/dashboard-settings.json</code>{" "}
             (gitignored). Display, refresh, defaults, and notification filters affect the
             dashboard only.
           </p>

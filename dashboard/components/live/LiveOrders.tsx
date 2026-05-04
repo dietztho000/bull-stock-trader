@@ -6,19 +6,15 @@ import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 import { useLiveSwr } from "@/lib/useLiveSwr";
 import { Badge } from "@/components/ui/Card";
+import {
+  type AlpacaOrder,
+  type AlpacaErrorEnvelope,
+  isAlpacaError,
+} from "@/lib/types/alpaca";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
-type Order = {
-  symbol: string;
-  side: string;
-  qty: string;
-  type: string;
-  trail_percent?: string;
-  limit_price?: string;
-  stop_price?: string;
-  status: string;
-};
+type Order = AlpacaOrder;
 
 function StopCell({ o }: { o: Order }) {
   if (o.type === "trailing_stop" && o.trail_percent) {
@@ -40,21 +36,28 @@ function LimitFloorCell({ o }: { o: Order }) {
   return <span className="text-[var(--color-muted)]">—</span>;
 }
 
-export function LiveOrders({ mode }: { mode?: AlpacaMode } = {}) {
+export function LiveOrders({
+  mode,
+  accountId,
+}: { mode?: AlpacaMode; accountId?: string | null } = {}) {
   const ctx = useTradingAccountOptional();
+  const effectiveAccountId = accountId ?? ctx?.accountId ?? null;
   const effectiveMode = mode ?? ctx?.account;
   const liveOpts = useLiveSwr(8000);
-  const { data, error } = useSWR<Order[] | { error: string }>(
-    alpacaApiUrl("orders", effectiveMode),
+  const { data, error } = useSWR<AlpacaOrder[] | AlpacaErrorEnvelope>(
+    alpacaApiUrl(
+      "orders",
+      effectiveAccountId ? { accountId: effectiveAccountId } : { mode: effectiveMode }
+    ),
     fetcher,
     { ...liveOpts, keepPreviousData: true }
   );
-  if (error || (data && "error" in data)) {
-    const msg = error?.message ?? (data as { error: string })?.error;
+  if (error || (data && isAlpacaError(data))) {
+    const msg = error?.message ?? (isAlpacaError(data) ? data.error : undefined);
     return <div className="text-xs text-[var(--color-down)]">Orders: {msg}</div>;
   }
   if (!data) return <div className="text-xs text-[var(--color-muted)]">Loading orders…</div>;
-  const orders = data as Order[];
+  const orders = data;
   if (!orders.length)
     return <div className="text-xs text-[var(--color-muted)]">No open orders.</div>;
   return (

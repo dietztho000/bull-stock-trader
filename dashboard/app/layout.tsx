@@ -7,12 +7,17 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { ChatLauncher } from "@/components/ai/ChatLauncher";
+import { AchievementToastHost } from "@/components/mascot/AchievementToast";
 import { TopToolbar } from "@/components/ui/TopToolbar";
 import { TradingAccountProvider } from "@/lib/tradingAccountContext";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { ThemeApplier } from "@/components/providers/ThemeApplier";
+import { ToastProvider } from "@/components/providers/ToastProvider";
+import { AlertWatcher } from "@/components/providers/AlertWatcher";
 import { readBotMode } from "@/lib/mode";
 import { loadSettings } from "@/lib/settings";
+import { seedRegistryFromEnvIfEmpty } from "@/lib/migrations/seedFromEnv";
+import { ensureSentinelWatcher } from "@/lib/sentinel";
 
 export const metadata: Metadata = {
   title: "Bull Stock Trader — Dashboard",
@@ -24,6 +29,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Idempotent: only writes on the very first load when the registry is empty
+  // and `.env` has Alpaca creds. Cheap thereafter (one disk read).
+  await seedRegistryFromEnvIfEmpty().catch(() => {
+    // Don't break the dashboard if seeding fails (e.g. .env unreadable);
+    // the user can populate accounts via Settings UI.
+  });
+  // Sentinel watcher (audit F7): subscribes to memory writes once per process
+  // and auto-disables a bot whose recent closed trades all lost.
+  ensureSentinelWatcher();
   const [initialAccountFromBot, settings] = await Promise.all([
     readBotMode(),
     loadSettings(),
@@ -38,17 +52,21 @@ export default async function RootLayout({
           <SettingsProvider>
             <ThemeApplier />
             <TradingAccountProvider initialAccount={initialAccount}>
-              <LiveRefresh />
-              <div className="flex">
-                <Nav />
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <TopToolbar />
-                  <main className="flex-1 min-w-0 px-6 pb-10 pt-2 max-w-[1600px]">
-                    {children}
-                  </main>
+              <ToastProvider>
+                <AlertWatcher />
+                <LiveRefresh />
+                <div className="flex">
+                  <Nav />
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <TopToolbar />
+                    <main className="flex-1 min-w-0 px-6 pb-10 pt-2 max-w-[1600px]">
+                      {children}
+                    </main>
+                  </div>
                 </div>
-              </div>
-              <ChatLauncher />
+                <ChatLauncher />
+                <AchievementToastHost />
+              </ToastProvider>
             </TradingAccountProvider>
           </SettingsProvider>
         </Suspense>

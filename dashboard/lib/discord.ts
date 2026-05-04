@@ -26,16 +26,33 @@ const NTFY_ONLY_MARKER = "[alert -> ntfy:";
 
 export async function sendDiscord(
   category: DiscordCategory,
-  message: string
+  message: string,
+  opts: {
+    /** When set, looks up the bot's per-bot webhook override (audit F10)
+     *  and uses it instead of the global webhook for this send. Falls
+     *  back to the global webhook if the bot doesn't have an override or
+     *  isn't registered. */
+    botId?: string;
+  } = {}
 ): Promise<DiscordSendResult> {
   if (!message.trim()) {
     throw new Error("sendDiscord: message is empty");
   }
   const script = path.join(BOT_ROOT, "scripts", "discord.sh");
   const settings = await loadSettings();
+  const baseEnv = discordEnvFromSettings(settings);
+  // Per-bot override: only the primary `webhookUrl` is overridden today —
+  // a bot's research-feed override would need its own field; keeping the
+  // surface tight per the audit's "additive, fully back-compat" framing.
+  if (opts.botId) {
+    const bot = settings.bots.find((b) => b.id === opts.botId);
+    if (bot?.discordWebhookUrl) {
+      baseEnv.DISCORD_WEBHOOK_URL = bot.discordWebhookUrl;
+    }
+  }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    ...discordEnvFromSettings(settings),
+    ...baseEnv,
   };
 
   return new Promise((resolve, reject) => {

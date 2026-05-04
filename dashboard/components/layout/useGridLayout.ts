@@ -55,6 +55,9 @@ export function useGridLayout(pageId: string, defaultLayouts: ResponsiveLayouts)
   const [layouts, setLayoutsState] = useState<ResponsiveLayouts>(defaultLayouts);
   const [hiddenTileIds, setHiddenTileIds] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  // Mirrors localStorage existence so `isCustom` doesn't JSON.parse on every
+  // render. Flipped true on hydration-load, every persist, and false on reset.
+  const [isCustom, setIsCustom] = useState(false);
 
   useEffect(() => {
     const stored = readStored(pageId);
@@ -83,6 +86,7 @@ export function useGridLayout(pageId: string, defaultLayouts: ResponsiveLayouts)
       }
       setLayoutsState(merged);
       setHiddenTileIds(new Set(stored.hidden));
+      setIsCustom(true);
     }
     setHydrated(true);
   }, [pageId, defaultLayouts]);
@@ -95,6 +99,7 @@ export function useGridLayout(pageId: string, defaultLayouts: ResponsiveLayouts)
         layouts: finalLayouts,
         hidden: Array.from(finalHidden),
       });
+      setIsCustom(true);
     },
     [pageId, layouts, hiddenTileIds]
   );
@@ -124,9 +129,8 @@ export function useGridLayout(pageId: string, defaultLayouts: ResponsiveLayouts)
     clearStored(pageId);
     setLayoutsState(defaultLayouts);
     setHiddenTileIds(new Set());
+    setIsCustom(false);
   }, [pageId, defaultLayouts]);
-
-  const isCustom = hydrated && readStored(pageId) !== null;
 
   return {
     layouts,

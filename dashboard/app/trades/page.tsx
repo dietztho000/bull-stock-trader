@@ -19,16 +19,17 @@ import { computeTradeStats, bySector } from "@/lib/stats/tradeStats";
 import { rMultiples, avgR } from "@/lib/stats/rMultiple";
 import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { targetPctForScore, actualPctOfEquity } from "@/lib/stats/sizing";
-import { runAlpaca } from "@/lib/alpaca";
-import { detectAccountInfo, readBotMode } from "@/lib/mode";
+import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
+import { detectAccountInfo, detectAccountInfoById } from "@/lib/mode";
+import { resolveBotCtx } from "@/lib/resolveAccount";
 import type { AlpacaMode } from "@/lib/alpacaMode";
+import { loadSettings } from "@/lib/settings";
+import { ForceExitBanner } from "@/components/live/ForceExitBanner";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const SECTOR_CAP = 3;
 const TABS = ["all", "sectors"] as const;
-const ACCOUNT_TABS = ["live", "paper"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_OPTIONS: { value: Tab; label: string }[] = [
@@ -38,14 +39,22 @@ const TAB_OPTIONS: { value: Tab; label: string }[] = [
 
 type LivePositionLite = { symbol: string };
 
-async function loadLiveConcentration(mode: AlpacaMode): Promise<{
+async function loadLiveConcentration(opts: {
+  mode: AlpacaMode;
+  accountId: string | null;
+}): Promise<{
   bySector: Map<string, string[]>;
   rawCount: number;
 } | null> {
   try {
-    const probe = await detectAccountInfo(mode);
+    const probe = opts.accountId
+      ? await detectAccountInfoById(opts.accountId)
+      : await detectAccountInfo(opts.mode);
     if (!probe.configured || probe.error) return null;
-    const positions = (await runAlpaca("positions", [], { mode })) as
+    const runOpts: RunAlpacaOpts = opts.accountId
+      ? { accountId: opts.accountId }
+      : { mode: opts.mode };
+    const positions = (await runAlpaca("positions", [], runOpts)) as
       | LivePositionLite[]
       | { error: string };
     if (!Array.isArray(positions)) return null;
@@ -69,13 +78,15 @@ export default async function TradesPage({
 }) {
   const sp = await searchParams;
   const tab = activeTab<Tab>(sp, "tab", TABS, "all");
-  const defaultMode = await readBotMode();
-  const accountMode = activeTab<AlpacaMode>(sp, "account", ACCOUNT_TABS, defaultMode);
+  const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
+  const memCtx = { bot: botId, strategy };
 
-  const [ledger, tradeLog] = await Promise.all([
-    loadSectorLedger(),
-    loadTradeLog(),
+  const [ledger, tradeLog, settings] = await Promise.all([
+    loadSectorLedger(memCtx),
+    loadTradeLog(memCtx),
+    loadSettings(),
   ]);
+  const SECTOR_CAP = settings.strategy.sectorCap;
   const stats = computeTradeStats(ledger.closed);
   const rs = rMultiples(ledger.closed, tradeLog.entries);
   const avg = avgR(rs);
@@ -109,6 +120,9 @@ export default async function TradesPage({
     ),
   };
 
+  const force = typeof sp.force === "string" ? sp.force.toUpperCase() : null;
+  const forceSymbol = force && /^[A-Z]{1,5}$/.test(force) ? force : null;
+
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -121,6 +135,8 @@ export default async function TradesPage({
         <UrlTabs<Tab> layoutId="trades-tabs" options={TAB_OPTIONS} fallback="all" />
       </header>
 
+      {forceSymbol && <ForceExitBanner symbol={forceSymbol} />}
+
       {tab === "all" && (
         <AllTradesTab
           ledger={ledger}
@@ -131,7 +147,15 @@ export default async function TradesPage({
         />
       )}
       {tab === "sectors" && (
-        <SectorsTab ledger={ledger} kpiTiles={kpiTiles} mode={accountMode} />
+        <SectorsTab
+          ledger={ledger}
+          kpiTiles={kpiTiles}
+          mode={accountMode}
+          accountId={accountId}
+          botId={botId}
+          strategy={strategy}
+          SECTOR_CAP={SECTOR_CAP}
+        />
       )}
     </div>
   );
@@ -288,10 +312,18 @@ function SectorsTab({
   ledger,
   kpiTiles,
   mode,
+  accountId,
+  botId,
+  strategy,
+  SECTOR_CAP,
 }: {
   ledger: Awaited<ReturnType<typeof loadSectorLedger>>;
   kpiTiles: Record<string, React.ReactNode>;
   mode: AlpacaMode;
+  accountId: string | null;
+  botId: string;
+  strategy: string;
+  SECTOR_CAP: number;
 }) {
   const grouped = bySector(ledger.closed);
   const pnlBars = grouped.map((g) => ({
@@ -303,7 +335,13 @@ function SectorsTab({
     ...kpiTiles,
     "live-concentration": (
       <Suspense fallback={<SkeletonBox height={180} />}>
-        <LiveConcentrationSection mode={mode} />
+        <LiveConcentrationSection
+          mode={mode}
+          accountId={accountId}
+          botId={botId}
+          strategy={strategy}
+          SECTOR_CAP={SECTOR_CAP}
+        />
       </Suspense>
     ),
     "streak-status": (
@@ -405,10 +443,22 @@ function SectorsTab({
 // Streamed-in section: live Alpaca positions + today's research ideas vs the
 // concentration cap. Wrapped in Suspense at the call-site so the rest of the
 // Sectors tab paints immediately and this card streams in once Alpaca responds.
-async function LiveConcentrationSection({ mode }: { mode: AlpacaMode }) {
+async function LiveConcentrationSection({
+  mode,
+  accountId,
+  botId,
+  strategy,
+  SECTOR_CAP,
+}: {
+  mode: AlpacaMode;
+  accountId: string | null;
+  botId: string;
+  strategy: string;
+  SECTOR_CAP: number;
+}) {
   const [concentration, research, sectorMap] = await Promise.all([
-    loadLiveConcentration(mode),
-    loadResearchLog(),
+    loadLiveConcentration({ mode, accountId }),
+    loadResearchLog({ bot: botId, strategy }),
     loadSectorMap(),
   ]);
   const today = research[0];

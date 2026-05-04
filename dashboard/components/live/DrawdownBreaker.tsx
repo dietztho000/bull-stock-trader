@@ -2,6 +2,7 @@ import { Card, Badge } from "@/components/ui/Card";
 import { runAlpaca, type AlpacaMode } from "@/lib/alpaca";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { fmtPct } from "@/lib/format";
+import { currentWeekMondayCT } from "@/lib/time";
 
 const DAY_LIMIT = -2.0;   // percent
 const WEEK_LIMIT = -4.0;  // percent
@@ -16,33 +17,38 @@ function lastEodPortfolio(rows: { date: string; portfolio: number | null }[]): n
   return null;
 }
 
-// Find the most recent Monday on/before today; return that row's portfolio
-// (or the earliest available if no Monday row exists).
+// Find the most recent Monday on/before today (in CT); return that row's
+// portfolio (or the earliest available if no Monday row exists).
 function weekStartPortfolio(
-  rows: { date: string; portfolio: number | null }[],
-  today: Date
+  rows: { date: string; portfolio: number | null }[]
 ): number | null {
-  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const monday = new Date(t0);
-  const dow = monday.getDay(); // 0 Sun .. 6 Sat
-  const diff = dow === 0 ? -6 : 1 - dow;
-  monday.setDate(monday.getDate() + diff);
-  const mondayStr = monday.toISOString().slice(0, 10);
-  // Look for the last row with date >= monday; fall back to earliest.
+  const mondayStr = currentWeekMondayCT();
   const inWeek = rows.filter((r) => r.date >= mondayStr && r.portfolio != null);
   if (inWeek.length > 0 && inWeek[0].portfolio != null) return inWeek[0].portfolio;
   for (const r of rows) if (r.portfolio != null) return r.portfolio;
   return null;
 }
 
-export async function DrawdownBreaker({ mode }: { mode: AlpacaMode }) {
+export async function DrawdownBreaker({
+  mode,
+  accountId,
+  botId,
+}: {
+  mode: AlpacaMode;
+  accountId?: string | null;
+  botId?: string | null;
+}) {
   let equity: number | null = null;
   let bench: Awaited<ReturnType<typeof loadBenchmark>> | null = null;
   let probeError: string | null = null;
+  // Prefer the bot binding for both Alpaca call + memory ctx so a $10k slice
+  // breaker reflects its own benchmark, not the env default.
+  const runOpts = accountId ? { accountId } : { mode };
+  const memBot = botId ?? mode;
   try {
-    const account = (await runAlpaca("account", [], { mode })) as AccountResp;
+    const account = (await runAlpaca("account", [], runOpts)) as AccountResp;
     equity = Number(account.equity);
-    bench = await loadBenchmark();
+    bench = await loadBenchmark({ bot: memBot });
   } catch (err) {
     probeError = err instanceof Error ? err.message : String(err);
   }
@@ -58,7 +64,7 @@ export async function DrawdownBreaker({ mode }: { mode: AlpacaMode }) {
   }
 
   const yesterday = lastEodPortfolio(bench.rows);
-  const weekStart = weekStartPortfolio(bench.rows, new Date());
+  const weekStart = weekStartPortfolio(bench.rows);
   const dayPct = yesterday ? ((equity - yesterday) / yesterday) * 100 : null;
   const weekPct = weekStart ? ((equity - weekStart) / weekStart) * 100 : null;
 

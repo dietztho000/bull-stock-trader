@@ -9,13 +9,20 @@ import {
   type EconomicEvent,
 } from "@/lib/parsers/economicCalendar";
 import { mergeEarnings } from "@/lib/calendar/events";
+import { resolveBotCtx } from "@/lib/resolveAccount";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const { botId, strategy } = await resolveBotCtx(sp);
   const [botEarningsMap, marketEarnings, economic] = await Promise.all([
-    loadEarningsCalendar().catch(() => new Map<string, EarningsEntry>()),
+    loadEarningsCalendar({ bot: botId, strategy }).catch(() => new Map<string, EarningsEntry>()),
     loadMarketEarnings().catch((): EarningsEntry[] => []),
     loadEconomicCalendar().catch((): EconomicEvent[] => []),
   ]);

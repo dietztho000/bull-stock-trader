@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, Badge } from "@/components/ui/Card";
 import { UrlTabs } from "@/components/ui/UrlTabs";
 import { activeTab } from "@/lib/activeTab";
@@ -6,13 +7,18 @@ import { loadSectorLedger } from "@/lib/parsers/sectorLedger";
 import { loadWeeklyReviews } from "@/lib/parsers/weeklyReview";
 import { loadDailySummaries } from "@/lib/parsers/dailySummary";
 import {
+  buildRoutineMatrix,
   loadRunLog,
   summarizeToday,
   type RunRecord,
 } from "@/lib/parsers/runLog";
+import { CrossBotRoutineGrid } from "@/components/journal/CrossBotRoutineGrid";
+import { WeeklyReviewDraft } from "@/components/journal/WeeklyReviewDraft";
 import { todayInCT, isFridayCT, fmtClockCT } from "@/lib/time";
 import { fmtRelativeTime } from "@/lib/format";
 import { cooldownStatus } from "@/lib/stats/cooldown";
+import { resolveBotCtx } from "@/lib/resolveAccount";
+import { listBots } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +40,7 @@ export default async function JournalPage({
 }) {
   const sp = await searchParams;
   const tab = activeTab<Tab>(sp, "tab", TABS, "research");
+  const ctx = await resolveBotCtx(sp);
 
   return (
     <div className="space-y-5">
@@ -47,10 +54,10 @@ export default async function JournalPage({
         <UrlTabs<Tab> layoutId="journal-tabs" options={TAB_OPTIONS} fallback="research" />
       </header>
 
-      {tab === "research" && <ResearchTab />}
+      {tab === "research" && <ResearchTab botId={ctx.botId} strategy={ctx.strategy} />}
       {tab === "daily" && <DailyTab />}
-      {tab === "weekly" && <WeeklyTab />}
-      {tab === "routines" && <RoutinesTab />}
+      {tab === "weekly" && <WeeklyTab botId={ctx.botId} strategy={ctx.strategy} />}
+      {tab === "routines" && <RoutinesTab botId={ctx.botId} strategy={ctx.strategy} />}
     </div>
   );
 }
@@ -60,10 +67,10 @@ function extractTicker(idea: string): string | null {
   return m?.[1] ?? null;
 }
 
-async function ResearchTab() {
+async function ResearchTab({ botId, strategy }: { botId: string; strategy: string }) {
   const [entries, ledger] = await Promise.all([
-    loadResearchLog(),
-    loadSectorLedger(),
+    loadResearchLog({ bot: botId, strategy }),
+    loadSectorLedger({ bot: botId, strategy }),
   ]);
   const todayDate = entries[0]?.date;
 
@@ -126,6 +133,26 @@ async function ResearchTab() {
                       >
                         <span className="text-[var(--color-muted)] mr-2">·</span>
                         <span>{idea}</span>
+                        {ticker && (
+                          <>
+                            <Link
+                              href={`/calendar?focus=${encodeURIComponent(ticker)}`}
+                              className="ml-2 text-[10px] text-[var(--color-muted)] hover:text-[var(--color-accent)]"
+                              title={`Show ${ticker} earnings on calendar`}
+                            >
+                              📅
+                            </Link>
+                            {!blocked && (
+                              <Link
+                                href={`/?prefill=${encodeURIComponent(ticker)}&score=7`}
+                                className="ml-1.5 text-[10px] text-[var(--color-muted)] hover:text-[var(--color-accent)]"
+                                title={`Pre-fill order entry with ${ticker}`}
+                              >
+                                💼 Trade
+                              </Link>
+                            )}
+                          </>
+                        )}
                         {blocked && cd && (
                           <span className="ml-2 inline-flex items-baseline gap-1.5">
                             <Badge tone="down">
@@ -155,19 +182,24 @@ async function ResearchTab() {
   );
 }
 
-async function WeeklyTab() {
-  const reviews = await loadWeeklyReviews();
+async function WeeklyTab({ botId, strategy }: { botId: string; strategy: string }) {
+  const reviews = await loadWeeklyReviews({ bot: botId, strategy });
   if (reviews.length === 0) {
     return (
-      <Card title="No reviews yet">
-        <div className="text-sm text-[var(--color-muted)]">
-          Weekly reviews land Friday afternoon after the /weekly-review routine.
-        </div>
-      </Card>
+      <div className="space-y-4">
+        <WeeklyReviewDraft botId={botId} />
+        <Card title="No reviews yet">
+          <div className="text-sm text-[var(--color-muted)]">
+            Weekly reviews land Friday afternoon after the /weekly-review routine.
+            Use the draft generator above to start a week early.
+          </div>
+        </Card>
+      </div>
     );
   }
   return (
     <div className="space-y-4">
+      <WeeklyReviewDraft botId={botId} />
       {reviews.map((r) => (
         <Card
           key={r.weekEnding}
@@ -263,25 +295,58 @@ function statusLabel(run: RunRecord | null): string {
   return "ok";
 }
 
-async function RoutinesTab() {
+async function RoutinesTab({ botId, strategy }: { botId: string; strategy: string }) {
   const todayCT = todayInCT();
   const isFriday = isFridayCT(todayCT);
-  const runs = await loadRunLog();
-  const today = summarizeToday(runs, todayCT, isFriday);
+
+  // Active bot's data drives the existing per-routine table + recent runs.
+  // The cross-bot matrix that follows pulls every enabled bot's RUN-LOG so
+  // the user can spot a single routine failing across multiple bots without
+  // toggling the dropdown — audit F6.
+  const enabledBots = (await listBots()).filter((b) => b.enabled);
+  const perBotRuns = await Promise.all(
+    enabledBots.map(async (b) => ({
+      bot: b,
+      runs: await loadRunLog({ bot: b.id, strategy: b.strategySlug }),
+    }))
+  );
+
+  const activeRuns =
+    perBotRuns.find((p) => p.bot.id === botId)?.runs ??
+    (await loadRunLog({ bot: botId, strategy }));
+  const today = summarizeToday(activeRuns, todayCT, isFriday);
 
   const firedCount = today.filter((r) => r.lastRun != null).length;
   const errorCount = today.filter((r) => r.lastRun?.status === "error").length;
   const expectedCount = today.length;
 
-  const recent = runs.slice(0, 50);
-  const lastSyncMs = runs[0]?.endTs
-    ? Date.parse(runs[0].endTs)
-    : runs[0]?.startTs
-    ? Date.parse(runs[0].startTs)
+  const recent = activeRuns.slice(0, 50);
+  const lastSyncMs = activeRuns[0]?.endTs
+    ? Date.parse(activeRuns[0].endTs)
+    : activeRuns[0]?.startTs
+    ? Date.parse(activeRuns[0].startTs)
     : null;
+
+  const matrix =
+    perBotRuns.length > 1
+      ? buildRoutineMatrix(
+          perBotRuns.map((p) => ({ botId: p.bot.id, runs: p.runs })),
+          todayCT,
+          isFriday
+        )
+      : null;
 
   return (
     <div className="space-y-4">
+      {matrix && (
+        <CrossBotRoutineGrid
+          todayCT={todayCT}
+          routines={matrix.routines}
+          columns={matrix.columns}
+          botNames={Object.fromEntries(perBotRuns.map((p) => [p.bot.id, p.bot.name]))}
+        />
+      )}
+
       <Card
         title={`Today's routines — ${todayCT}`}
         subtitle={`${firedCount}/${expectedCount} fired${

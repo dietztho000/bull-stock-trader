@@ -1,6 +1,6 @@
 import type { EarningsEntry } from "../parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "../parsers/economicCalendar.shared";
-import { etTimeStringToCT } from "../time";
+import { etTimeStringToCT, fmtWeekdayShortCT } from "../time";
 
 export type BriefPosition = {
   symbol: string;
@@ -12,6 +12,26 @@ export type ClockState = {
   nextOpen?: string;
 };
 
+export type BriefRiskState = {
+  /** Day P&L breaker tripped — no new entries (rule #14). */
+  dayBreakerActive?: boolean;
+  /** Week P&L breaker tripped. */
+  weekBreakerActive?: boolean;
+  /** Sectors at the open-position cap. */
+  sectorsAtCap?: string[];
+  /** Sectors flagged BLOCKED in SECTOR-LEDGER (rule #10). */
+  blockedSectors?: string[];
+  /** Tickers in re-entry cooldown (rule #20). */
+  cooldowns?: Array<{ symbol: string; daysRemaining: number }>;
+  /** Held positions whose earnings hit within the gate window (rule #13). */
+  earningsGateHeld?: Array<{ symbol: string; daysUntil: number; type: string }>;
+  /** Research ideas that today's rules would reject. */
+  blockedIdeas?: Array<{ symbol: string; reason: string; detail: string }>;
+  /** Position slot saturation (e.g. 4/6). */
+  slotsUsed?: number;
+  slotsCap?: number;
+};
+
 export type BriefInput = {
   date: string;
   earnings: EarningsEntry[];
@@ -19,15 +39,12 @@ export type BriefInput = {
   openPositions: BriefPosition[];
   clock?: ClockState;
   phaseDay?: number | null;
+  risk?: BriefRiskState;
 };
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 function fmtDateHeader(date: string): string {
-  const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return date;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return `${WEEKDAYS[d.getDay()]} ${date}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  return `${fmtWeekdayShortCT(date)} ${date}`;
 }
 
 function importanceBadge(imp: string): string {
@@ -72,7 +89,7 @@ function fmtPositionLine(p: BriefPosition): string {
  * scripts/discord.sh truncates at 1900 with a notice).
  */
 export function buildPreMarketBrief(input: BriefInput): string {
-  const { date, earnings, economic, openPositions, clock, phaseDay } = input;
+  const { date, earnings, economic, openPositions, clock, phaseDay, risk } = input;
 
   const todayEarnings = earnings.filter((e) => e.date === date);
   const todayEconomic = economic.filter((e) => e.date === date);
@@ -122,6 +139,55 @@ export function buildPreMarketBrief(input: BriefInput): string {
     );
   }
 
+  if (risk) {
+    const riskLines: string[] = [];
+    if (risk.dayBreakerActive) {
+      riskLines.push("🛑 Day breaker active — no new entries (rule #14).");
+    }
+    if (risk.weekBreakerActive) {
+      riskLines.push("⚠️ Week breaker active — defensive mode (rule #14).");
+    }
+    if (risk.slotsUsed != null && risk.slotsCap != null) {
+      const pct = risk.slotsCap > 0 ? Math.round((risk.slotsUsed / risk.slotsCap) * 100) : 0;
+      const label = risk.slotsUsed >= risk.slotsCap ? " (full)" : "";
+      riskLines.push(`📦 Slots: ${risk.slotsUsed}/${risk.slotsCap} (${pct}%)${label}`);
+    }
+    if (risk.sectorsAtCap && risk.sectorsAtCap.length > 0) {
+      riskLines.push(`🚧 At sector cap: ${risk.sectorsAtCap.join(", ")}`);
+    }
+    if (risk.blockedSectors && risk.blockedSectors.length > 0) {
+      riskLines.push(`❄️ Blocked sectors (rule #10): ${risk.blockedSectors.join(", ")}`);
+    }
+    if (risk.cooldowns && risk.cooldowns.length > 0) {
+      const cd = risk.cooldowns
+        .map((c) => `${c.symbol} (${c.daysRemaining}d)`)
+        .join(", ");
+      riskLines.push(`⏳ Re-entry cooldown: ${cd}`);
+    }
+    if (risk.earningsGateHeld && risk.earningsGateHeld.length > 0) {
+      const gateList = risk.earningsGateHeld
+        .map((e) => {
+          const slot = e.type ? ` ${e.type}` : "";
+          return `${e.symbol} (${e.daysUntil === 0 ? "today" : `T-${e.daysUntil}`}${slot})`;
+        })
+        .join(", ");
+      riskLines.push(`📅 Earnings gate (rule #13): ${gateList}`);
+    }
+    if (riskLines.length > 0) {
+      lines.push("");
+      lines.push("🚨 **Risk state**");
+      for (const r of riskLines) lines.push(`• ${r}`);
+    }
+  }
+
+  if (risk?.blockedIdeas && risk.blockedIdeas.length > 0) {
+    lines.push("");
+    lines.push("🚫 **Ideas blocked by today's rules**");
+    for (const i of risk.blockedIdeas) {
+      lines.push(`• **${i.symbol}** — ${i.reason}: ${i.detail}`);
+    }
+  }
+
   // Upcoming earnings (next 5 calendar days, excluding today). Held first,
   // then a small selection of major-mover names.
   const upcoming = earnings.filter((e) => {
@@ -156,7 +222,7 @@ function diffDays(a: string, b: string): number {
   const ma = a.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const mb = b.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!ma || !mb) return Number.POSITIVE_INFINITY;
-  const da = new Date(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3])).getTime();
-  const db = new Date(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3])).getTime();
+  const da = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
+  const db = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
   return Math.round((db - da) / 86_400_000);
 }

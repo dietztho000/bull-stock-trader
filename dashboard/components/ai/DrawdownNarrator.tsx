@@ -2,11 +2,26 @@ import { marked } from "marked";
 import { Card } from "@/components/ui/Card";
 import { getDrawdownNarrative } from "@/lib/ai/drawdown";
 import { fmtClockCT } from "@/lib/time";
+import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export async function DrawdownNarrator() {
+export async function DrawdownNarrator({
+  account,
+  botId,
+  strategy,
+}: {
+  account: AlpacaMode;
+  botId?: string;
+  strategy?: string;
+}) {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
-  const result = await getDrawdownNarrative();
+  // Prefer the registered bot id so non-`live`/`paper` bots also get
+  // narrative (the legacy `account: AlpacaMode` arg only worked for the two
+  // built-in bots — see audit 7.12).
+  const result = await getDrawdownNarrative({
+    bot: botId ?? account,
+    strategy,
+  });
   if (!result.triggered) return null;
 
   return (

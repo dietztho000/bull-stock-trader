@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, LayoutGroup } from "framer-motion";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
+import { BullMascotNavCard } from "@/components/mascot/BullMascotNavCard";
 
 type NavLink = {
   href: string;
@@ -13,6 +15,8 @@ type NavLink = {
 
 const links: NavLink[] = [
   { href: "/", label: "Overview", icon: OverviewIcon },
+  { href: "/glance", label: "Glance", icon: GlanceIcon },
+  { href: "/bots", label: "Bots", icon: BotsIcon },
   { href: "/trades", label: "Trades", icon: TradesIcon },
   { href: "/analytics", label: "Analytics", icon: AnalyticsIcon },
   { href: "/journal", label: "Journal", icon: JournalIcon },
@@ -23,53 +27,108 @@ const links: NavLink[] = [
 
 export function Nav() {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
-  return (
-    <aside className="sticky top-0 h-screen pt-4 pb-4 pl-4 shrink-0 w-56 z-20">
-      <nav className="glass rounded-2xl h-full p-3 flex flex-col">
-        <LayoutGroup id="primary-nav">
-          <ul className="flex flex-col gap-1">
-            {links.map((l) => {
-              const active = isActive(l.href);
-              const Icon = l.icon;
-              return (
-                <li key={l.href} className="relative">
-                  {active && (
-                    <motion.span
-                      layoutId="nav-active"
-                      className="absolute inset-0 rounded-xl glass-tint-accent"
-                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                      style={{ zIndex: 0 }}
-                    />
+  // Close on route change.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Close on Escape.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+
+  const navContent = (
+    <nav className="glass rounded-2xl h-full p-3 flex flex-col">
+      <LayoutGroup id="primary-nav">
+        <ul className="flex flex-col gap-1">
+          {links.map((l) => {
+            const active = isActive(l.href);
+            const Icon = l.icon;
+            return (
+              <li key={l.href} className="relative">
+                {active && (
+                  <motion.span
+                    layoutId="nav-active"
+                    className="absolute inset-0 rounded-xl glass-tint-accent pointer-events-none"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    style={{ zIndex: 0 }}
+                    aria-hidden="true"
+                  />
+                )}
+                <Link
+                  href={l.href}
+                  prefetch={false}
+                  className={clsx(
+                    "relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
+                    active
+                      ? "text-[var(--color-text)]"
+                      : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
                   )}
-                  <Link
-                    href={l.href}
-                    prefetch={false}
-                    className={clsx(
-                      "relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-                      active
-                        ? "text-[var(--color-text)]"
-                        : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{l.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </LayoutGroup>
-        <div className="mt-auto pt-4 px-1 text-[10px] text-[var(--color-muted)] leading-relaxed border-t border-[rgba(255,255,255,0.05)]">
-          Local-only · auto-refresh on memory change
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{l.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </LayoutGroup>
+      <BullMascotNavCard className="mt-auto" />
+      <div className="pt-3 px-1 text-[10px] text-[var(--color-muted)] leading-relaxed border-t border-[rgba(255,255,255,0.05)]">
+        Local-only · auto-refresh on memory change
+      </div>
+    </nav>
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-30 glass rounded-full w-9 h-9 flex items-center justify-center"
+        aria-label="Open navigation"
+      >
+        <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <line x1="2" y1="4" x2="14" y2="4" />
+          <line x1="2" y1="8" x2="14" y2="8" />
+          <line x1="2" y1="12" x2="14" y2="12" />
+        </svg>
+      </button>
+      {/* Desktop: sticky sidebar. */}
+      <aside className="hidden md:block sticky top-0 h-screen pt-4 pb-4 pl-4 shrink-0 w-56 z-20">
+        {navContent}
+      </aside>
+      {/* Mobile: slide-in sheet. */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 flex"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            aria-hidden="true"
+          />
+          <div
+            className="relative w-64 h-full p-3 z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {navContent}
+          </div>
         </div>
-      </nav>
-    </aside>
+      )}
+    </>
   );
 }
 
@@ -80,6 +139,26 @@ function OverviewIcon({ className }: { className?: string }) {
       <rect x="9" y="2" width="5" height="3" rx="1" />
       <rect x="9" y="7" width="5" height="7" rx="1" />
       <rect x="2" y="10" width="5" height="4" rx="1" />
+    </svg>
+  );
+}
+function GlanceIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="2" width="10" height="12" rx="2" />
+      <line x1="6" y1="13" x2="10" y2="13" />
+      <line x1="6" y1="5" x2="10" y2="5" />
+      <line x1="6" y1="8" x2="10" y2="8" />
+    </svg>
+  );
+}
+function BotsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="10" height="8" rx="1.5" />
+      <line x1="8" y1="2" x2="8" y2="5" />
+      <circle cx="6" cy="9" r="1" fill="currentColor" />
+      <circle cx="10" cy="9" r="1" fill="currentColor" />
     </svg>
   );
 }

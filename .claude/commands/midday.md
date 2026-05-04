@@ -8,44 +8,65 @@ DATE=$(date +%Y-%m-%d).
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
 <!-- STEPS-BEGIN -->
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting midday"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    # Per-account preflight: skip this bot if its account creds are bad.
+    bash scripts/auth-preflight.sh midday --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, and $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
 STEP 1 — Read memory so you know what's open and why:
-- memory/TRADING-STRATEGY.md (exit rules)
-- tail of memory/TRADE-LOG.md (entries, original thesis per position, stops)
-- today's memory/RESEARCH-LOG.md entry
-- memory/EARNINGS-CALENDAR.md (rule #13 — earnings exit)
+- memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md (exit rules)
+- tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (entries, original thesis per position, stops)
+- today's memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md entry
+- memory/$BOT_ID/$STRATEGY/EARNINGS-CALENDAR.md (rule #13 — earnings exit)
 
 STEP 2 — Pull current state:
-  bash scripts/alpaca.sh positions
-  bash scripts/alpaca.sh orders
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" orders
 
 STEP 3a — Earnings exit (rule #13). For each open position whose
 EARNINGS-CALENDAR.md row has `Next Earnings Date == today`, force-exit
 at market BEFORE midday so we don't hold through the print. Re-fetch
 positions first to avoid double-cuts:
-  bash scripts/alpaca.sh positions   # confirm still open
-  bash scripts/alpaca.sh close SYM
-  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its stop
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions   # confirm still open
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" close SYM
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" cancel ORDER_ID   # cancel its stop
 Log to TRADE-LOG: "exit: pre-earnings forced-close ($bmo_amc print today)".
-Append a closed-trade row to memory/SECTOR-LEDGER.md with sector + outcome
+Append a closed-trade row to memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md with sector + outcome
 (W/L/B based on realized P&L vs entry).
 
 STEP 3 — Cut losers as a safety-net only. The fixed -7% stop GTC placed
 at entry should have already fired on Alpaca's exchange. Before any close,
 re-fetch positions to avoid double-cuts. For every position still open
 with unrealized_plpc <= -0.07:
-  bash scripts/alpaca.sh positions   # confirm still open
-  bash scripts/alpaca.sh close SYM
-  bash scripts/alpaca.sh cancel ORDER_ID   # cancel its stop
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions   # confirm still open
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" close SYM
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" cancel ORDER_ID   # cancel its stop
 Log the exit to TRADE-LOG: exit price, realized P&L, "cut at -7% (exchange
 stop missed — illiquid/race)". Append a closed-trade row to
-memory/SECTOR-LEDGER.md with sector + outcome (L) so rule #10's 2-loss
+memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md with sector + outcome (L) so rule #10's 2-loss
 streak counter stays accurate.
 
 STEP 4a — Promote fixed entry stops to a 10% trailing stop once green.
 For every position with unrealized_plpc >= +0.01 whose lone open stop
 order has type IN {"stop", "stop_limit"} (not yet promoted), PATCH it
 in place:
-  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 10
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" replace-order ORDER_ID --trail-percent 10
 This converts the order to type=trailing_stop without un-stopping the
 position. Idempotent: if type is already "trailing_stop", skip. After
 promotion, STEP 4b's ratchet rules take over.
@@ -55,7 +76,7 @@ type == "trailing_stop". Use replace-order in place (never cancel-then-
 create — that briefly leaves the position un-stopped):
 - Up >= +20% -> trail_percent: "5"
 - Up >= +15% -> trail_percent: "7"
-  bash scripts/alpaca.sh replace-order ORDER_ID --trail-percent 5
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" replace-order ORDER_ID --trail-percent 5
 Never tighten within 3% of current price. Never move a stop down (Alpaca
 will reject; the replace will return 4xx and you log it as "skipped:
 would-move-down").
@@ -64,7 +85,7 @@ STEP 4c — Take-profit ladder rung 1 (rule #16). For every position with
 unrealized_plpc >= +0.20 AND no `take-profit-50` annotation in TRADE-LOG
 for this position's entry, sell half at market to lock the gain. Round
 qty/2 down to integer; skip if half_qty < 1.
-  bash scripts/alpaca.sh submit-order --symbol SYM --qty $half_qty --side sell --type market --tif day
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" submit-order --symbol SYM --qty $half_qty --side sell --type market --tif day
 After the partial-sell fills, the existing trailing stop on the position
 auto-tracks the reduced qty (Alpaca handles this). Append the annotation
 to TRADE-LOG so this rung never fires twice for the same entry:

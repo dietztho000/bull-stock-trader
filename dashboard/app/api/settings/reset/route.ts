@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const resetBody = z.object({
   section: z
-    .enum(["discord", "display", "live", "defaults", "notifications", "all"])
+    .enum(["discord", "display", "live", "defaults", "notifications", "mascot", "all"])
     .default("all"),
 });
 

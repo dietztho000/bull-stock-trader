@@ -15,9 +15,12 @@ const CATEGORIES: { key: WebhookCategory; label: string; hint: string }[] = [
   { key: "research", label: "Research briefs", hint: "Pre-market briefs sent from /api/discord/brief." },
   { key: "fill", label: "Fills", hint: "Order fills + position changes." },
   { key: "midday", label: "Midday updates", hint: "Midday rotation + watchlist nudges." },
+  { key: "stops", label: "Stop-outs", hint: "Fixed-stop / trail / earnings-T1 / gap exits. Can be noisy." },
   { key: "eod", label: "End-of-day recap", hint: "Daily summary at the close." },
   { key: "weekly", label: "Weekly review", hint: "Friday weekly review." },
   { key: "error", label: "Errors", hint: "Bot errors / canary failures. Recommended: keep on." },
+  { key: "auth-canary", label: "Auth canary", hint: "Pre-open credential probe. Recommended: keep on." },
+  { key: "alert", label: "Alert rules", hint: "Dashboard rule alerts. Off by default — ntfy is the recommended channel." },
 ];
 
 type Draft = RedactedSettings["notifications"];
@@ -35,14 +38,21 @@ export function NotificationsSection({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [permission, setPermission] = useState<string>("default");
+  // SSR sees `Notification === undefined` → notificationsSupported() → false,
+  // but in the browser it's true. Defer the browser-dependent UI to after
+  // mount so the first client paint matches the server HTML.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setDraft(initial);
   }, [initial]);
 
   useEffect(() => {
+    setMounted(true);
     setPermission(getNotifyPermission());
   }, []);
+
+  const supported = mounted && notificationsSupported();
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
 
@@ -190,10 +200,12 @@ export function NotificationsSection({
               checked={draft.desktopNotificationsEnabled}
               onChange={toggleDesktop}
               label={draft.desktopNotificationsEnabled ? "On" : "Off"}
-              disabled={!notificationsSupported()}
+              disabled={mounted && !supported}
             />
             <span className="text-[11px] text-[var(--color-muted)]">
-              {!notificationsSupported()
+              {!mounted
+                ? "Checking browser support…"
+                : !supported
                 ? "Not supported in this browser"
                 : `Browser permission: ${permission}`}
             </span>

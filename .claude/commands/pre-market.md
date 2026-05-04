@@ -10,16 +10,43 @@ automatically). No env-var check block. No commit/push step — the user
 controls git locally.
 
 <!-- STEPS-BEGIN -->
+
+PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
+Read the registry first:
+
+  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
+    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting pre-market"
+    exit 0
+  fi
+
+  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+    bash scripts/auth-preflight.sh pre-market --account-id="$ACCOUNT_ID" || continue
+    # ─── run STEPS 1..N below for this bot ────────────────────────────
+  done < <(bash scripts/bots.sh list)
+
+Everything beneath this preamble runs inside that loop. $BOT_ID,
+$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
+Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
+includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+
+NOTE: pre-market does Perplexity research that is conceptually shared
+across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
+the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
+when today's answer is already cached. daily-summary and weekly-review
+post one Discord summary per bot in this Phase 1 implementation; a Phase
+2 refactor aggregates them into a single multi-bot summary.
+
 STEP 1 — Read memory for context:
-- memory/TRADING-STRATEGY.md
-- tail of memory/TRADE-LOG.md
-- tail of memory/RESEARCH-LOG.md
-- memory/SECTOR-LEDGER.md (recent sector outcomes — relevant when picking ideas)
+- memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
+- tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md
+- tail of memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md
+- memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md (recent sector outcomes — relevant when picking ideas)
 
 STEP 2 — Pull live account state:
-  bash scripts/alpaca.sh account
-  bash scripts/alpaca.sh positions
-  bash scripts/alpaca.sh orders
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" account
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" orders
 
 STEP 3 — Research market context via Perplexity. Run
 bash scripts/perplexity.sh "<query>" for each:
@@ -35,7 +62,7 @@ bash scripts/perplexity.sh "<query>" for each:
 If Perplexity exits 3, fall back to native WebSearch and note the
 fallback in the log entry.
 
-STEP 3b — Refresh memory/EARNINGS-CALENDAR.md. For every ticker that
+STEP 3b — Refresh memory/$BOT_ID/$STRATEGY/EARNINGS-CALENDAR.md. For every ticker that
 appears in today's plan AND every currently-open position, check the row in
 EARNINGS-CALENDAR.md. If the row is missing OR `Date refreshed` is more
 than 7 days ago, query:
@@ -46,7 +73,7 @@ table key is the Symbol column). Set `Date refreshed = $DATE` and
 Skip silently if a ticker has no upcoming earnings within 90 days; note
 "none-90d" in the Date column so we don't re-query daily.
 
-STEP 3c — Refresh memory/ECONOMIC-CALENDAR.md. Query Perplexity once per
+STEP 3c — Refresh memory/shared/ECONOMIC-CALENDAR.md. Query Perplexity once per
 pre-market run for the next 14 days of US economic events:
   bash scripts/perplexity.sh "List all scheduled US economic events for the
   next 14 calendar days starting $DATE. For each event return: date
@@ -62,7 +89,7 @@ fallback fired). Skip silently if Perplexity returns no events. Drop rows
 whose Date is before today (housekeeping — keeps the file from growing
 unbounded). Like STEP 3b, this is idempotent on retry.
 
-STEP 3d — Refresh memory/MARKET-EARNINGS.md (broader market view, separate
+STEP 3d — Refresh memory/shared/MARKET-EARNINGS.md (broader market view, separate
 from the per-ticker EARNINGS-CALENDAR.md). This is **weekly cadence, not
 daily**: skip this step entirely if every row in the file's `## Calendar`
 table has `Date refreshed` >= ($DATE - 6 days). Otherwise, the dashboard's
@@ -86,9 +113,9 @@ hand-added. This file feeds the dashboard `/calendar` page and the
 Pre-Market Discord Brief; the bot's earnings-gate (rule #13) keeps using
 the per-ticker EARNINGS-CALENDAR.md and does NOT consult this file.
 
-STEP 4 — Write a dated entry to memory/RESEARCH-LOG.md.
+STEP 4 — Write a dated entry to memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md.
 **Idempotency guard:** before appending, grep for `## $DATE — Pre-market Research`
-in memory/RESEARCH-LOG.md. If a section for today already exists, REPLACE it
+in memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md. If a section for today already exists, REPLACE it
 in place rather than appending a duplicate. A "Run again" of this routine
 must NEVER produce two entries for the same date.
 
@@ -96,7 +123,7 @@ The dated entry should include:
 - Account snapshot (equity, cash, buying power, daytrade count)
 - Market context (oil, indices, VIX, today's releases)
 - 2-3 actionable trade ideas WITH catalyst + entry/stop/target
-- Sector check: cross-reference each idea against memory/SECTOR-LEDGER.md;
+- Sector check: cross-reference each idea against memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md;
   flag any idea in a sector with a 2-loss streak (rule #10 will block it
   at /trade time anyway, but call it out here)
 - Risk factors for the day
