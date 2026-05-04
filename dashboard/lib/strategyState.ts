@@ -3,11 +3,12 @@ import { loadSectorLedger, type SectorStreak } from "./parsers/sectorLedger";
 import { loadEarningsCalendar } from "./parsers/earningsCalendar";
 import { loadResearchLog } from "./parsers/researchLog";
 import { loadSectorMap } from "./parsers/sectorMap";
+import { loadBenchmark } from "./parsers/benchmark";
 import { cooldownStatus } from "./stats/cooldown";
 import { runAlpaca } from "./alpaca";
 import { readBotMode } from "./mode";
 import { daysUntilEarnings } from "./parsers/earningsCalendar.shared";
-import { todayInCT } from "./time";
+import { todayInCT, currentWeekMondayCT } from "./time";
 import { loadSettings } from "./settings";
 import { isAlpacaError, type AlpacaPosition } from "./types/alpaca";
 import type { MemoryCtx } from "./memoryPath";
@@ -106,6 +107,16 @@ export type StrategyState = {
   /** Position slot saturation: 0–1. */
   slotsUsed: number;
   slotsCap: number;
+  /** Day P&L breaker tripped — no new entries (rule #14). Undefined when
+   *  benchmark data is missing (e.g. brand-new bot with no rows yet). */
+  dayBreakerActive?: boolean;
+  /** Week P&L breaker tripped (rule #14). */
+  weekBreakerActive?: boolean;
+  /** Day P&L percent vs. last close (signed). Used by alert watcher to
+   *  build a stable signature; null when benchmark has no current row. */
+  dayPnlPct?: number | null;
+  /** Approximate week P&L percent (signed) — Monday open vs. latest. */
+  weekPnlPct?: number | null;
 };
 
 const SYMBOL_RE = /\b([A-Z]{1,5})\b/;
@@ -177,7 +188,7 @@ async function computeStrategyState(args: {
 }): Promise<StrategyState> {
   const { cacheKey, today, ctx, runOpts, settings, startedAt } = args;
 
-  const [ledger, earningsMap, research, sectorMap, positionsRaw] =
+  const [ledger, earningsMap, research, sectorMap, positionsRaw, benchmark] =
     await Promise.all([
       loadSectorLedger(ctx),
       loadEarningsCalendar(ctx).catch(() => new Map()),
@@ -186,6 +197,7 @@ async function computeStrategyState(args: {
       runAlpaca("positions", [], runOpts)
         .then((d) => d as AlpacaPosition[] | { error: string })
         .catch(() => null),
+      loadBenchmark(ctx).catch(() => null),
     ]);
 
   const positions: AlpacaPosition[] =
@@ -290,6 +302,33 @@ async function computeStrategyState(args: {
     }
   }
 
+  // ─── Drawdown breakers (rule #14) ─────────────────────────────────────
+  // Day P&L from BENCHMARK.md's most recent row vs the prior session.
+  // Week P&L approximated as latest portfolio vs the row at-or-after the
+  // current CT week's Monday. Both fall back to undefined when no benchmark
+  // data exists (brand-new bot) so downstream consumers can render N/A.
+  let dayPnlPct: number | null = null;
+  let weekPnlPct: number | null = null;
+  let dayBreakerActive: boolean | undefined;
+  let weekBreakerActive: boolean | undefined;
+  if (benchmark && benchmark.rows.length > 0) {
+    const rows = benchmark.rows;
+    const latest = rows[rows.length - 1];
+    dayPnlPct = latest?.dayPct ?? null;
+    if (dayPnlPct != null) {
+      dayBreakerActive = dayPnlPct < strategy.dayBreakerPct;
+    }
+    if (latest?.portfolio != null) {
+      const mondayIso = currentWeekMondayCT(new Date(latest.date + "T12:00:00Z"));
+      const weekRow = rows.find((r) => r.date >= mondayIso);
+      if (weekRow?.portfolio && weekRow.portfolio > 0) {
+        weekPnlPct =
+          ((latest.portfolio - weekRow.portfolio) / weekRow.portfolio) * 100;
+        weekBreakerActive = weekPnlPct < strategy.weekBreakerPct;
+      }
+    }
+  }
+
   const state: StrategyState = {
     date: today,
     sectorsAtCap,
@@ -299,6 +338,10 @@ async function computeStrategyState(args: {
     blockedIdeas,
     slotsUsed: positions.length,
     slotsCap: strategy.maxOpenPositions,
+    dayBreakerActive,
+    weekBreakerActive,
+    dayPnlPct,
+    weekPnlPct,
   };
   cache().set(cacheKey, { state, expiresAt: startedAt + TTL_MS });
   return state;

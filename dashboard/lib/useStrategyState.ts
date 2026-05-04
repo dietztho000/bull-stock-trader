@@ -27,6 +27,10 @@ export type StrategyState = {
   }>;
   slotsUsed: number;
   slotsCap: number;
+  dayBreakerActive?: boolean;
+  weekBreakerActive?: boolean;
+  dayPnlPct?: number | null;
+  weekPnlPct?: number | null;
 };
 
 const fetcher = async (u: string): Promise<StrategyState> => {

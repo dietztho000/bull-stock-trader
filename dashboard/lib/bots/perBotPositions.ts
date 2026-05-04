@@ -68,32 +68,41 @@ function positionsInflight(): Map<string, Promise<AlpacaPosition[]>> {
   return globalThis.__perAccountPositionsInflight;
 }
 
-/** Fetches the closed-order history for an account, cached per accountId.
- *  Concurrent callers within the TTL share a single in-flight promise. */
+/** Fetches the closed-order history for an account, cached per (accountId, after).
+ *  Concurrent callers within the TTL share a single in-flight promise.
+ *
+ *  When `after` is set, the alpaca.sh `orders` subcommand passes it through
+ *  to Alpaca's `/v2/orders?after=<iso>` filter so the response excludes fills
+ *  predating that timestamp on the wire — important for high-volume accounts
+ *  where the 500-row cap would otherwise drop older relevant fills (audit P4).
+ *  Multi-bot callers should pass the EARLIEST bot's createdAt on the account
+ *  so sibling bots share the same cached superset. */
 export async function getAccountClosedOrders(
-  accountId: string
+  accountId: string,
+  after?: string
 ): Promise<AlpacaOrderForAttribution[]> {
+  const cacheKey = `${accountId}::${after ?? ""}`;
   const now = Date.now();
-  const hit = ordersCache().get(accountId);
+  const hit = ordersCache().get(cacheKey);
   if (hit && hit.expiresAt > now) return hit.value;
-  const pending = ordersInflight().get(accountId);
+  const pending = ordersInflight().get(cacheKey);
   if (pending) return pending;
-  // alpaca.sh `orders` reads $1 as the status filter; pass "closed" positionally.
+  const args = after ? ["closed", `--after=${after}`] : ["closed"];
   const work = (async () => {
     try {
-      const orders = (await runAlpaca("orders", ["closed"], {
+      const orders = (await runAlpaca("orders", args, {
         accountId,
       })) as AlpacaOrderForAttribution[];
-      ordersCache().set(accountId, {
+      ordersCache().set(cacheKey, {
         value: orders,
         expiresAt: now + ACCOUNT_CACHE_TTL_MS,
       });
       return orders;
     } finally {
-      ordersInflight().delete(accountId);
+      ordersInflight().delete(cacheKey);
     }
   })();
-  ordersInflight().set(accountId, work);
+  ordersInflight().set(cacheKey, work);
   return work;
 }
 
@@ -125,9 +134,14 @@ export async function getAccountPositions(
 }
 
 /** Manual cache invalidation hook — used by routes that mutate orders
- *  (submit-order, cancel) so the next read sees fresh data. */
+ *  (submit-order, cancel) so the next read sees fresh data. The orders
+ *  cache is keyed on `${accountId}::${after}`, so we sweep every entry
+ *  whose key starts with the account prefix. */
 export function invalidateAccountCaches(accountId: string): void {
-  ordersCache().delete(accountId);
+  const prefix = `${accountId}::`;
+  for (const key of ordersCache().keys()) {
+    if (key.startsWith(prefix)) ordersCache().delete(key);
+  }
   positionsCache().delete(accountId);
 }
 
@@ -163,11 +177,20 @@ export async function getBotPositions(botId: string): Promise<BotPosition[]> {
   const bot = bots.find((b) => b.id === botId);
   if (!bot) throw new Error(`Bot "${botId}" not found`);
 
-  const knownBotIds = bots.filter((b) => b.accountId === bot.accountId).map((b) => b.id);
+  const sibBots = bots.filter((b) => b.accountId === bot.accountId);
+  const knownBotIds = sibBots.map((b) => b.id);
   const botCreatedAtMs = Date.parse(bot.createdAt);
 
+  // Pass the EARLIEST sibling-bot createdAt as `after` so all bots on the
+  // same account share one cached order superset. Each bot still filters
+  // client-side on its own createdAt below.
+  const earliestSibCreatedAt = sibBots
+    .map((b) => b.createdAt)
+    .filter((s): s is string => Boolean(s))
+    .sort()[0];
+
   const [orders, livePositions] = await Promise.all([
-    getAccountClosedOrders(bot.accountId),
+    getAccountClosedOrders(bot.accountId, earliestSibCreatedAt),
     getAccountPositions(bot.accountId),
   ]);
 

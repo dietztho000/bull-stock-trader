@@ -7,6 +7,7 @@ import { fmtMoney, fmtRelativeTime, fmtSignedMoney } from "@/lib/format";
 import type { Bot, RedactedAccount } from "@/lib/settings";
 import { VaultKeyBanner } from "./VaultKeyBanner";
 import { BotsLeaderboard } from "./BotsLeaderboard";
+import { LaunchdStatusTile } from "./LaunchdStatusTile";
 import { PromoteModal } from "./PromoteModal";
 import { AllocationBar, type AllocationSlice } from "./AllocationBar";
 import { HealthDot } from "./HealthDot";
@@ -78,6 +79,8 @@ export function BotsManager() {
       ) : (
         <>
           {bots.length > 1 && <BotsLeaderboard />}
+
+          <LaunchdStatusTile />
 
           <Card
             title="Accounts"

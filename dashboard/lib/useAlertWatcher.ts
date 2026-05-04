@@ -4,15 +4,20 @@ import { useEffect, useRef } from "react";
 import { useStrategyState } from "./useStrategyState";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 import { useToastOptional } from "@/components/providers/ToastProvider";
+import { useTradingAccountOptional } from "./tradingAccountContext";
 import type { AlertRule } from "./settings.schema";
 
 /** Mounted once globally — watches strategy state vs the user's alert rules
- *  and pushes toasts when conditions are newly met. Tracks fired alerts in a
- *  Set keyed by `${ruleId}:${signature}` to avoid spamming on every poll. */
+ *  and pushes toasts when conditions are newly met. Discord/ntfy delivery is
+ *  fanned out via the server-side dispatcher at /api/alerts/dispatch (audit
+ *  F8) so webhook URLs and ntfy topics stay out of client bundles. Tracks
+ *  fired alerts in a Set keyed by `${ruleId}:${signature}` to avoid spamming
+ *  on every poll. */
 export function useAlertWatcher() {
   const { data: state } = useStrategyState();
   const settings = useSettingsOptional();
   const toast = useToastOptional();
+  const tradingAccount = useTradingAccountOptional();
   const firedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -21,6 +26,7 @@ export function useAlertWatcher() {
     if (!cfg.enabled) return;
 
     const seen = new Set<string>();
+    const botId = tradingAccount?.botId;
 
     for (const rule of cfg.rules) {
       if (!rule.enabled) continue;
@@ -37,8 +43,19 @@ export function useAlertWatcher() {
             detail: match.detail,
           });
         }
-        // Discord/ntfy delivery is intentionally not wired here — server-side
-        // dispatcher is a follow-up.
+        if (rule.channels.discord || rule.channels.ntfy) {
+          dispatchServerSide({
+            ruleId: rule.id,
+            signature: match.signature,
+            title: match.title,
+            detail: match.detail,
+            channels: {
+              discord: rule.channels.discord,
+              ntfy: rule.channels.ntfy,
+            },
+            botId,
+          });
+        }
       }
     }
 
@@ -48,7 +65,28 @@ export function useAlertWatcher() {
     for (const key of [...firedRef.current]) {
       if (!seen.has(key)) firedRef.current.delete(key);
     }
-  }, [state, settings, toast]);
+  }, [state, settings, toast, tradingAccount]);
+}
+
+/** Fire-and-forget POST to the server dispatcher. Errors are swallowed —
+ *  delivery failures are surfaced in the dashboard's audit log instead of
+ *  blocking the toast UX. */
+function dispatchServerSide(payload: {
+  ruleId: string;
+  signature: string;
+  title: string;
+  detail?: string;
+  channels: { discord?: boolean; ntfy?: boolean };
+  botId?: string;
+}): void {
+  fetch("/api/alerts/dispatch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  }).catch(() => {
+    /* swallowed — see comment above */
+  });
 }
 
 type Match = {
@@ -72,11 +110,31 @@ function evaluateRule(
           detail: `Held — bot force-exits before market-open the day before (rule #13).`,
           tone: e.daysUntil === 0 ? "error" : "warn",
         }));
-    case "drawdown-breaker":
-      // The strategy state currently doesn't expose breaker booleans
-      // directly; the brief route computes them. Skip for now — leave a
-      // signature for the dispatcher refactor.
-      return [];
+    case "drawdown-breaker": {
+      // Fire when EITHER breaker (day or week) is active. Signature includes
+      // which breaker so the toast re-fires if a different breaker trips
+      // later in the session.
+      const out: Match[] = [];
+      if (state.dayBreakerActive) {
+        const pct = state.dayPnlPct?.toFixed(2) ?? "?";
+        out.push({
+          signature: "breaker:day",
+          title: `Day breaker active (${pct}%)`,
+          detail: `No new entries — day P&L below threshold (rule #14).`,
+          tone: "error",
+        });
+      }
+      if (state.weekBreakerActive) {
+        const pct = state.weekPnlPct?.toFixed(2) ?? "?";
+        out.push({
+          signature: "breaker:week",
+          title: `Week breaker active (${pct}%)`,
+          detail: `Defensive mode — week P&L below threshold (rule #14).`,
+          tone: "warn",
+        });
+      }
+      return out;
+    }
     case "sector-cap-reached":
       return state.sectorsAtCap.map((sector) => ({
         signature: `sector-cap:${sector}`,

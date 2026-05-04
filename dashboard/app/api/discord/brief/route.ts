@@ -13,7 +13,7 @@ import {
 } from "@/lib/discord/brief";
 import { sendDiscord } from "@/lib/discord";
 import { mergeEarnings } from "@/lib/calendar/events";
-import { todayInCT, fmtDateTimeCT, currentWeekMondayCT } from "@/lib/time";
+import { todayInCT, fmtDateTimeCT } from "@/lib/time";
 import { getSuppressionReason, loadSettings } from "@/lib/settings";
 import { loadStrategyState } from "@/lib/strategyState";
 import { readBotParam, resolveBotCtx } from "@/lib/resolveAccount";
@@ -126,32 +126,12 @@ async function assembleBrief(opts: {
 
   const phaseDay = benchmark?.rows?.length ?? null;
 
-  const lastRow = benchmark?.rows && benchmark.rows.length > 0
-    ? benchmark.rows[benchmark.rows.length - 1]
-    : null;
-  const lastDayPct = lastRow?.dayPct ?? null;
-  const dayBreakerActive =
-    lastDayPct != null && lastDayPct < settings.strategy.dayBreakerPct;
-
-  // Approximate week P&L from the most recent Monday's row vs latest portfolio.
-  let weekBreakerActive = false;
-  if (benchmark && benchmark.rows.length > 0) {
-    const rows = benchmark.rows;
-    const latest = rows[rows.length - 1];
-    if (latest?.portfolio != null) {
-      const mondayIso = currentWeekMondayCT(new Date(latest.date + "T12:00:00Z"));
-      const weekRow = rows.find((r) => r.date >= mondayIso);
-      if (weekRow?.portfolio && weekRow.portfolio > 0) {
-        const weekPct = ((latest.portfolio - weekRow.portfolio) / weekRow.portfolio) * 100;
-        weekBreakerActive = weekPct < settings.strategy.weekBreakerPct;
-      }
-    }
-  }
-
+  // Breaker booleans now live on strategyState (audit F7) so the watcher
+  // and the brief share one source of truth — no more divergent thresholds.
   const risk: BriefRiskState | undefined = strategyState
     ? {
-        dayBreakerActive,
-        weekBreakerActive,
+        dayBreakerActive: strategyState.dayBreakerActive ?? false,
+        weekBreakerActive: strategyState.weekBreakerActive ?? false,
         sectorsAtCap: strategyState.sectorsAtCap,
         blockedSectors: strategyState.blockedSectors,
         cooldowns: strategyState.cooldownSymbols.map((c) => ({

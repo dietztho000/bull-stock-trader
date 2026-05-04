@@ -157,8 +157,31 @@ case "$cmd" in
     _alpaca GET "$API/clock"
     ;;
   orders)
-    status="${1:-open}"
-    _alpaca GET "$API/orders?status=$status&limit=100"
+    # First positional: status filter (default "open"). Subsequent flags:
+    #   --after=<iso>   Only orders submitted at-or-after this timestamp.
+    #   --until=<iso>   Only orders submitted at-or-before this timestamp.
+    #   --limit=<N>     Cap on returned rows (Alpaca max = 500; default 500).
+    # Default limit is 500 (Alpaca's hard cap) so high-volume accounts don't
+    # silently lose older fills before per-bot attribution can run.
+    status="open"
+    if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
+      status="$1"; shift
+    fi
+    after=""
+    until_=""
+    limit=500
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --after=*)  after="${1#--after=}";  shift ;;
+        --until=*)  until_="${1#--until=}"; shift ;;
+        --limit=*)  limit="${1#--limit=}";  shift ;;
+        *) echo "orders: unknown flag '$1'" >&2; exit 1 ;;
+      esac
+    done
+    qs="status=$status&limit=$limit"
+    [[ -n "$after"  ]] && qs="$qs&after=$(jq -rn --arg s "$after" '$s|@uri')"
+    [[ -n "$until_" ]] && qs="$qs&until=$(jq -rn --arg s "$until_" '$s|@uri')"
+    _alpaca GET "$API/orders?$qs"
     ;;
   submit-order)
     # Named-arg order builder. Generates a client_order_id so retries are safe.

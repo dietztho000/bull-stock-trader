@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-push: refuse to push if routines/<name>.md is out of sync with its
+# .claude/commands/<name>.md source. Catches the failure mode where a STEP
+# edit lands in source but the regenerated routine is forgotten in a
+# commit, so the cloud runs stale instructions.
+#
+# Enable:   bash scripts/install-githooks.sh   (sets core.hooksPath = .githooks)
+# Bypass:   git push --no-verify               (use with care)
+
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+# The hook runs on a clean working tree before push. Regenerate in place
+# and assert no diff in routines/. If there is a diff, the user forgot to
+# regenerate after editing .claude/commands/<name>.md — they should run
+# the script and commit the result before pushing.
+bash scripts/build-routines.sh >/dev/null
+
+if ! git diff --quiet -- routines/; then
+  echo "pre-push: routines/ is out of sync with .claude/commands/." >&2
+  echo "  Run: bash scripts/build-routines.sh" >&2
+  echo "  Then commit the regenerated files and push again." >&2
+  echo "  (or pass --no-verify if this is a docs-only push)" >&2
+  git diff --stat -- routines/ >&2
+  exit 1
+fi
+exit 0
