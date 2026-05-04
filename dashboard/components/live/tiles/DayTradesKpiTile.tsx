@@ -1,10 +1,11 @@
 "use client";
 
+import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function DayTradesKpiTile({
+export const DayTradesKpiTile = memo(function DayTradesKpiTile({
   mode,
   accountId,
 }: { mode?: AlpacaMode; accountId?: string | null }) {
@@ -30,4 +31,4 @@ export function DayTradesKpiTile({
       hint="rolling 5d"
     />
   );
-}
+});

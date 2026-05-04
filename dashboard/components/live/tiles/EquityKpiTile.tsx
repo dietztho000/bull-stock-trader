@@ -1,11 +1,12 @@
 "use client";
 
+import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function EquityKpiTile({
+export const EquityKpiTile = memo(function EquityKpiTile({
   mode,
   accountId,
 }: { mode?: AlpacaMode; accountId?: string | null }) {
@@ -28,4 +29,4 @@ export function EquityKpiTile({
       hint={`day ${fmtPct(s.dayPct)}`}
     />
   );
-}
+});

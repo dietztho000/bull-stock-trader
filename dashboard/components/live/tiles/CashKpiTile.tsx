@@ -1,11 +1,12 @@
 "use client";
 
+import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney } from "@/lib/format";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function CashKpiTile({
+export const CashKpiTile = memo(function CashKpiTile({
   mode,
   accountId,
 }: { mode?: AlpacaMode; accountId?: string | null }) {
@@ -24,4 +25,4 @@ export function CashKpiTile({
       hint={`${s.cashPct.toFixed(1)}%`}
     />
   );
-}
+});

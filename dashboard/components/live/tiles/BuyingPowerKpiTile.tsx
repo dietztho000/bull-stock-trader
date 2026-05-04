@@ -1,11 +1,12 @@
 "use client";
 
+import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney } from "@/lib/format";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 
-export function BuyingPowerKpiTile({
+export const BuyingPowerKpiTile = memo(function BuyingPowerKpiTile({
   mode,
   accountId,
 }: { mode?: AlpacaMode; accountId?: string | null }) {
@@ -18,4 +19,4 @@ export function BuyingPowerKpiTile({
       </div>
     );
   return <Kpi label="Buying power" value={fmtMoney(s.buyingPower)} />;
-}
+});
