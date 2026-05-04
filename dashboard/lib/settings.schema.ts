@@ -71,6 +71,46 @@ const webhookCategoryFiltersSchema = z
   })
   .default({});
 
+/** Per-bot Discord category override (audit F6). Each entry, when set,
+ *  WINS over the global webhookCategoryFilters for sends scoped to that
+ *  bot. Fields are optional so a bot can override one category without
+ *  inheriting an explicit value for the others. */
+const botWebhookCategoryFiltersSchema = z
+  .object({
+    research: z.boolean().optional(),
+    fill: z.boolean().optional(),
+    midday: z.boolean().optional(),
+    stops: z.boolean().optional(),
+    eod: z.boolean().optional(),
+    weekly: z.boolean().optional(),
+    error: z.boolean().optional(),
+    "auth-canary": z.boolean().optional(),
+    alert: z.boolean().optional(),
+  })
+  .optional();
+
+/** The 10 cloud routines the registry can opt a bot in/out of (audit F3).
+ *  Local-only commands (/portfolio, /trade, /benchmark) are not gated. */
+const routineNameSchema = z.enum([
+  "auth-canary",
+  "pre-market",
+  "market-open",
+  "mid-morning",
+  "late-morning",
+  "midday",
+  "stops",
+  "afternoon",
+  "daily-summary",
+  "weekly-review",
+]);
+
+/** Per-bot routine opt-out (audit F3). Missing entries (or undefined)
+ *  default to true — the bot runs that routine. Set explicitly to false
+ *  to skip. `bash scripts/bots.sh list --routine=<name>` honors this. */
+const botRoutineFilterSchema = z
+  .record(routineNameSchema, z.boolean())
+  .optional();
+
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const hhmmSchema = z.string().regex(HHMM_RE, "Use HH:MM (24h)");
 
@@ -180,8 +220,15 @@ const accountSchema = z.object({
   apiKeyEnc: z.string().min(1),
   secretKeyEnc: z.string().min(1),
   /** Account's full capital — used by the allocation UI to show
-   *  available-vs-allocated. Not enforced; user can over-commit. */
+   *  available-vs-allocated. Not enforced unless `hardCapAllocation` is
+   *  set; user can over-commit by default. */
   totalCapital: z.number().positive().optional(),
+  /** Audit F12 — when true, addBot/updateBot/saveSettings refuses to
+   *  persist a registry whose enabled bots' allocation total exceeds the
+   *  account's totalCapital. Requires totalCapital to be set; ignored
+   *  otherwise. Optional so existing callers passing Account objects
+   *  without this field stay valid; absence is treated as false. */
+  hardCapAllocation: z.boolean().optional(),
   createdAt: z.string(),
 });
 
@@ -207,6 +254,15 @@ const botSchema = z.object({
    *  global `discord.webhookUrl`. Optional and back-compat — bots without
    *  the field fall through to the global webhook. */
   discordWebhookUrl: webhookUrlSchema.nullable().optional(),
+  /** Per-bot category filter override (audit F6). When a category is
+   *  set explicitly here, it wins over `discord.webhookCategoryFilters`
+   *  for sends scoped to this bot. Lets `momentum-10k` send only fills
+   *  while `legacy-live` continues to send everything. */
+  webhookCategoryFilters: botWebhookCategoryFiltersSchema,
+  /** Per-routine opt-out (audit F3). When set to false for a routine
+   *  name, the cloud fan-out skips this bot for that routine. Missing
+   *  or true means run as normal. */
+  routineFilter: botRoutineFilterSchema,
   /** Sandbox sentinel (audit F7) — auto-disables this bot when the
    *  configured number of consecutive losses fires. `null` = disabled. */
   sentinel: z
@@ -241,6 +297,17 @@ const botSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Audit F2 — vault rotation cadence. When `rotateEveryDays` is a positive
+ *  integer, the dashboard surfaces an "overdue" warning on the bots page
+ *  once the on-disk fingerprint marker's `rekeyedAt` is older than that
+ *  many days. Auto-trigger is intentionally not wired (credential rotation
+ *  needs user oversight). */
+const vaultSettingsSchema = z
+  .object({
+    rotateEveryDays: z.number().int().positive().max(3650).nullable().optional(),
+  })
+  .default({});
+
 export const settingsSchema = z.object({
   discord: z
     .object({
@@ -249,6 +316,7 @@ export const settingsSchema = z.object({
       ntfyTopic: z.string().min(1).max(80).nullable().optional(),
     })
     .default({}),
+  vault: vaultSettingsSchema,
   display: displaySchema,
   live: liveSchema,
   defaults: defaultsSchema,
@@ -297,6 +365,11 @@ export const settingsPatchSchema = z.object({
       webhookUrl: z.union([webhookUrlSchema, z.literal(""), z.null()]).optional(),
       webhookUrlResearch: z.union([webhookUrlSchema, z.literal(""), z.null()]).optional(),
       ntfyTopic: z.union([z.string().min(1).max(80), z.literal(""), z.null()]).optional(),
+    })
+    .optional(),
+  vault: z
+    .object({
+      rotateEveryDays: z.number().int().positive().max(3650).nullable().optional(),
     })
     .optional(),
   display: z
@@ -493,13 +566,23 @@ export function isInQuietHours(
 
 export type SuppressionReason = "category-disabled" | "quiet-hours";
 
-/** Returns null if the message should send; otherwise the reason it was suppressed. */
+/** Returns null if the message should send; otherwise the reason it was
+ *  suppressed. When `botId` is provided and that bot has a matching entry
+ *  in its `webhookCategoryFilters` override (audit F6), the bot's value
+ *  WINS — `momentum-10k` can disable `eod` while `legacy-live` continues
+ *  to receive it from the same global filter. */
 export function getSuppressionReason(
   s: DashboardSettings,
   category: WebhookCategory,
-  now: Date = new Date()
+  now: Date = new Date(),
+  botId?: string
 ): SuppressionReason | null {
-  const filter = s.notifications.webhookCategoryFilters[category];
+  let filter = s.notifications.webhookCategoryFilters[category];
+  if (botId) {
+    const bot = s.bots.find((b) => b.id === botId);
+    const botOverride = bot?.webhookCategoryFilters?.[category];
+    if (botOverride !== undefined) filter = botOverride;
+  }
   if (filter === false) return "category-disabled";
   if (s.notifications.quietHours.enabled) {
     const { startCT, endCT } = s.notifications.quietHours;

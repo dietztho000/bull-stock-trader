@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { BOT_ROOT } from "./memoryPath";
 import { discordEnvFromSettings, loadSettings } from "./settings";
+import { getSuppressionReason } from "./settings.schema";
 
 export type DiscordCategory =
   | "research"
@@ -16,9 +17,11 @@ export type DiscordCategory =
 
 export type DiscordSendResult = {
   ok: boolean;
-  delivery: "webhook" | "fallback-file" | "ntfy-only";
+  delivery: "webhook" | "fallback-file" | "ntfy-only" | "suppressed";
   output: string;
   stderr: string;
+  /** When delivery === "suppressed", the reason the send was skipped. */
+  suppressionReason?: "category-disabled" | "quiet-hours";
 };
 
 const FALLBACK_MARKER = "[discord fallback]";
@@ -40,10 +43,30 @@ export async function sendDiscord(
   }
   const script = path.join(BOT_ROOT, "scripts", "discord.sh");
   const settings = await loadSettings();
+  // Per-bot category filter override (audit F6): bot's webhookCategoryFilters
+  // win over global. error/alert bypass suppression entirely — those need to
+  // reach the user even during quiet hours / when categories are disabled.
+  if (category !== "error" && category !== "alert") {
+    const reason = getSuppressionReason(
+      settings,
+      // categoryFilters use the same key set as DiscordCategory.
+      category as Parameters<typeof getSuppressionReason>[1],
+      new Date(),
+      opts.botId
+    );
+    if (reason) {
+      return {
+        ok: true,
+        delivery: "suppressed",
+        suppressionReason: reason,
+        output: "",
+        stderr: "",
+      };
+    }
+  }
   const baseEnv = discordEnvFromSettings(settings);
-  // Per-bot override: only the primary `webhookUrl` is overridden today —
-  // a bot's research-feed override would need its own field; keeping the
-  // surface tight per the audit's "additive, fully back-compat" framing.
+  // Per-bot webhookUrl override (audit F10): when set, dashboard-originated
+  // sends scoped to this bot use this webhook instead of the global one.
   if (opts.botId) {
     const bot = settings.bots.find((b) => b.id === opts.botId);
     if (bot?.discordWebhookUrl) {

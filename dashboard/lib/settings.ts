@@ -85,6 +85,7 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
   const current = await loadSettings();
   const next: DashboardSettings = {
     discord: { ...current.discord },
+    vault: { ...current.vault },
     display: { ...current.display },
     live: { ...current.live },
     defaults: { ...current.defaults },
@@ -118,6 +119,7 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
     }
   }
 
+  if (patch.vault) Object.assign(next.vault, patch.vault);
   if (patch.display) Object.assign(next.display, patch.display);
   if (patch.live) Object.assign(next.live, patch.live);
   if (patch.defaults) Object.assign(next.defaults, patch.defaults);
@@ -163,7 +165,9 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
 }
 
 /** Throws if a bot references a missing account, or if account/bot ids are
- *  duplicated. Allocation overruns are allowed (warned in UI, not blocked). */
+ *  duplicated. Allocation overruns are allowed by default (warned in UI),
+ *  but accounts with `hardCapAllocation = true` (audit F12) refuse the
+ *  save when sum(bot.allocation) on this account exceeds totalCapital. */
 function assertReferentialIntegrity(s: DashboardSettings): void {
   const accountIds = new Set<string>();
   for (const a of s.accounts) {
@@ -176,6 +180,20 @@ function assertReferentialIntegrity(s: DashboardSettings): void {
     botIds.add(b.id);
     if (!accountIds.has(b.accountId)) {
       throw new Error(`Bot "${b.id}" references missing account "${b.accountId}"`);
+    }
+  }
+  for (const a of s.accounts) {
+    if (!a.hardCapAllocation) continue;
+    if (a.totalCapital == null) continue;
+    const sumAllocated = s.bots
+      .filter((b) => b.accountId === a.id && b.allocation != null && b.enabled)
+      .reduce((acc, b) => acc + (b.allocation ?? 0), 0);
+    if (sumAllocated > a.totalCapital) {
+      throw new Error(
+        `Hard-cap account "${a.id}" rejected save: bots' allocation total ` +
+          `$${sumAllocated.toLocaleString()} exceeds totalCapital $${a.totalCapital.toLocaleString()}. ` +
+          `Reduce a bot's allocation, raise totalCapital, or disable hardCapAllocation.`
+      );
     }
   }
 }
@@ -201,7 +219,15 @@ export async function addAccount(account: Account): Promise<DashboardSettings> {
 export async function updateAccount(
   id: string,
   patch: Partial<
-    Pick<Account, "label" | "totalCapital" | "endpoint" | "apiKeyEnc" | "secretKeyEnc">
+    Pick<
+      Account,
+      | "label"
+      | "totalCapital"
+      | "endpoint"
+      | "apiKeyEnc"
+      | "secretKeyEnc"
+      | "hardCapAllocation"
+    >
   >
 ): Promise<DashboardSettings> {
   const current = await loadSettings();

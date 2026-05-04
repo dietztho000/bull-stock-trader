@@ -30,7 +30,7 @@ Read the registry first:
     # Per-account preflight: skip this bot if its account creds are bad.
     bash scripts/auth-preflight.sh mid-morning --account-id="$ACCOUNT_ID" || continue
     # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list)
+  done < <(bash scripts/bots.sh list --routine=mid-morning)
 
 Everything beneath this preamble runs inside that loop. $BOT_ID,
 $ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, and $BOT_MODE are guaranteed set.

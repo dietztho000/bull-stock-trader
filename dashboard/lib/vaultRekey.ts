@@ -150,6 +150,46 @@ async function readFingerprintMarker(): Promise<FingerprintMarker | null> {
   }
 }
 
+/** Audit F2 — derives rotation status given the user's configured cadence.
+ *  `lastRotatedAt` is null when no rotation has ever happened on this host
+ *  (no fingerprint marker yet). Callers surface `overdue` to nudge a
+ *  rotation; auto-rotation is intentionally NOT wired — credential
+ *  rotation requires user oversight. */
+export type RotationStatus = {
+  lastRotatedAt: string | null;
+  rotateEveryDays: number | null;
+  dueInDays: number | null;
+  overdue: boolean;
+};
+
+export async function getRotationStatus(
+  rotateEveryDays: number | null | undefined
+): Promise<RotationStatus> {
+  const marker = await readFingerprintMarker();
+  const lastRotatedAt = marker?.rekeyedAt ?? null;
+  const cadence = rotateEveryDays ?? null;
+  if (!cadence || cadence <= 0) {
+    return { lastRotatedAt, rotateEveryDays: null, dueInDays: null, overdue: false };
+  }
+  if (!lastRotatedAt) {
+    // Never rotated and a cadence is set — treat as overdue so the user is
+    // nudged to do the first rotation.
+    return { lastRotatedAt: null, rotateEveryDays: cadence, dueInDays: 0, overdue: true };
+  }
+  const lastMs = Date.parse(lastRotatedAt);
+  if (!Number.isFinite(lastMs)) {
+    return { lastRotatedAt, rotateEveryDays: cadence, dueInDays: 0, overdue: true };
+  }
+  const ageDays = (Date.now() - lastMs) / (1000 * 60 * 60 * 24);
+  const dueInDays = Math.ceil(cadence - ageDays);
+  return {
+    lastRotatedAt,
+    rotateEveryDays: cadence,
+    dueInDays,
+    overdue: dueInDays <= 0,
+  };
+}
+
 export type RekeyDrift =
   | { drifted: false }
   | { drifted: true; rekeyedAt: string };

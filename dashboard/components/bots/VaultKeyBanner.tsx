@@ -8,7 +8,17 @@ import { fmtRelativeTime } from "@/lib/format";
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 type RekeyDrift = { drifted: false } | { drifted: true; rekeyedAt: string };
-type Health = { usingFallback: boolean; rekeyDrift?: RekeyDrift };
+type Rotation = {
+  lastRotatedAt: string | null;
+  rotateEveryDays: number | null;
+  dueInDays: number | null;
+  overdue: boolean;
+};
+type Health = {
+  usingFallback: boolean;
+  rekeyDrift?: RekeyDrift;
+  rotation?: Rotation;
+};
 
 /** Dashboard-wide warning when `BULL_VAULT_KEY` isn't set in .env. The vault
  *  falls back to a deterministic key derived from machine fingerprint, which
@@ -34,6 +44,13 @@ export function VaultKeyBanner() {
   // started, every credential decrypt is failing. The user must restart.
   if (data?.rekeyDrift?.drifted) {
     return <RekeyDriftBanner rekeyedAt={data.rekeyDrift.rekeyedAt} />;
+  }
+
+  // Audit F2 — rotation cadence overdue. Surface a nudge banner with
+  // the rotate affordance inline. Auto-rotation is intentionally NOT
+  // wired (credential rotation requires user oversight).
+  if (data && !data.usingFallback && data.rotation?.overdue) {
+    return <RotationOverdueBanner rotation={data.rotation} />;
   }
 
   // Healthy: just expose the rotate affordance.
@@ -128,6 +145,40 @@ export function VaultKeyBanner() {
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Audit F2 — surfaced when the user has set a rotation cadence and the
+ *  last rotation is older than that. Inline rotate affordance lets the
+ *  user act on the nudge without leaving the page. */
+function RotationOverdueBanner({ rotation }: { rotation: Rotation }) {
+  const sinceLast = rotation.lastRotatedAt
+    ? fmtRelativeTime(Date.parse(rotation.lastRotatedAt))
+    : "never";
+  return (
+    <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="text-amber-300 text-lg leading-none mt-0.5">⏱</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-[var(--color-text)]">
+            Vault rotation overdue
+          </div>
+          <div className="text-xs text-[var(--color-muted)] leading-relaxed mt-1">
+            Cadence is set to every {rotation.rotateEveryDays} day
+            {rotation.rotateEveryDays === 1 ? "" : "s"}; last rotation was{" "}
+            <strong className="text-[var(--color-text)]">{sinceLast}</strong>
+            {sinceLast === "never" ? "" : " ago"}. Rotating now re-encrypts
+            every account credential under a fresh{" "}
+            <code className="font-mono text-[var(--color-text)]">BULL_VAULT_KEY</code>;
+            you&apos;ll need to update <code className="font-mono">.env</code>{" "}
+            and restart the dashboard process when prompted.
+          </div>
+          <div className="mt-2 flex justify-end">
+            <VaultKeyRotateButton />
+          </div>
         </div>
       </div>
     </div>

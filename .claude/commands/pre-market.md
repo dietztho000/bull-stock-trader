@@ -23,7 +23,7 @@ Read the registry first:
     export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
     bash scripts/auth-preflight.sh pre-market --account-id="$ACCOUNT_ID" || continue
     # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list)
+  done < <(bash scripts/bots.sh list --routine=pre-market)
 
 Everything beneath this preamble runs inside that loop. $BOT_ID,
 $ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.

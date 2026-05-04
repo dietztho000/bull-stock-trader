@@ -51,4 +51,4 @@ runs inside this loop:
     _routine_preflight_or_skip {{ROUTINE}} || continue
     # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
     # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-  done < <(bash scripts/bots.sh list)
+  done < <(bash scripts/bots.sh list --routine={{ROUTINE}})

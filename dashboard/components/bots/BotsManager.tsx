@@ -9,6 +9,7 @@ import { VaultKeyBanner } from "./VaultKeyBanner";
 import { BotsLeaderboard } from "./BotsLeaderboard";
 import { LaunchdStatusTile } from "./LaunchdStatusTile";
 import { PromoteModal } from "./PromoteModal";
+import { RollbackButton } from "./RollbackButton";
 import { AllocationBar, type AllocationSlice } from "./AllocationBar";
 import { HealthDot } from "./HealthDot";
 import { DiscordTestButton } from "./DiscordTestButton";
@@ -495,6 +496,7 @@ function BotCard({
               Promote →
             </button>
           )}
+          <RollbackButton botId={bot.id} />
           <DiscordTestButton botId={bot.id} />
           <button
             type="button"

@@ -15,6 +15,19 @@ const webhookUrl = z
     "Discord webhook URLs must start with https://discord.com/api/webhooks/"
   );
 
+const ROUTINE_NAMES = [
+  "auth-canary",
+  "pre-market",
+  "market-open",
+  "mid-morning",
+  "late-morning",
+  "midday",
+  "stops",
+  "afternoon",
+  "daily-summary",
+  "weekly-review",
+] as const;
+
 const patchBody = z.object({
   name: z.string().min(1).max(60).optional(),
   accountId: z.string().min(1).max(40).optional(),
@@ -30,6 +43,22 @@ const patchBody = z.object({
       consecutiveLossesCap: z.number().int().min(2).max(20),
     })
     .nullable()
+    .optional(),
+  webhookCategoryFilters: z
+    .object({
+      research: z.boolean().optional(),
+      fill: z.boolean().optional(),
+      midday: z.boolean().optional(),
+      stops: z.boolean().optional(),
+      eod: z.boolean().optional(),
+      weekly: z.boolean().optional(),
+      error: z.boolean().optional(),
+      "auth-canary": z.boolean().optional(),
+      alert: z.boolean().optional(),
+    })
+    .optional(),
+  routineFilter: z
+    .record(z.enum(ROUTINE_NAMES), z.boolean())
     .optional(),
 });
 

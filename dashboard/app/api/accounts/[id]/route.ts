@@ -16,6 +16,7 @@ const patchBody = z.object({
   totalCapital: z.number().positive().nullable().optional(),
   apiKey: z.string().min(1).optional(),
   secretKey: z.string().min(1).optional(),
+  hardCapAllocation: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -31,6 +32,7 @@ export async function PATCH(
       totalCapital?: number;
       apiKeyEnc?: string;
       secretKeyEnc?: string;
+      hardCapAllocation?: boolean;
     } = {};
     if (body.label !== undefined) patch.label = body.label;
     if (body.endpoint !== undefined) patch.endpoint = body.endpoint;
@@ -39,6 +41,7 @@ export async function PATCH(
     }
     if (body.apiKey !== undefined) patch.apiKeyEnc = encryptCredential(body.apiKey);
     if (body.secretKey !== undefined) patch.secretKeyEnc = encryptCredential(body.secretKey);
+    if (body.hardCapAllocation !== undefined) patch.hardCapAllocation = body.hardCapAllocation;
     const next = await updateAccount(id, patch);
     const account = next.accounts.find((a) => a.id === id);
     return NextResponse.json(

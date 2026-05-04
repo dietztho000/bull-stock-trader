@@ -36,21 +36,40 @@ shift || true
 
 case "$cmd" in
   list)
+    # --enabled-only       (default) skip bots with enabled=false
+    # --include-disabled   list every bot regardless of enabled
+    # --routine=<name>     audit F3: also skip bots whose
+    #                      bot.routineFilter[name] is explicitly false.
+    #                      Missing or true means run.
     enabled_filter='select(.enabled == true)'
+    routine=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --enabled-only)      enabled_filter='select(.enabled == true)'; shift ;;
         --include-disabled)  enabled_filter='.';                         shift ;;
+        --routine=*)         routine="${1#--routine=}"; shift ;;
         *) echo "list: unknown flag '$1'" >&2; exit 1 ;;
       esac
     done
     if [[ ! -f "$SETTINGS_FILE" ]]; then exit 0; fi
     # accountId map: id → mode (joined into the row so callers don't need a
-    # second jq pass per bot).
+    # second jq pass per bot). routine_filter applies the F3 opt-out when
+    # --routine is set; jq's `// true` makes the absence-of-key default to
+    # opted-in.
+    if [[ -n "$routine" ]]; then
+      # Exclude only when the bot has an explicit false for this routine.
+      # Missing key OR true keeps the bot in the list. Note: jq's `//` is
+      # "use right when left is null/false", which collapses false to true,
+      # so we use `!= false` instead.
+      routine_filter='select((.routineFilter // {})["'"$routine"'"] != false)'
+    else
+      routine_filter='.'
+    fi
     jq -r --argjson enabled "{}" '
       (.accounts // [] | map({key: .id, value: .mode}) | from_entries) as $modes
       | (.bots // [])
       | map('"$enabled_filter"')
+      | map('"$routine_filter"')
       | .[]
       | [.id, .accountId, (.strategySlug // "default"),
          (.allocation // "" | tostring | sub("^null$"; "")),
