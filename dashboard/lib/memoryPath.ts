@@ -68,6 +68,7 @@ const MEMORY_FILE_SCOPE: Record<string, FileScope> = {
   "BACKTEST-RESULTS.md": { scope: "per-bot" },
   "BACKTEST-RESULTS.json": { scope: "per-bot" },
   ".price-monitor-state.json": { scope: "per-bot-runtime", gitignored: true },
+  "DAILY-SUMMARY.md": { scope: "shared" },
   "SECTOR-MAP.md": { scope: "shared" },
   "ECONOMIC-CALENDAR.md": { scope: "shared" },
   "MARKET-EARNINGS.md": { scope: "shared" },

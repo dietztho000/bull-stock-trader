@@ -18,10 +18,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 
-# Local-only fallback notification log (root-only — case-insensitive
-# match on Windows would otherwise hide routines/daily-summary.md etc)
-/DAILY-SUMMARY.md
-
 # price-monitor.sh runtime artifacts (state cache, per-bot, not memory).
 # Glob covers memory/<bot>/<strategy>/.price-monitor-* and the legacy
 # flat memory/.price-monitor-* paths (kept for the migration window).

@@ -1,6 +1,4 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { BOT_ROOT } from "../memoryPath";
+import { readMemory } from "../memoryPath";
 
 export type DailySummaryEntry = {
   timestamp: string;
@@ -10,13 +8,9 @@ export type DailySummaryEntry = {
 };
 
 export async function loadDailySummaries(): Promise<DailySummaryEntry[]> {
-  const filePath = path.join(BOT_ROOT, "DAILY-SUMMARY.md");
-  let raw = "";
-  try {
-    raw = await fs.readFile(filePath, "utf8");
-  } catch {
-    return [];
-  }
+  const raw = await readMemory("DAILY-SUMMARY.md");
+  if (!raw) return [];
+
   const sections = raw
     .split(/\n?---\n/g)
     .map((s) => s.trim())
