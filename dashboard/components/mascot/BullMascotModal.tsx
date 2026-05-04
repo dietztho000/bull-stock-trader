@@ -21,6 +21,7 @@ import { ACHIEVEMENTS, loadEarned } from "@/lib/mascot/achievements";
 import { type LevelProgress } from "@/lib/mascot/level";
 import type { SeasonalOutfit } from "@/lib/mascot/seasonal";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
+import { Z } from "@/lib/zIndex";
 import { playCue, shouldPlayCue } from "@/lib/mascot/sounds";
 
 const MOOD_HEADLINE: Record<string, string> = {
@@ -171,7 +172,8 @@ export function BullMascotModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ zIndex: Z.MASCOT_MODAL }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

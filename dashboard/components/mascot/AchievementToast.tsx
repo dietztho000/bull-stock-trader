@@ -7,6 +7,7 @@ import {
   ACHIEVEMENTS,
   type AchievementId,
 } from "@/lib/mascot/achievements";
+import { Z } from "@/lib/zIndex";
 
 type Toast = {
   id: number;
@@ -49,7 +50,8 @@ export function AchievementToastHost() {
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed top-20 left-1/2 -translate-x-1/2 z-[55] flex flex-col gap-2 items-center"
+      className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center"
+      style={{ zIndex: Z.MASCOT_TOAST }}
     >
       <AnimatePresence>
         {toasts.map((t) => (
