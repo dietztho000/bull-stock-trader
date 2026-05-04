@@ -6,6 +6,23 @@ export const runtime = "nodejs";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
 
+/** In-flight request dedupe (audit C3). When multiple concurrent requests
+ *  hit /api/alpaca/account?accountId=foo (e.g. several browser tabs all
+ *  refreshing at the 5s SWR tick), they all wait on the SAME shell-out
+ *  Promise instead of spawning N child processes. We don't cache resolved
+ *  results — Alpaca state is time-sensitive and stale ms can mean stale
+ *  fills — so the entry is dropped the instant the underlying call settles.
+ *  globalThis-scoped so it survives Next dev HMR module reloads. */
+type InflightMap = Map<string, Promise<unknown>>;
+declare global {
+  // eslint-disable-next-line no-var
+  var __alpacaInflight: InflightMap | undefined;
+}
+function inflight(): InflightMap {
+  if (!globalThis.__alpacaInflight) globalThis.__alpacaInflight = new Map();
+  return globalThis.__alpacaInflight;
+}
+
 function parseMode(raw: string | null): AlpacaMode | undefined {
   if (raw === "paper" || raw === "live") return raw;
   return undefined;
@@ -49,8 +66,17 @@ export async function GET(
       { status: 400 }
     );
   }
+  const key = `${cmd}|${accountId ?? `mode:${mode}`}`;
+  const map = inflight();
+  let promise = map.get(key);
+  if (!promise) {
+    promise = runAlpaca(cmd, [], accountId ? { accountId } : { mode }).finally(
+      () => map.delete(key)
+    );
+    map.set(key, promise);
+  }
   try {
-    const data = await runAlpaca(cmd, [], accountId ? { accountId } : { mode });
+    const data = await promise;
     return NextResponse.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
