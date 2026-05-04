@@ -16,8 +16,19 @@ import { levelFor } from "@/lib/mascot/level";
 import { seasonalOutfitFor } from "@/lib/mascot/seasonal";
 import { useIdleGesture } from "./useIdleGesture";
 import { useAchievementWatcher } from "./useAchievementWatcher";
+import { MascotErrorBoundary } from "./MascotErrorBoundary";
 
 export function BullMascotNavCard({ className }: { className?: string }) {
+  return (
+    <MascotErrorBoundary
+      fallback={<div className={className} aria-hidden="true" />}
+    >
+      <BullMascotNavCardInner className={className} />
+    </MascotErrorBoundary>
+  );
+}
+
+function BullMascotNavCardInner({ className }: { className?: string }) {
   const settings = useSettingsOptional();
   const account = useTradingAccountOptional();
   const moodCtx = useMoodContext();

@@ -19,6 +19,7 @@ import { levelFor, recordPeakLevel } from "@/lib/mascot/level";
 import { seasonalOutfitFor } from "@/lib/mascot/seasonal";
 import { useIdleGesture, useTapToPet } from "./useIdleGesture";
 import { useAchievementWatcher } from "./useAchievementWatcher";
+import { MascotErrorBoundary } from "./MascotErrorBoundary";
 
 export type BullMascotTileProps = {
   mode: AlpacaMode;
@@ -32,7 +33,23 @@ export type BullMascotTileProps = {
   };
 };
 
-export function BullMascotTile({ mode, accountId, ctxOverride }: BullMascotTileProps) {
+export function BullMascotTile(props: BullMascotTileProps) {
+  return (
+    <MascotErrorBoundary
+      fallback={
+        <Card title="Trader Max">
+          <div className="text-xs text-[var(--color-muted)]">
+            Mascot temporarily unavailable.
+          </div>
+        </Card>
+      }
+    >
+      <BullMascotTileInner {...props} />
+    </MascotErrorBoundary>
+  );
+}
+
+function BullMascotTileInner({ mode, accountId, ctxOverride }: BullMascotTileProps) {
   const settings = useSettingsOptional();
   const [open, setOpen] = useState(false);
   const [todayKey, setTodayKey] = useState("init");

@@ -148,6 +148,16 @@ export function TradingAccountProvider({
     }
   }, [botId, initialAccount, pathname, router, searchParams, urlBotId]);
 
+  // Debounce the URL push so rapid dropdown clicks coalesce into a single
+  // navigation (audit M3). localStorage + cookie writes still happen
+  // immediately so other tabs and providers see the choice without waiting.
+  const pendingCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
+    };
+  }, []);
+
   const commit = useCallback(
     (next: string) => {
       try {
@@ -156,16 +166,20 @@ export function TradingAccountProvider({
         // ignore
       }
       writeActiveBotCookie(next);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("bot", next);
-      // Drop the legacy `account` key whenever we re-write the URL so a
-      // shim-bookmarked tab progresses to the modern param after the first
-      // dropdown change.
-      params.delete("account");
-      const qs = params.toString();
-      startTransition(() => {
-        router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      });
+      if (pendingCommitRef.current) clearTimeout(pendingCommitRef.current);
+      pendingCommitRef.current = setTimeout(() => {
+        pendingCommitRef.current = null;
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("bot", next);
+        // Drop the legacy `account` key whenever we re-write the URL so a
+        // shim-bookmarked tab progresses to the modern param after the first
+        // dropdown change.
+        params.delete("account");
+        const qs = params.toString();
+        startTransition(() => {
+          router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        });
+      }, 150);
     },
     [pathname, router, searchParams]
   );
