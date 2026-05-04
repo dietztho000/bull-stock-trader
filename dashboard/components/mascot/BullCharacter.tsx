@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
 import type { SeasonalOutfit } from "@/lib/mascot/seasonal";
@@ -8,6 +9,23 @@ export type Mood = "bullish" | "bearish" | "neutral" | "celebrating";
 export type Size = "sm" | "md" | "lg";
 
 const SIZE_PX: Record<Size, number> = { sm: 56, md: 140, lg: 220 };
+// Sub-375px viewports (iPhone SE class). The medium bull would otherwise
+// eat ~44% of the viewport width, and the nav-card sm bull crowds the
+// sidebar text. Audit T5.
+const SIZE_PX_NARROW: Record<Size, number> = { sm: 44, md: 96, lg: 160 };
+
+function useNarrowViewport(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 374px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
 
 const SPRING = { type: "spring" as const, stiffness: 380, damping: 28 };
 
@@ -32,7 +50,8 @@ export function BullCharacter({
   idleGesture?: "blink" | "happy" | null;
   className?: string;
 }) {
-  const px = SIZE_PX[size];
+  const narrow = useNarrowViewport();
+  const px = (narrow ? SIZE_PX_NARROW : SIZE_PX)[size];
   const reduced = useReducedMotion();
   const tone =
     mood === "bullish" || mood === "celebrating"

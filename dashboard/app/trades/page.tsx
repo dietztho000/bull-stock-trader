@@ -1,9 +1,25 @@
 import { Suspense } from "react";
+// Aliased to avoid colliding with Next's `export const dynamic = ...` route
+// segment config below.
+import nextDynamic from "next/dynamic";
 import { Card, Kpi, Badge } from "@/components/ui/Card";
 import { TradesTable, type ClosedTradeWithSizing } from "@/components/tables/TradesTable";
-import { Histogram } from "@/components/charts/Histogram";
-import { RScatter } from "@/components/charts/RScatter";
-import { SectorBars } from "@/components/charts/SectorBars";
+
+// Recharts is heavy and only mounts on /trades. Code-split each chart so
+// the recharts bundle doesn't bloat every other route via the shared
+// client chunk (audit M1).
+const Histogram = nextDynamic(
+  () => import("@/components/charts/Histogram").then((m) => m.Histogram),
+  { loading: () => <div className="h-32 frost rounded-xl animate-pulse" /> }
+);
+const RScatter = nextDynamic(
+  () => import("@/components/charts/RScatter").then((m) => m.RScatter),
+  { loading: () => <div className="h-48 frost rounded-xl animate-pulse" /> }
+);
+const SectorBars = nextDynamic(
+  () => import("@/components/charts/SectorBars").then((m) => m.SectorBars),
+  { loading: () => <div className="h-64 frost rounded-xl animate-pulse" /> }
+);
 import { UrlTabs } from "@/components/ui/UrlTabs";
 import { SkeletonBox } from "@/components/ui/Skeleton";
 import { DashboardGrid } from "@/components/layout/DashboardGrid";
