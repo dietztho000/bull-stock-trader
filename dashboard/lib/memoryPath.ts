@@ -100,10 +100,36 @@ export function resolveMemoryFile(file: string, ctx?: MemoryCtx): string {
   return path.join(botMemoryDir(ctx.bot, ctx.strategy), file);
 }
 
+/** mtime-keyed read cache. The dashboard re-reads the same memory files on
+ *  every server render (account-switch, router.refresh, SWR revalidation) — at
+ *  6+ files per request that's the dominant cost on / and /journal. Keeping the
+ *  parsed bytes keyed by mtime means subsequent reads pay only a stat syscall
+ *  when nothing has changed, and we always re-read on real edits because mtime
+ *  bumps. globalThis-scoped so it survives Next dev HMR module reloads. */
+type MemoryCacheEntry = { mtimeMs: number; content: string };
+declare global {
+  // eslint-disable-next-line no-var
+  var __memoryReadCache: Map<string, MemoryCacheEntry> | undefined;
+}
+function memoryCache(): Map<string, MemoryCacheEntry> {
+  if (!globalThis.__memoryReadCache) globalThis.__memoryReadCache = new Map();
+  return globalThis.__memoryReadCache;
+}
+
 export async function readMemory(file: string, ctx?: MemoryCtx): Promise<string> {
+  const filePath = resolveMemoryFile(file, ctx);
+  const cache = memoryCache();
   try {
-    return await fs.readFile(resolveMemoryFile(file, ctx), "utf8");
+    const stat = await fs.stat(filePath);
+    const cached = cache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.content;
+    }
+    const content = await fs.readFile(filePath, "utf8");
+    cache.set(filePath, { mtimeMs: stat.mtimeMs, content });
+    return content;
   } catch {
+    cache.delete(filePath);
     return "";
   }
 }
