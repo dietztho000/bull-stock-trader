@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { BullMascotNavCard } from "@/components/mascot/BullMascotNavCard";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
+import { useMarketIsOpen } from "@/lib/useMarketIsOpen";
 
 type NavLink = {
   href: string;
@@ -44,8 +45,13 @@ const fetcher = (u: string) => fetch(u).then((r) => r.json());
  *  state comes from the SettingsProvider so it updates on memory writes
  *  via the existing chokidar watcher. */
 function useBotsNeedAttention(): boolean {
+  // Audit H4 — vault health rarely changes overnight/weekends. Stretch the
+  // poll to 5 min when the market is verifiably closed; keep 60s during
+  // market hours and when the clock state is unknown.
+  const marketOpen = useMarketIsOpen();
+  const refreshInterval = marketOpen === false ? 300_000 : 60_000;
   const { data } = useSWR<VaultHealth>("/api/vault/health", fetcher, {
-    refreshInterval: 60_000,
+    refreshInterval,
     revalidateOnFocus: false,
   });
   const settings = useSettingsOptional();

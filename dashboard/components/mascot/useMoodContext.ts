@@ -8,6 +8,11 @@ export type MoodContext = {
   spyPhasePct: number | null;
   phaseStart: string | null;
   startingEquity: number | null;
+  /** Portfolio value at the start of the current trading week (Monday CT), or
+   *  the last available row when this week has no data yet. Drives mascot's
+   *  week-breaker detection (rule #14). Optional because tile-mode callers
+   *  construct a partial MoodContext for the modal that doesn't need it. */
+  weekStartPortfolio?: number | null;
   recentRows: Array<{ date: string; portfolio: number | null }>;
 };
 

@@ -150,6 +150,12 @@ export function useBullMood(opts: {
   );
 
   const ctx = opts.ctxOverride ?? opts.fallbackCtx ?? null;
+  // ctxOverride is a narrow Pick<> that doesn't include weekStartPortfolio,
+  // so the field only flows through when ctx came from the SWR-backed
+  // fallback (useMoodContext). Cast to safely read the optional. When absent
+  // the week breaker simply stays inactive — same behavior as before this fix.
+  const weekStart =
+    (ctx as { weekStartPortfolio?: number | null } | null)?.weekStartPortfolio ?? null;
 
   // ─── Hysteresis: only flip mood if condition holds 2 polls in a row.
   const [committedMood, setCommittedMood] = useState<Mood>("neutral");
@@ -162,13 +168,15 @@ export function useBullMood(opts: {
     if (summary.loading || "error" in summary) {
       return { day: false, week: false };
     }
+    const weekPct =
+      weekStart != null && weekStart > 0
+        ? ((summary.equity - weekStart) / weekStart) * 100
+        : null;
     return {
       day: summary.dayPct <= strategy.dayBreakerPct,
-      // Week breaker requires weekStartPortfolio context which we don't have
-      // here directly — surface only when strategy state already detects it.
-      week: false,
+      week: weekPct != null && weekPct <= strategy.weekBreakerPct,
     };
-  }, [summary, strategy]);
+  }, [summary, strategy, weekStart]);
 
   const candidate: Mood = useMemo(() => {
     if (summary.loading || "error" in summary) return committedMood;
