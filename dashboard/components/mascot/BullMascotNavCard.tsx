@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
 import { fmtPct } from "@/lib/format";
 import { todayInCT } from "@/lib/time";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
-import { BullCharacter } from "./BullCharacter";
+import { BullCharacter, type Mood } from "./BullCharacter";
 import { Confetti } from "./Confetti";
 import { BullMascotModal } from "./BullMascotModal";
 import { useBullMood } from "./useBullMood";
@@ -17,6 +17,7 @@ import { seasonalOutfitFor } from "@/lib/mascot/seasonal";
 import { useIdleGesture } from "./useIdleGesture";
 import { useAchievementWatcher } from "./useAchievementWatcher";
 import { MascotErrorBoundary } from "./MascotErrorBoundary";
+import { playCue, shouldPlayCue } from "@/lib/mascot/sounds";
 
 export function BullMascotNavCard({ className }: { className?: string }) {
   return (
@@ -79,6 +80,29 @@ function BullMascotNavCardInner({ className }: { className?: string }) {
     level: level?.current.level ?? null,
     settings: settings?.settings ?? null,
   });
+
+  // Mood-transition sound cues. Fires only when the mood actually changes
+  // (skips the initial commit) and respects soundsEnabled, quiet hours, and
+  // prefers-reduced-motion. Audit T-sound. The nav card is the only place
+  // that watches transitions — the dashboard tile uses the same hook so a
+  // duplicate watcher there would double-fire on /.
+  const reduced = useReducedMotion();
+  const prevMoodRef = useRef<Mood | null>(null);
+  useEffect(() => {
+    if (snapshot.loading || "error" in snapshot) return;
+    const current: Mood = snapshot.mood;
+    const prev = prevMoodRef.current;
+    prevMoodRef.current = current;
+    if (prev == null || prev === current) return;
+    if (!settings?.settings.mascot.soundsEnabled) return;
+    if (!shouldPlayCue(settings.settings)) return;
+    if (reduced) return;
+    if (current === "celebrating" || current === "bullish") {
+      playCue("moo");
+    } else if (current === "bearish") {
+      playCue("thunder");
+    }
+  }, [snapshot, settings, reduced]);
 
   const isCelebrating =
     !snapshot.loading && !("error" in snapshot) && snapshot.mood === "celebrating";

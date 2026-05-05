@@ -122,6 +122,57 @@ function pickFlavor(mood: Mood, dateKey: string): string {
   return list[Math.abs(hash) % list.length];
 }
 
+type FlavorDetail = {
+  dayPct: number;
+  positionCount: number | null;
+  winningPositionCount: number | null;
+  deployed: number;
+  winStreak: number | null;
+};
+
+/** Data-aware flavor that interpolates the snapshot's actual numbers when
+ *  they're notable. Returns null when nothing stands out so the static
+ *  FLAVOR pool can pick a generic line. Replaces only the FLAVOR fallback —
+ *  strategyFlavor's situational warnings (breakers, earnings, cooldowns)
+ *  still take precedence. Audit T-dialogue. */
+function enrichedFlavor(mood: Mood, d: FlavorDetail): string | null {
+  const fmt1 = (n: number) => n.toFixed(1);
+  const absPct = (n: number) => fmt1(Math.abs(n));
+  const wins = d.winningPositionCount ?? 0;
+  const positions = d.positionCount ?? 0;
+  const streak = d.winStreak ?? 0;
+
+  switch (mood) {
+    case "celebrating":
+      if (d.dayPct >= 5) return `🎉 +${fmt1(d.dayPct)}% day — top of the leaderboard.`;
+      if (streak >= 3) return `🎉 ${streak} green days running — momentum's real.`;
+      if (d.dayPct >= 3) return `🎉 +${fmt1(d.dayPct)}% — keep the trail tight, let it ride.`;
+      return null;
+    case "bullish":
+      if (wins >= 3 && positions >= 3) {
+        return `Running ${wins} of ${positions} green — discipline pays.`;
+      }
+      if (d.dayPct >= 1.5) return `📈 +${fmt1(d.dayPct)}% — letting winners run.`;
+      if (streak >= 2) return `📈 Day ${streak + 1} of green — stay the course.`;
+      return null;
+    case "bearish":
+      if (d.dayPct <= -2) return `🛑 -${absPct(d.dayPct)}% — breaker up, no new entries.`;
+      if (d.dayPct <= -1) return `Off ${absPct(d.dayPct)}% — patience, stops do the work.`;
+      if (positions === 0) return `Cash heavy on a red day — that's a feature, not a bug.`;
+      return null;
+    case "neutral":
+      if (positions === 0) return `No positions — stalking setups, no FOMO.`;
+      if (positions >= 4) {
+        return `${positions} positions, ${fmt1(d.deployed)}% deployed — full slate.`;
+      }
+      if (d.deployed < 50 && positions <= 2) {
+        return `${fmt1(d.deployed)}% deployed — saving dry powder for conviction.`;
+      }
+      return null;
+  }
+  return null;
+}
+
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 export function useBullMood(opts: {
@@ -229,7 +280,16 @@ export function useBullMood(opts: {
 
   const greenDays = ctx?.winStreak ?? null;
   const stratFlavor = strategyFlavor(strategyState, breakerActive);
-  const flavor = stratFlavor ?? pickFlavor(committedMood, opts.todayKey);
+  const enriched =
+    stratFlavor ??
+    enrichedFlavor(committedMood, {
+      dayPct: summary.dayPct,
+      positionCount,
+      winningPositionCount,
+      deployed: summary.deployed,
+      winStreak: greenDays,
+    });
+  const flavor = enriched ?? pickFlavor(committedMood, opts.todayKey);
 
   return {
     loading: false,
