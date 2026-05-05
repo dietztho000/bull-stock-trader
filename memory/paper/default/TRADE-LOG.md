@@ -81,3 +81,16 @@
 - NVDA: -5.70% — trailing 10%, HWM $203.00, stop $182.70. Not at -7% cut threshold ($194.49). Monitor.
 - XOM: +0.77% — trailing 10%, HWM $155.00, stop $139.50. No action.
 - No earnings exits, no take-profit ladder triggers, no unfilled limit buys to escalate.
+
+---
+
+### May 05 14:02 CT — Afternoon scan
+
+- AMKR: +12.31% (price $76.53) — trailing 10%, HWM $77.55, stop $69.795. Below +15% tighten threshold. No action.
+- GOOGL: +0.94% (price $386.41) — trailing 10% confirmed (order efb5844c, HWM $388.56, stop $349.70). Late-morning promotion succeeded. No action.
+- NVDA: -6.08% (price $196.52) — trailing 10%, HWM $203.00, stop $182.70. Approaching -7% cut floor ($194.59). No cut — exchange stop active. Earnings exit required by May 19 (rule #13).
+- XOM: +1.47% (price $154.75) — trailing 10%, HWM $155.22, stop $139.70. No action.
+- No earnings exits (next NVDA May 20, others Q3).
+- No thesis breaks detected.
+- No take-profit ladder triggers (<+20% all positions).
+- No actions taken this scan.
