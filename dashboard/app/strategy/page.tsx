@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { readMemory } from "@/lib/memoryPath";
 import { resolveBotCtx } from "@/lib/resolveAccount";
-import { listBots } from "@/lib/settings";
+import { listAccounts, listBots } from "@/lib/settings";
 import { diffLines, summarizeDiff } from "@/lib/diff";
 import { StrategyCompareView } from "@/components/strategy/StrategyCompareView";
 import { marked } from "marked";
@@ -24,9 +24,31 @@ export default async function StrategyPage({
   const { botId, strategy } = await resolveBotCtx(sp);
   const compareIdRaw = pickFirst(sp.compare);
 
-  const bots = await listBots();
-  const compareBot = compareIdRaw
-    ? bots.find((b) => b.id === compareIdRaw && b.id !== botId)
+  const [bots, accounts] = await Promise.all([listBots(), listAccounts()]);
+
+  // Audit U9 — when the user lands on /strategy without an explicit
+  // ?compare= target, pre-select the most natural counterpart so the diff
+  // view is the default landing experience for multi-bot installs. The
+  // "other-mode bot" (live ↔ paper) is the most useful comparison; fall
+  // back to any other enabled bot if no other-mode counterpart exists.
+  // A user who explicitly cleared the compare via "Stop comparing" can
+  // pin single-view by passing ?compare= (empty string), which short-
+  // circuits both the URL-supplied path and this default.
+  const compareExplicit = "compare" in sp;
+  let resolvedCompareId: string | undefined = compareIdRaw;
+  if (!compareExplicit && !resolvedCompareId) {
+    const accountModeById = new Map(accounts.map((a) => [a.id, a.mode]));
+    const baseBot = bots.find((b) => b.id === botId);
+    const baseMode = baseBot ? accountModeById.get(baseBot.accountId) : null;
+    const otherEnabled = bots.filter((b) => b.id !== botId && b.enabled);
+    const otherMode =
+      baseMode != null
+        ? otherEnabled.find((b) => accountModeById.get(b.accountId) !== baseMode)
+        : null;
+    resolvedCompareId = (otherMode ?? otherEnabled[0])?.id;
+  }
+  const compareBot = resolvedCompareId
+    ? bots.find((b) => b.id === resolvedCompareId && b.id !== botId)
     : null;
 
   // Compare mode (audit F9): two bots' TRADING-STRATEGY.md side-by-side

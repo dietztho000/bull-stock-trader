@@ -2,6 +2,7 @@
 
 import useSWR, { mutate } from "swr";
 import { useState } from "react";
+import clsx from "clsx";
 import { Card, Badge } from "@/components/ui/Card";
 import { fmtMoney, fmtRelativeTime, fmtSignedMoney } from "@/lib/format";
 import type { Bot, RedactedAccount } from "@/lib/settings";
@@ -414,8 +415,22 @@ function BotCard({
     lastTrip != null &&
     Date.now() - Date.parse(lastTrip.trippedAt) < 24 * 60 * 60 * 1000;
 
+  // Audit U4 — left-border tint by account mode so a row of bot cards reads
+  // live-vs-paper at a glance without scanning each card's badge.
+  const modeBorder =
+    account?.mode === "live"
+      ? "border-l-2 border-l-[var(--color-down)]"
+      : account?.mode === "paper"
+      ? "border-l-2 border-l-[var(--color-warn)]"
+      : "";
+
   return (
-    <div className="rounded-xl border border-[rgba(255,255,255,0.05)] p-3 space-y-2.5">
+    <div
+      className={clsx(
+        "rounded-xl border border-[rgba(255,255,255,0.05)] p-3 space-y-2.5",
+        modeBorder
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">

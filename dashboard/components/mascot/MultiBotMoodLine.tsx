@@ -9,9 +9,10 @@ const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 /** Cross-bot mood summary line for the mascot tile (audit U4 / U6). With N
  *  bots, the single-bot day-pct flavor stops being a useful read of the
- *  whole fleet — surface a green/red/flat tally instead. Renders nothing
- *  when there's only one enabled bot. Backs off to once-per-minute when the
- *  market is closed (audit P3). */
+ *  whole fleet — surface a green/red/flat tally instead. Audit U7: also
+ *  renders for single-bot installs so the "1 green of 1 bot" reading
+ *  still appears (was previously suppressed for fewer than 2 bots).
+ *  Backs off to once-per-minute when the market is closed (audit P3). */
 export function MultiBotMoodLine() {
   const liveOpts = useLiveSwr(60_000);
   const { data } = useSWR<{ rows: LeaderboardRow[] }>(
@@ -21,7 +22,7 @@ export function MultiBotMoodLine() {
   );
 
   const rows = (data?.rows ?? []).filter((r) => r.enabled);
-  if (rows.length < 2) return null;
+  if (rows.length === 0) return null;
 
   let green = 0;
   let red = 0;

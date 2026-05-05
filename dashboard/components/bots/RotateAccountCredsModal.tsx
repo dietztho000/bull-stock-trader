@@ -26,7 +26,16 @@ export function RotateAccountCredsModal({
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Audit U8 — local rotation only updates the dashboard's vault. Cloud
+  // routines authenticate via ALPACA_<NS>_* env vars set in the Anthropic
+  // Routines UI; the user must update those too or every cloud routine
+  // silently uses the old (revoked?) creds until next auth-canary fires.
+  const [cloudConfirmed, setCloudConfirmed] = useState(false);
   const apiKeyRef = useRef<HTMLInputElement | null>(null);
+
+  // Derive the env-var namespace prefix from the account id so the warning
+  // shows the exact var names the user needs to update.
+  const envNamespace = account.id.toUpperCase().replace(/-/g, "_");
 
   useEffect(() => {
     apiKeyRef.current?.focus();
@@ -176,6 +185,30 @@ export function RotateAccountCredsModal({
               </div>
             )}
 
+            {/* Audit U8 — block submission until the user has confirmed the
+                cloud-side env vars are updated too. Without this, cloud
+                routines silently auth with the old (likely revoked) keys
+                until the next auth-canary, which is up to 24h away. */}
+            <label className="flex items-start gap-2 text-[11px] text-[var(--color-warn)] leading-relaxed cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cloudConfirmed}
+                onChange={(e) => setCloudConfirmed(e.target.checked)}
+                className="mt-0.5 accent-[var(--color-warn)]"
+              />
+              <span>
+                I have updated the matching env vars on every cloud routine:{" "}
+                <code className="font-mono text-[var(--color-text)]">
+                  ALPACA_{envNamespace}_API_KEY
+                </code>
+                {" and "}
+                <code className="font-mono text-[var(--color-text)]">
+                  ALPACA_{envNamespace}_SECRET_KEY
+                </code>
+                . Without this, cloud routines keep using the old keys.
+              </span>
+            </label>
+
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
@@ -195,7 +228,7 @@ export function RotateAccountCredsModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={busy || !apiKey || !secretKey}
+                  disabled={busy || !apiKey || !secretKey || !cloudConfirmed}
                   className="glass glass-tint-up rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
                 >
                   {busy ? "Saving…" : "Save credentials"}

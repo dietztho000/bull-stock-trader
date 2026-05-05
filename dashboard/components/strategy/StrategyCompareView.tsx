@@ -30,8 +30,14 @@ export function StrategyCompareView({
   function setCompare(target: string | null) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("bot", baseBotId);
-    if (target) params.set("compare", target);
-    else params.delete("compare");
+    if (target) {
+      params.set("compare", target);
+    } else {
+      // Audit U9 — keep `compare` as an explicit empty value (not deleted)
+      // so the server's auto-default doesn't immediately re-pick a bot
+      // and re-render the diff. Empty = "I deliberately want single view".
+      params.set("compare", "");
+    }
     router.push(`/strategy?${params.toString()}`);
   }
 
