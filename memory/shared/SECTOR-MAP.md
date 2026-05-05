@@ -24,3 +24,4 @@ Use the 11 standard GICS sectors:
 | NVDA | Information Technology | Perplexity | 2026-04-30 |
 | XOM | Energy | Perplexity | 2026-04-30 |
 | AMKR | Information Technology | Perplexity | 2026-04-30 |
+| GOOGL | Communication Services | Perplexity | 2026-05-05 |
