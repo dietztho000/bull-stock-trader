@@ -40,16 +40,33 @@ script, commit both files together. CI can verify in-sync state with
 1. **Install the Claude GitHub App** on this repo (least privilege — single repo).
 2. **Toggle "Allow unrestricted branch pushes"** in each routine's environment.
    Without this, `git push origin main` silently fails with a proxy error.
-3. **Set environment variables on the routine** (see [env.template](../env.template)
-   for the full annotated list). At minimum:
-   - `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` (required)
+3. **Configure the bot registry** in the dashboard (Settings → Bots & accounts).
+   Routines fan out across every enabled bot in
+   `memory/shared/dashboard-settings.json` via `bash scripts/bots.sh list`. A
+   single routine handles N bots in one run — see
+   [docs/multi-bot-contract.md](../docs/multi-bot-contract.md) for the
+   bot/account/strategy model.
+4. **Set environment variables on the routine.** See [env.template](../env.template)
+   for the full annotated list.
+
+   **Per-account credentials (required, namespaced).** One credential set per
+   Alpaca account, with the env-var prefix derived by uppercasing the
+   `accountId` slug and replacing hyphens with underscores. So account
+   `paper-100k` needs:
+   - `ALPACA_PAPER_100K_API_KEY`
+   - `ALPACA_PAPER_100K_SECRET_KEY`
+   - `ALPACA_PAPER_100K_ENDPOINT` (optional — defaults by mode)
+
+   Run `bash scripts/bots.sh env-namespace <accountId>` to print the prefix
+   for any account. Wrapper scripts (`alpaca.sh` etc.) auto-resolve the
+   right namespace from `--account-id=…`.
+
+   **Shared external creds:**
    - `PERPLEXITY_API_KEY` (required for research)
+   - `PERPLEXITY_MODEL` (optional, defaults to `sonar`)
    - `DISCORD_WEBHOOK_URL` (notifications)
 
-   Optional:
-   - `ALPACA_ENDPOINT`, `ALPACA_DATA_ENDPOINT` (defaults to live URLs)
-   - `PERPLEXITY_MODEL` (defaults to `sonar`)
-   - `BOT_MODE=paper` + `ALPACA_PAPER_*` (run a parallel paper routine)
+   **Optional:**
    - `NTFY_TOPIC` (mirror Discord notifications to ntfy.sh)
    - Per-category Discord webhook overrides — set on the matching routine
      to send that category to a dedicated channel. Each falls back to
@@ -77,27 +94,38 @@ script, commit both files together. CI can verify in-sync state with
 7. Paste the matching `routines/<name>.md` contents into the prompt field.
 8. Save, then click **Run now** to smoke-test.
 
-## Paper-mode parallel routines
+## Running paper alongside live
 
 Strategy changes ship to paper first, run in parallel with live for ≥5
-clean trading days, then promote to live. The pattern:
+clean trading days, then promote to live. With the multi-bot rollout,
+you do **not** duplicate routines — each routine fans out across every
+enabled bot in the registry on a single run. The pattern:
 
-1. Duplicate any cloud routine you want to validate in paper mode.
-   Suffix the name with ` (paper)` so it's distinguishable in the UI.
-2. On the duplicate, set `BOT_MODE=paper` in env vars. Set the paper
-   credentials (`ALPACA_PAPER_API_KEY`, `ALPACA_PAPER_SECRET_KEY`).
-3. Use the same cron as the live version. Both fire at the same time
-   from cloud. Each writes to memory under a separate
-   `claude/paper-*` orphan branch so live + paper trade logs don't
-   collide. (The cloud-sync launchd cherry-picks both into main.)
-4. Watch the daily-summary watchdog confirm both fire. Compare paper
-   vs live P&L for ≥5 days before promoting paper-only changes to live.
+1. In the dashboard's Settings → Bots & accounts, add a paper-mode
+   account (e.g. `paper-100k`) and a bot bound to it (e.g. `momentum-paper`
+   with strategy slug `momentum`). The registry persists in
+   `memory/shared/dashboard-settings.json`.
+2. On every cloud routine, set the namespaced creds for the new account
+   (`ALPACA_PAPER_100K_API_KEY`, `ALPACA_PAPER_100K_SECRET_KEY`). The
+   live account's namespace stays put.
+3. No cron change. The next scheduled run picks up the new bot via
+   `bash scripts/bots.sh list --routine=<name>` and writes to
+   `memory/<botId>/<strategy>/…` for that bot. The cloud commits one
+   per-routine batch covering every bot it touched.
+4. The daily-summary watchdog reports `N/M routines fired` for the
+   fleet. Compare paper vs live P&L row-by-row in
+   `memory/<botId>/default/BENCHMARK.md` for ≥5 days, then promote
+   strategy edits by copying `memory/<paperBot>/default/TRADING-STRATEGY.md`
+   over the live equivalent.
 
-Slot budget: each paper duplicate counts against the 15/day Claude
-Code routine quota. Stand up paper routines selectively — typically
-the 3-4 routines a strategy change touches (e.g., market-open + the
-4 intraday scans + stops). Tear down paper routines once a change
-has graduated.
+Slot budget: every cloud routine still counts as one Claude Code routine
+slot regardless of how many bots fan out under it. Adding a paper bot
+to the registry is free in slot terms.
+
+Routine-level opt-outs: `bot.routineFilter[<name>] = false` in the
+registry skips that bot for that specific routine — useful if the paper
+bot should not run, say, `weekly-review` because it has no full-week
+window yet.
 
 ## Why no `.env` file in the cloud
 
