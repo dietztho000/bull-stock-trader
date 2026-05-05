@@ -31,9 +31,12 @@ includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
 NOTE: pre-market does Perplexity research that is conceptually shared
 across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
 the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary and weekly-review
-post one Discord summary per bot in this Phase 1 implementation; a Phase
-2 refactor aggregates them into a single multi-bot summary.
+when today's answer is already cached. daily-summary now posts a SINGLE
+unified Discord recap across all bots (STEP 8 runs once after the
+fan-out, audit Phase 2). Per-bot memory writes (STEPs 1-5) still happen
+inside the loop. Watchdog and perplexity-tally alerts (STEPs 6, 7) also
+moved out of the loop so a 3-bot fleet doesn't trigger 3 identical
+Discord alerts.
 
 STEP 1 — Read memory for continuity:
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's
@@ -77,14 +80,17 @@ the file:
 Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
-STEP 6 — Run-log watchdog. Read memory/$BOT_ID/$STRATEGY/RUN-LOG.jsonl and compute, for today:
+STEP 6 — Run-log watchdog (runs ONCE, AFTER the per-bot fan-out
+completes). Pick any one bot's memory/$BOT_ID/$STRATEGY/RUN-LOG.jsonl —
+the EXPECTED routine set is fleet-wide (the same routines fire for every
+bot), so reading any single bot's run log is sufficient to compute
+fired-vs-expected. Stash both counts (|FIRED| / |EXPECTED|) for STEP 8.
   EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
               midday, stops, afternoon, daily-summary}
             (all weekdays; add `weekly-review` to EXPECTED on Fridays)
   FIRED    = set of routines with at least one {"action":"end","status":"ok"}
             row whose timestamp starts with $DATE
   MISSING  = EXPECTED - FIRED
-Stash both counts (|FIRED| / |EXPECTED|) for STEP 8's EOD message.
 
 If MISSING is non-empty, fire BEFORE the EOD post (preserve format):
   bash scripts/discord.sh --type=auth-canary "⚠️ Watchdog — $DATE
@@ -98,10 +104,11 @@ This goes to the auth-canary (bot-health) channel so it sits alongside
 the morning auth checks instead of mixing with in-flight workflow errors.
 This catches silent no-ops that look identical to legitimate quiet days.
 
-STEP 7 — Perplexity cost tally. Read memory/shared/PERPLEXITY-LOG.md and count
-rows whose timestamp starts with $DATE. Estimate cost as
-(count * $0.0005). Compute the rolling 14-day median count from prior
-days' rows. Stash COUNT, COST, MEDIAN for STEP 8's EOD post.
+STEP 7 — Perplexity cost tally (runs ONCE, AFTER the per-bot fan-out).
+Read memory/shared/PERPLEXITY-LOG.md and count rows whose timestamp
+starts with $DATE. Estimate cost as (count * $0.0005). Compute the
+rolling 14-day median count from prior days' rows. Stash COUNT, COST,
+MEDIAN for STEP 8's EOD post.
 If today's count > 2x median, ALSO fire (preserve format):
   bash scripts/discord.sh --type=error "⚠️ Perplexity cost spike — $DATE
 
@@ -111,20 +118,26 @@ Threshold: >2× median
 
 Possible prompt regression — check today's RESEARCH-LOG and routine logs."
 
-STEP 8 — Send ONE Discord EOD message (always, even on no-trade days).
-Preserve format exactly. The Health section's "Routines:" line is the
-all-clear signal — without it, no-news-is-good-news collides with cron
-itself being broken.
+STEP 8 — Send ONE unified Discord EOD message across the whole fleet
+(runs ONCE, AFTER the per-bot fan-out). For each enabled bot
+(re-iterate `bash scripts/bots.sh list`), pull the most recent
+`### MMM DD — EOD Snapshot` block from
+memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (each bot wrote it in STEP 4) and
+extract: portfolio, day P&L $/%, phase P&L $/%, day-vs-SPY %, open
+positions list. Sum portfolio across bots; compute aggregate day P&L $
+and the weighted-by-portfolio day P&L %. Format:
+
   bash scripts/discord.sh --type=eod "📈 EOD — $DATE (Day N, Wkdy)
 
-💰 Portfolio: \$X (±X.X% day, ±X.X% phase)
+🤖 Fleet: N bots, total \$X portfolio
+💰 Aggregate: ±\$X day (±X.X% weighted), ±\$X phase (±X.X% weighted)
 📊 vs SPY: ±X.X% day / ±X.X% phase
-Cash: \$X (X% of equity)
 
-Trades today: <list or 'none'>
-Open positions:
-• SYM ±X.X% (stop \$X.XX)
-• SYM ±X.X% (stop \$X.XX)
+Per bot:
+• <bot-id-1>: \$X equity, ±X.X% day, ±X.X% phase, P open
+• <bot-id-2>: \$X equity, ±X.X% day, ±X.X% phase, P open
+
+Trades today across fleet: <comma-separated list of SYM-bot tags, or 'none'>
 
 🩺 Health:
 • Routines: N/M fired<if MISSING non-empty: ' (missing: <list>)'>
@@ -132,8 +145,9 @@ Open positions:
 
 Tomorrow: <one-line plan>"
 
-If there are no open positions, replace the bullet list with the literal
-line `No open positions.` If "Trades today" is empty, write "none".
+The Health section's "Routines:" line remains the all-clear signal —
+without it, no-news-is-good-news collides with cron itself being broken.
+If "Trades today" is empty across all bots, write "none".
 
 STEP 9 — AGGREGATE (runs ONCE, AFTER the per-bot fan-out completes).
 
