@@ -41,3 +41,18 @@ No positions yet. Bot launches tomorrow.
   - Order ID: efb5844c-4419-4e64-bdf3-e3140ffb2155 (client: bsl-1777997403-9cf699e5)
   - HWM: $387.68 | Stop: $348.91 | unrealized_plpc at promotion: +1.19%
   - (Alpaca API does not support type-change via PATCH; cancel+reissue with minimal gap)
+
+---
+
+### May 05 — EOD Snapshot (Day 4, Tuesday)
+**Portfolio:** $101,128.09 | **Cash:** $34,963.49 (34.6%) | **Day P&L:** +$1,475.56 (+1.48%) | **Phase P&L:** +$1,128.09 (+1.13%)
+**vs SPY:** day +0.63% alpha (SPY +0.85%) | phase -3.28% alpha
+
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| AMKR | 220 | $68.14 | $76.82 | +8.26% | +$1,909.60 (+12.74%) | $69.80 |
+| GOOGL | 31 | $382.79 | $388.38 | +1.34% | +$173.29 (+1.46%) | $349.70 |
+| NVDA | 95 | $209.24 | $196.25 | -1.12% | -$1,234.28 (-6.21%) | $182.70 |
+| XOM | 120 | $152.51 | $154.88 | +0.77% | +$284.40 (+1.55%) | $139.76 |
+
+**Notes:** Strong day: portfolio +1.48% vs SPY +0.85%, generating +0.63% daily alpha. AMKR was the standout (+8.26% intraday) on semiconductor packaging momentum, now +12.74% unrealized — approaching the +15% tighten-stop threshold. GOOGL promoted to trailing 10% stop mid-morning after crossing +1%; holding well. NVDA lagged again (-1.12%, -6.21% unrealized) — watch closely tomorrow, stop at $182.70. XOM quiet +0.77%. No new trades; week at 1/3 cap. Auth-canary, mid-morning, late-morning, stops, and afternoon routines did not log completion — watchdog alert fired.

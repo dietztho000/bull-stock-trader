@@ -4,5 +4,5 @@
 {"ts":"2026-05-05T13:36:54Z","routine":"market-open","action":"end","status":"ok","git_sha":"04e4c2c"}
 {"ts":"2026-05-05T17:09:13Z","routine":"midday","action":"start","status":"ok","git_sha":"12972fa"}
 {"ts":"2026-05-05T17:10:44Z","routine":"midday","action":"end","status":"ok","git_sha":"12972fa"}
-{"ts":"2026-05-05T19:02:10Z","routine":"afternoon","action":"start","status":"ok","git_sha":"9234d39"}
-{"ts":"2026-05-05T19:03:46Z","routine":"afternoon","action":"end","status":"ok","git_sha":"9234d39"}
+{"ts":"2026-05-05T20:04:17Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"9234d39"}
+{"ts":"2026-05-05T20:08:30Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"9234d39"}
