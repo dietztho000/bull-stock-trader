@@ -11,7 +11,12 @@ import {
 } from "@/lib/types/alpaca";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 import { DEFAULTS } from "@/lib/settings.schema";
-import { useStrategyState, type StrategyState } from "@/lib/useStrategyState";
+import { useStrategyState } from "@/lib/useStrategyState";
+import {
+  candidateMood as pickCandidateMood,
+  computeBreakers,
+  pickMoodFlavor,
+} from "@/lib/mascot/moodLogic";
 import type { Mood } from "./BullCharacter";
 import type { MoodContext } from "./useMoodContext";
 
@@ -50,128 +55,6 @@ export type BullMoodSnapshot =
         riskParts: { deployedScore: number; drawdownScore: number; slotsScore: number };
       };
     };
-
-const FLAVOR: Record<Mood, string[]> = {
-  bullish: [
-    "Crushing it, boss!",
-    "Bull market vibes.",
-    "We are stalking the highs.",
-    "Steady horns, steady hands.",
-  ],
-  bearish: [
-    "Tough day. We bounce back tomorrow.",
-    "Trust the stops. Live to trade again.",
-    "Patience > revenge trades.",
-    "Bear days build the discipline.",
-  ],
-  celebrating: [
-    "🎉 Big green day! Take a victory lap.",
-    "We're cooking. Keep the trail tight.",
-    "This is the day they will write about.",
-  ],
-  neutral: [
-    "Patience > activity. Stalking setups.",
-    "Charts loaded. Coffee hot.",
-    "Watching, waiting, ready.",
-    "No drama is a strategy too.",
-  ],
-};
-
-/** Strategy-state-aware flavor lines override the default deterministic pick.
- *  Returns null when nothing notable is happening — fall back to FLAVOR. */
-function strategyFlavor(
-  state: StrategyState | null,
-  breakerActive: { day: boolean; week: boolean }
-): string | null {
-  if (!state) return null;
-  if (breakerActive.day) {
-    return "🛑 Day breaker tripped — no new entries until tomorrow.";
-  }
-  if (breakerActive.week) {
-    return "⚠️ Week breaker tripped — defensive mode for the rest of the week.";
-  }
-  if (state.earningsT2Held.length > 0) {
-    const e = state.earningsT2Held[0];
-    return `📅 ${e.symbol} reports ${
-      e.daysUntil === 0 ? "today" : `in ${e.daysUntil}d`
-    } — earnings gate ahead.`;
-  }
-  if (state.sectorsAtCap.length > 0) {
-    return `🚧 ${state.sectorsAtCap[0]} sector at cap — no new entries there.`;
-  }
-  if (state.blockedSectors.length > 0) {
-    return `❄️ ${state.blockedSectors[0]} sector cooling off (rule #10).`;
-  }
-  if (state.cooldownSymbols.length > 0) {
-    const c = state.cooldownSymbols[0];
-    return `⏳ ${c.symbol} re-entry unlocks in ${c.daysRemaining}d.`;
-  }
-  if (state.blockedIdeas.length > 0) {
-    const i = state.blockedIdeas[0];
-    return `🔍 ${i.symbol}: ${i.detail}`;
-  }
-  return null;
-}
-
-function pickFlavor(mood: Mood, dateKey: string): string {
-  const list = FLAVOR[mood];
-  // deterministic per (mood, day) so flavor doesn't churn on every poll
-  let hash = 0;
-  const k = `${mood}:${dateKey}`;
-  for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) | 0;
-  return list[Math.abs(hash) % list.length];
-}
-
-type FlavorDetail = {
-  dayPct: number;
-  positionCount: number | null;
-  winningPositionCount: number | null;
-  deployed: number;
-  winStreak: number | null;
-};
-
-/** Data-aware flavor that interpolates the snapshot's actual numbers when
- *  they're notable. Returns null when nothing stands out so the static
- *  FLAVOR pool can pick a generic line. Replaces only the FLAVOR fallback —
- *  strategyFlavor's situational warnings (breakers, earnings, cooldowns)
- *  still take precedence. Audit T-dialogue. */
-function enrichedFlavor(mood: Mood, d: FlavorDetail): string | null {
-  const fmt1 = (n: number) => n.toFixed(1);
-  const absPct = (n: number) => fmt1(Math.abs(n));
-  const wins = d.winningPositionCount ?? 0;
-  const positions = d.positionCount ?? 0;
-  const streak = d.winStreak ?? 0;
-
-  switch (mood) {
-    case "celebrating":
-      if (d.dayPct >= 5) return `🎉 +${fmt1(d.dayPct)}% day — top of the leaderboard.`;
-      if (streak >= 3) return `🎉 ${streak} green days running — momentum's real.`;
-      if (d.dayPct >= 3) return `🎉 +${fmt1(d.dayPct)}% — keep the trail tight, let it ride.`;
-      return null;
-    case "bullish":
-      if (wins >= 3 && positions >= 3) {
-        return `Running ${wins} of ${positions} green — discipline pays.`;
-      }
-      if (d.dayPct >= 1.5) return `📈 +${fmt1(d.dayPct)}% — letting winners run.`;
-      if (streak >= 2) return `📈 Day ${streak + 1} of green — stay the course.`;
-      return null;
-    case "bearish":
-      if (d.dayPct <= -2) return `🛑 -${absPct(d.dayPct)}% — breaker up, no new entries.`;
-      if (d.dayPct <= -1) return `Off ${absPct(d.dayPct)}% — patience, stops do the work.`;
-      if (positions === 0) return `Cash heavy on a red day — that's a feature, not a bug.`;
-      return null;
-    case "neutral":
-      if (positions === 0) return `No positions — stalking setups, no FOMO.`;
-      if (positions >= 4) {
-        return `${positions} positions, ${fmt1(d.deployed)}% deployed — full slate.`;
-      }
-      if (d.deployed < 50 && positions <= 2) {
-        return `${fmt1(d.deployed)}% deployed — saving dry powder for conviction.`;
-      }
-      return null;
-  }
-  return null;
-}
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -219,26 +102,12 @@ export function useBullMood(opts: {
     if (summary.loading || "error" in summary) {
       return { day: false, week: false };
     }
-    const weekPct =
-      weekStart != null && weekStart > 0
-        ? ((summary.equity - weekStart) / weekStart) * 100
-        : null;
-    return {
-      day: summary.dayPct <= strategy.dayBreakerPct,
-      week: weekPct != null && weekPct <= strategy.weekBreakerPct,
-    };
+    return computeBreakers(summary, strategy, weekStart);
   }, [summary, strategy, weekStart]);
 
   const candidate: Mood = useMemo(() => {
     if (summary.loading || "error" in summary) return committedMood;
-    // Strategy overrides: drawdown breaker forces bearish regardless of day P&L
-    // (the user is locked out of new entries — emotional read should match).
-    if (breakerActive.day || breakerActive.week) return "bearish";
-    const p = summary.dayPct;
-    if (p >= strategy.celebrateThresholdPct) return "celebrating";
-    if (p >= strategy.bullishThresholdPct) return "bullish";
-    if (p <= strategy.bearishThresholdPct) return "bearish";
-    return "neutral";
+    return pickCandidateMood(summary, strategy, breakerActive);
   }, [summary, committedMood, strategy, breakerActive]);
 
   useEffect(() => {
@@ -279,17 +148,19 @@ export function useBullMood(opts: {
       : clamp(((ctx.spyPhasePct + 5) / 10) * 100, 0, 100);
 
   const greenDays = ctx?.winStreak ?? null;
-  const stratFlavor = strategyFlavor(strategyState, breakerActive);
-  const enriched =
-    stratFlavor ??
-    enrichedFlavor(committedMood, {
+  const flavor = pickMoodFlavor(
+    committedMood,
+    {
       dayPct: summary.dayPct,
       positionCount,
       winningPositionCount,
       deployed: summary.deployed,
       winStreak: greenDays,
-    });
-  const flavor = enriched ?? pickFlavor(committedMood, opts.todayKey);
+    },
+    strategyState ?? null,
+    breakerActive,
+    opts.todayKey
+  );
 
   return {
     loading: false,

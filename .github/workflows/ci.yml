@@ -59,3 +59,15 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test
+      - name: Next.js build
+        # Catches Server Component / dynamic-import / module-graph issues
+        # that tsc --noEmit doesn't see (e.g. importing a "use client" hook
+        # into a server component, or a missing recharts dependency).
+        run: pnpm build
+        env:
+          # Build runs in CI without real Alpaca creds; the dashboard's
+          # server components don't fetch at build time, but route handlers
+          # that touch the env need a sentinel so they fail fast in dev and
+          # tree-shake in build. This won't block the build either way.
+          BOT_MODE: paper
+          NEXT_TELEMETRY_DISABLED: "1"
