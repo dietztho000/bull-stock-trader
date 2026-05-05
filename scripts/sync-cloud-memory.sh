@@ -50,6 +50,7 @@ SHARED_FILES=(
   SECTOR-MAP.md
   ECONOMIC-CALENDAR.md
   MARKET-EARNINGS.md
+  DAILY-SUMMARY.md
 )
 
 # -- Safety guards ----------------------------------------------------------
