@@ -134,4 +134,46 @@ Tomorrow: <one-line plan>"
 
 If there are no open positions, replace the bullet list with the literal
 line `No open positions.` If "Trades today" is empty, write "none".
+
+STEP 9 — AGGREGATE (runs ONCE, AFTER the per-bot fan-out completes).
+
+Append a single cross-bot digest to memory/shared/DAILY-SUMMARY.md so the
+dashboard's Journal "Daily" tab can show a unified picture (audit F4).
+Until Phase 2 splits this into per-bot summaries, the digest is the
+authoritative shared view.
+
+**Idempotency guard:** grep memory/shared/DAILY-SUMMARY.md for the date
+anchor `## $DATE — Daily Summary` first. If a section for today already
+exists (e.g. routine retried), REPLACE it in place. Never append a
+duplicate.
+
+For each enabled bot (re-iterate `bash scripts/bots.sh list`), pull the
+most recent `### MMM DD — EOD Snapshot` block from
+memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (you just wrote it in STEP 4) and
+extract: portfolio, day P&L $/%, phase P&L $/%, day-vs-SPY %, position
+count. Sum portfolio across bots; compute aggregate day P&L $ and the
+weighted-by-portfolio day P&L %. Reuse the routine watchdog's |FIRED|
+/ |EXPECTED| count from STEP 6 — if multiple bots ran STEP 6, take the
+worst (lowest fired ratio) since any single missing routine indicates
+a scheduler hiccup affecting the whole fleet.
+
+Format the appended section EXACTLY:
+
+  ## $DATE — Daily Summary
+
+  **Total portfolio:** $X across N bots
+  **Day P&L:** ±$X (±X.X% weighted)
+  **Phase P&L:** ±$X (±X.X% weighted)
+  **vs SPY:** day ±X.X% / phase ±X.X%
+
+  ### Per bot
+  - **bot-id-1** ($BOT_ALLOCATION): $X equity, ±X.X% day, ±X.X% phase, P open
+  - **bot-id-2** ($BOT_ALLOCATION): $X equity, ±X.X% day, ±X.X% phase, P open
+
+  **Routines:** N/M fired today<if MISSING non-empty: ' (missing: <list>)'>
+
+  ---
+
+The trailing `---` is mandatory — the dashboard parser
+(dashboard/lib/parsers/dailySummary.ts) splits sections on it.
 <!-- STEPS-END -->
