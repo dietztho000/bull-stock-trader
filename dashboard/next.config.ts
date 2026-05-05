@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const config: NextConfig = {
+  // Pin the workspace root so Next stops auto-detecting the parent
+  // /Users/dietz/Desktop/Apps/ as the root just because there's an
+  // unrelated package.json + pnpm-lock.yaml up there. Without this, file
+  // tracing resolves modules against the wrong node_modules and runtime
+  // requests can fail with "Could not find the module … in the React Client
+  // Manifest" for Next-internal paths like next-devtools/userspace/...
+  outputFileTracingRoot: path.join(__dirname),
   experimental: {
     serverActions: { allowedOrigins: ["localhost:3000"] },
   },
