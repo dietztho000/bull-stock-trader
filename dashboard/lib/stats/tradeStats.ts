@@ -18,7 +18,37 @@ export type TradeStats = {
   longestLossStreak: number;
 };
 
+/** Single-entry hash-keyed cache for the most recent computeTradeStats
+ *  result (audit M2). The closed-trade ledger is append-only, so a tuple of
+ *  (length, last symbol+date, totalPnl-as-rough-checksum) reliably detects
+ *  any change without hashing every entry. globalThis-scoped to survive
+ *  Next dev HMR. The mtime cache (audit C1) already prevents re-reading the
+ *  ledger; this layer prevents the O(N) recompute when the parsed array is
+ *  structurally unchanged. */
+type StatsCacheEntry = { hash: string; stats: TradeStats };
+declare global {
+  // eslint-disable-next-line no-var
+  var __tradeStatsCache: StatsCacheEntry | null | undefined;
+}
+
+function statsHash(closed: ClosedTrade[]): string {
+  if (closed.length === 0) return "0";
+  const last = closed[closed.length - 1];
+  let pnlSum = 0;
+  for (const t of closed) pnlSum += t.pnl ?? 0;
+  return `${closed.length}|${last.symbol}|${last.date}|${pnlSum.toFixed(4)}`;
+}
+
 export function computeTradeStats(closed: ClosedTrade[]): TradeStats {
+  const hash = statsHash(closed);
+  const cached = globalThis.__tradeStatsCache;
+  if (cached && cached.hash === hash) return cached.stats;
+  const stats = computeTradeStatsImpl(closed);
+  globalThis.__tradeStatsCache = { hash, stats };
+  return stats;
+}
+
+function computeTradeStatsImpl(closed: ClosedTrade[]): TradeStats {
   const wins = closed.filter((t) => t.outcome === "W");
   const losses = closed.filter((t) => t.outcome === "L");
   const breakeven = closed.filter((t) => t.outcome === "B");
