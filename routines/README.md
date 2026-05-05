@@ -41,11 +41,18 @@ script, commit both files together. CI can verify in-sync state with
 2. **Toggle "Allow unrestricted branch pushes"** in each routine's environment.
    Without this, `git push origin main` silently fails with a proxy error.
 3. **Configure the bot registry** in the dashboard (Settings → Bots & accounts).
-   Routines fan out across every enabled bot in
-   `memory/shared/dashboard-settings.json` via `bash scripts/bots.sh list`. A
-   single routine handles N bots in one run — see
+   Routines fan out across every enabled bot via `bash scripts/bots.sh list`.
+   A single routine handles N bots in one run — see
    [docs/multi-bot-contract.md](../docs/multi-bot-contract.md) for the
    bot/account/strategy model.
+
+   The dashboard maintains `memory/shared/dashboard-settings.json` (which
+   contains encrypted Alpaca credential blobs and so is gitignored). Cloud
+   routines see only the committed sanitized projection at
+   `memory/shared/bots-registry.json`. After adding/editing bots in the
+   dashboard, run **`bash scripts/sync-bots-registry.sh`** to refresh the
+   registry, then commit it. The pre-push hook will refuse to push if the
+   two have drifted.
 4. **Set environment variables on the routine.** See [env.template](../env.template)
    for the full annotated list.
 

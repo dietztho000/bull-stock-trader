@@ -1,0 +1,31 @@
+{
+  "_comment": "Cloud-side fallback for scripts/bots.sh when memory/shared/dashboard-settings.json is missing (fresh cloud clone). Regenerate via `bash scripts/sync-bots-registry.sh` after editing bots in the dashboard.",
+  "accounts": [
+    {
+      "id": "live-main",
+      "mode": "live"
+    },
+    {
+      "id": "paper-main",
+      "mode": "paper"
+    }
+  ],
+  "bots": [
+    {
+      "id": "live",
+      "accountId": "live-main",
+      "strategySlug": "default",
+      "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "paper",
+      "accountId": "paper-main",
+      "strategySlug": "default",
+      "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    }
+  ]
+}

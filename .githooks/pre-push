@@ -25,4 +25,24 @@ if ! git diff --quiet -- routines/; then
   git diff --stat -- routines/ >&2
   exit 1
 fi
+
+# Same idea for the cloud bot registry — when a user adds/edits bots in
+# the dashboard, dashboard-settings.json updates locally but the
+# committed bots-registry.json (which is what cloud routines actually
+# read) stays stale. Regenerate and assert no drift.
+#
+# Skip silently if dashboard-settings.json doesn't exist on this machine —
+# someone with a clean clone can't sync what they don't have, and the
+# committed registry file is authoritative for them.
+if [[ -f memory/shared/dashboard-settings.json ]]; then
+  bash scripts/sync-bots-registry.sh >/dev/null
+  if ! git diff --quiet -- memory/shared/bots-registry.json; then
+    echo "pre-push: memory/shared/bots-registry.json is out of sync with dashboard-settings.json." >&2
+    echo "  Run: bash scripts/sync-bots-registry.sh" >&2
+    echo "  Then commit the regenerated file and push again." >&2
+    git diff --stat -- memory/shared/bots-registry.json >&2
+    exit 1
+  fi
+fi
+
 exit 0

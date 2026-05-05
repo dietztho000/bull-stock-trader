@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Bot registry helper. Reads memory/shared/dashboard-settings.json (the
-# single source of truth maintained by the dashboard) and emits the
-# enabled bots in a TSV format that routines can iterate.
+# dashboard's source of truth, holds encrypted creds — gitignored), and
+# falls back to memory/shared/bots-registry.json (committed, no secrets,
+# what cloud routines see in a fresh clone).
+#
+# Local: dashboard-settings.json wins (the dashboard rewrites it as the
+# user adds/edits bots). Cloud: only bots-registry.json exists.
+# Keep the two in sync via `bash scripts/sync-bots-registry.sh`; the
+# pre-push hook fails if they drift.
 #
 # Usage:
 #   bash scripts/bots.sh list                  # tab-separated rows
@@ -29,7 +35,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SETTINGS_FILE="$ROOT/memory/shared/dashboard-settings.json"
+PRIMARY_FILE="$ROOT/memory/shared/dashboard-settings.json"
+FALLBACK_FILE="$ROOT/memory/shared/bots-registry.json"
+if [[ -f "$PRIMARY_FILE" ]]; then
+  SETTINGS_FILE="$PRIMARY_FILE"
+elif [[ -f "$FALLBACK_FILE" ]]; then
+  SETTINGS_FILE="$FALLBACK_FILE"
+else
+  SETTINGS_FILE=""
+fi
 
 cmd="${1:-list}"
 shift || true
@@ -51,7 +65,7 @@ case "$cmd" in
         *) echo "list: unknown flag '$1'" >&2; exit 1 ;;
       esac
     done
-    if [[ ! -f "$SETTINGS_FILE" ]]; then exit 0; fi
+    if [[ -z "$SETTINGS_FILE" ]]; then exit 0; fi
     # accountId map: id → mode (joined into the row so callers don't need a
     # second jq pass per bot). routine_filter applies the F3 opt-out when
     # --routine is set; jq's `// true` makes the absence-of-key default to
@@ -78,7 +92,7 @@ case "$cmd" in
     ' "$SETTINGS_FILE"
     ;;
   count)
-    if [[ ! -f "$SETTINGS_FILE" ]]; then echo 0; exit 0; fi
+    if [[ -z "$SETTINGS_FILE" ]]; then echo 0; exit 0; fi
     jq '[.bots[]? | select(.enabled == true)] | length' "$SETTINGS_FILE"
     ;;
   env-namespace)
