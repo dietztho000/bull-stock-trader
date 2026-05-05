@@ -12,33 +12,24 @@ enough that the user has time to rotate keys before pre-market fires.
 Be terse internally; the Discord post is the user-facing surface and follows
 a strict format (see STEP 5).
 
+**LOCAL fan-out** — when invoked via `/auth-canary`, source the registry
+helpers and run the per-bot loop yourself. Cloud routines get this same
+logic from `routines/_cloud-header.md` (do not duplicate inside STEPS):
+
+```bash
+DATE=$(date +%Y-%m-%d)
+source scripts/_routine-header.sh
+_routine_assert_bots_present auth-canary
+_routine_emit_start auth-canary
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+  _routine_preflight_or_skip auth-canary || continue
+  # — STEPS 1..N below execute per bot —
+done < <(bash scripts/bots.sh list --routine=auth-canary)
+_routine_emit_end auth-canary ok
+```
+
 <!-- STEPS-BEGIN -->
-
-PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
-Read the registry first:
-
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting auth-canary"
-    exit 0
-  fi
-
-  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    bash scripts/auth-preflight.sh auth-canary --account-id="$ACCOUNT_ID" || continue
-    # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list --routine=auth-canary)
-
-Everything beneath this preamble runs inside that loop. $BOT_ID,
-$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
-Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
-includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-
-NOTE: pre-market does Perplexity research that is conceptually shared
-across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
-the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary and weekly-review
-post one Discord summary per bot in this Phase 1 implementation; a Phase
-2 refactor aggregates them into a single multi-bot summary.
 
 STEP 1 — Alpaca account check (broker auth — most critical). Capture
 result for STEP 5:

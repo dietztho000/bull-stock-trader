@@ -7,33 +7,24 @@ DATE=$(date +%Y-%m-%d).
 
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
+**LOCAL fan-out** — when invoked via `/weekly-review`, source the registry
+helpers and run the per-bot loop yourself. Cloud routines get this same
+logic from `routines/_cloud-header.md` (do not duplicate inside STEPS):
+
+```bash
+DATE=$(date +%Y-%m-%d)
+source scripts/_routine-header.sh
+_routine_assert_bots_present weekly-review
+_routine_emit_start weekly-review
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+  _routine_preflight_or_skip weekly-review || continue
+  # — STEPS 1..N below execute per bot —
+done < <(bash scripts/bots.sh list --routine=weekly-review)
+_routine_emit_end weekly-review ok
+```
+
 <!-- STEPS-BEGIN -->
-
-PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
-Read the registry first:
-
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting weekly-review"
-    exit 0
-  fi
-
-  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    bash scripts/auth-preflight.sh weekly-review --account-id="$ACCOUNT_ID" || continue
-    # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list --routine=weekly-review)
-
-Everything beneath this preamble runs inside that loop. $BOT_ID,
-$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
-Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
-includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-
-NOTE: pre-market does Perplexity research that is conceptually shared
-across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
-the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary and weekly-review
-post one Discord summary per bot in this Phase 1 implementation; a Phase
-2 refactor aggregates them into a single multi-bot summary.
 
 STEP 1 — Read memory for full week context:
 - memory/$BOT_ID/$STRATEGY/WEEKLY-REVIEW.md (match existing template exactly)

@@ -41,19 +41,45 @@ _routine_assert_bots_present() {
   fi
 }
 
-# Emit a `start` heartbeat once per routine (BEFORE the fan-out loop) so a
-# crash mid-iteration still leaves a trace.
+# Emit a `start` heartbeat once per routine, recorded in EVERY enabled
+# bot's RUN-LOG.jsonl so the EOD watchdog (which reads any one bot's log)
+# always sees the routine fired. Called BEFORE the fan-out loop so a crash
+# mid-iteration still leaves a trace. Iterating internally is required
+# because BOT_ID is unset before the loop and would otherwise route every
+# write to the same fallback bot — losing the per-bot audit signal.
 _routine_emit_start() {
   local routine="${1:?usage: _routine_emit_start <routine-name>}"
-  bash "$ROUTINE_HEADER_ROOT/scripts/run-log.sh" start "$routine"
+  _emit_run_log_for_each_bot start "$routine" ok
 }
 
-# Emit a matching `end` heartbeat after the loop.
-# Status: ok|fail|noop. Defaults to ok.
+# Emit a matching `end` heartbeat after the loop, in every bot's
+# RUN-LOG.jsonl for the same reason as start. Status: ok|fail|noop.
 _routine_emit_end() {
   local routine="${1:?usage: _routine_emit_end <routine-name> [status]}"
   local status="${2:-ok}"
-  bash "$ROUTINE_HEADER_ROOT/scripts/run-log.sh" end "$routine" "$status"
+  _emit_run_log_for_each_bot end "$routine" "$status"
+}
+
+# Internal: write a single run-log row per enabled bot, with that bot's
+# BOT_ID/STRATEGY exported only for the duration of each invocation. We
+# explicitly DO NOT iterate via $(bots.sh list) and a subshell loop — the
+# read-while pattern keeps stdout from earlier writes from racing.
+_emit_run_log_for_each_bot() {
+  # Note: avoid `local status=…` — zsh treats `$status` as read-only when
+  # this file is sourced interactively. Rename to `run_status` so the
+  # helpers work the same when called from bash, zsh, or via `bash …`.
+  local action="$1" routine="$2" run_status="$3"
+  local bot acct strat alloc mode
+  # acct/alloc/mode are intentionally consumed but unused here — bots.sh
+  # list emits 5 fields per row and we only need bot+strategy for the
+  # heartbeat write.
+  # shellcheck disable=SC2034
+  while IFS=$'\t' read -r bot acct strat alloc mode; do
+    [[ -z "$bot" ]] && continue
+    BOT_ID="$bot" STRATEGY="${strat:-default}" \
+      bash "$ROUTINE_HEADER_ROOT/scripts/run-log.sh" "$action" "$routine" "$run_status" \
+      >/dev/null
+  done < <(bash "$ROUTINE_HEADER_ROOT/scripts/bots.sh" list)
 }
 
 # Per-iteration preflight. Returns non-zero when the bot's creds are bad —

@@ -7,36 +7,31 @@ DATE=$(date +%Y-%m-%d).
 
 Credentials come from the local .env. No env-var check block. No commit/push step.
 
+**LOCAL fan-out** — when invoked via `/daily-summary`, source the registry
+helpers and run the per-bot loop yourself. Cloud routines get this same
+logic from `routines/_cloud-header.md` (do not duplicate inside STEPS):
+
+```bash
+DATE=$(date +%Y-%m-%d)
+source scripts/_routine-header.sh
+_routine_assert_bots_present daily-summary
+_routine_emit_start daily-summary
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+  _routine_preflight_or_skip daily-summary || continue
+  # — STEPS 1..N below execute per bot —
+done < <(bash scripts/bots.sh list --routine=daily-summary)
+_routine_emit_end daily-summary ok
+```
+
 <!-- STEPS-BEGIN -->
 
-PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
-Read the registry first:
-
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting daily-summary"
-    exit 0
-  fi
-
-  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    bash scripts/auth-preflight.sh daily-summary --account-id="$ACCOUNT_ID" || continue
-    # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list --routine=daily-summary)
-
-Everything beneath this preamble runs inside that loop. $BOT_ID,
-$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
-Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
-includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-
-NOTE: pre-market does Perplexity research that is conceptually shared
-across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
-the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary now posts a SINGLE
-unified Discord recap across all bots (STEP 8 runs once after the
-fan-out, audit Phase 2). Per-bot memory writes (STEPs 1-5) still happen
-inside the loop. Watchdog and perplexity-tally alerts (STEPs 6, 7) also
-moved out of the loop so a 3-bot fleet doesn't trigger 3 identical
-Discord alerts.
+NOTE: STEP 8 (Discord EOD) and STEP 9 (DAILY-SUMMARY.md aggregate) run
+ONCE AFTER the per-bot loop completes — they reduce per-bot memory writes
+(STEPs 1-5) into a single unified post and a single shared digest, so a
+multi-bot fleet doesn't fire one Discord recap per bot. STEPS 6 and 7
+(watchdog + perplexity tally) also run once after the loop for the same
+reason. STEPS 1-5 run inside the loop for every enabled bot.
 
 STEP 1 — Read memory for continuity:
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's

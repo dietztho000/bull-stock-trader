@@ -31,59 +31,53 @@ IMPORTANT — PER-BOT MEMORY LAYOUT:
   BENCHMARK.md, RESEARCH-LOG.md, SECTOR-LEDGER.md, WEEKLY-REVIEW.md,
   EARNINGS-CALENDAR.md, BACKTEST-RESULTS.{md,json}.
 - Shared files: SECTOR-MAP.md, ECONOMIC-CALENDAR.md, MARKET-EARNINGS.md,
-  PERPLEXITY-LOG.md, DASHBOARD-AUDIT.jsonl, dashboard-settings.json.
+  PERPLEXITY-LOG.md, DAILY-SUMMARY.md, DASHBOARD-AUDIT.jsonl,
+  dashboard-settings.json.
 
-PER-BOT FAN-OUT — every routine that touches per-bot state runs once per
-enabled bot. Source the shared scaffolding once at the top, then iterate:
+## MANDATORY — RUN THIS SETUP BLOCK BEFORE ANY STEP
 
-  source scripts/_routine-header.sh
-  _routine_assert_bots_present daily-summary   # Discord error + exit when registry empty
-  _routine_emit_start          daily-summary   # heartbeat: routine fired
+This sources the registry helpers, aborts cleanly if the registry has no
+enabled bots, and emits the routine-fired heartbeat to every enabled
+bot's RUN-LOG.jsonl. **Skipping it makes the daily-summary watchdog
+report this routine as "missing" even when it ran.**
 
-The registry lives in memory/shared/dashboard-settings.json and is queried
-via `bash scripts/bots.sh list`, which emits TAB-separated rows:
-`bot_id  account_id  strategy  allocation  mode`. Each STEP block below
-runs inside this loop:
+```bash
+DATE=$(date +%Y-%m-%d)
+source scripts/_routine-header.sh
+_routine_assert_bots_present daily-summary
+_routine_emit_start daily-summary
+```
 
-  while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    # Per-bot preflight (each account checked independently — one bad
-    # account must not abort the others). The helper posts Discord +
-    # emits a discriminated RUN-LOG entry on failure.
-    _routine_preflight_or_skip daily-summary || continue
-    # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
-    # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-  done < <(bash scripts/bots.sh list --routine=daily-summary)
+## MANDATORY — WRAP STEPS 1..N IN THIS PER-BOT FAN-OUT LOOP
+
+The numbered STEP blocks below execute **once per enabled bot**. Source
+the bot list from `bash scripts/bots.sh list --routine=daily-summary`
+(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode`)
+and iterate. The auth preflight inside the loop posts Discord + emits a
+discriminated RUN-LOG entry on failure, so a bad-creds bot is logged
+loudly and skipped without aborting the others.
+
+```bash
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+  _routine_preflight_or_skip daily-summary || continue
+  # ── STEPS 1..N from below run here for this bot ──
+  # All memory paths use $BOT_ID/$STRATEGY.
+  # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+done < <(bash scripts/bots.sh list --routine=daily-summary)
+```
+
+After the loop completes, run the FINAL STEP from the footer (also
+mandatory — it emits the routine-completed heartbeat and commits + pushes
+all per-bot writes in a single batch).
 
 
-PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
-Read the registry first:
-
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting daily-summary"
-    exit 0
-  fi
-
-  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    bash scripts/auth-preflight.sh daily-summary --account-id="$ACCOUNT_ID" || continue
-    # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list --routine=daily-summary)
-
-Everything beneath this preamble runs inside that loop. $BOT_ID,
-$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
-Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
-includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-
-NOTE: pre-market does Perplexity research that is conceptually shared
-across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
-the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary now posts a SINGLE
-unified Discord recap across all bots (STEP 8 runs once after the
-fan-out, audit Phase 2). Per-bot memory writes (STEPs 1-5) still happen
-inside the loop. Watchdog and perplexity-tally alerts (STEPs 6, 7) also
-moved out of the loop so a 3-bot fleet doesn't trigger 3 identical
-Discord alerts.
+NOTE: STEP 8 (Discord EOD) and STEP 9 (DAILY-SUMMARY.md aggregate) run
+ONCE AFTER the per-bot loop completes — they reduce per-bot memory writes
+(STEPs 1-5) into a single unified post and a single shared digest, so a
+multi-bot fleet doesn't fire one Discord recap per bot. STEPS 6 and 7
+(watchdog + perplexity tally) also run once after the loop for the same
+reason. STEPS 1-5 run inside the loop for every enabled bot.
 
 STEP 1 — Read memory for continuity:
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's
@@ -238,19 +232,24 @@ Format the appended section EXACTLY:
 The trailing `---` is mandatory — the dashboard parser
 (dashboard/lib/parsers/dailySummary.ts) splits sections on it.
 
-FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
-per-bot loop completes — captures every bot's writes in a single commit):
-  _routine_emit_end daily-summary ok
-  # `memory/` includes every per-bot subdir touched in the loop plus the
-  # shared writes (PERPLEXITY-LOG, calendars, sector cache, audit log).
-  git add memory/
-  if git diff --cached --quiet; then
-    echo "no memory changes to commit"
-  else
-    git commit -m "daily-summary $DATE ($(bash scripts/bots.sh count) bots)"
-    git push origin main
-  fi
-On push failure (rule #21): retry up to 3 times — `git pull --rebase
-origin main && git push origin main`, sleeping ~3s between attempts.
-If still failing after 3 tries, exit with an error Discord post;
-never force-push.
+## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
+
+Emits the routine-completed heartbeat to every enabled bot's
+RUN-LOG.jsonl, then commits + pushes every per-bot and shared write
+captured during the loop in a single batch.
+
+```bash
+_routine_emit_end daily-summary ok
+git add memory/
+if git diff --cached --quiet; then
+  echo "no memory changes to commit"
+else
+  git commit -m "daily-summary $DATE ($(bash scripts/bots.sh count) bots)"
+  git push origin main
+fi
+```
+
+**On push failure** (rule #21): retry up to 3 times —
+`git pull --rebase origin main && git push origin main`, sleeping ~3s
+between attempts. If still failing after 3 tries, send one Discord
+--type=error post and exit non-zero. Never force-push.

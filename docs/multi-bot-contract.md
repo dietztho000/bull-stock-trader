@@ -111,6 +111,34 @@ tree without a one-time copy. The bash side picks the directory via
 routines that adopt the registry must use the alias-aware bot id from
 `bots.sh list`.
 
+### Registry split: `dashboard-settings.json` vs `bots-registry.json`
+
+The bot registry physically lives in **two files**, and `scripts/bots.sh`
+prefers one over the other depending on whether the dashboard is around:
+
+| File | Scope | Committed? | Holds creds? |
+|---|---|---|---|
+| [`memory/shared/dashboard-settings.json`](../memory/shared/dashboard-settings.json) | Local dashboard's source of truth (registry + per-machine UI prefs + encrypted Alpaca cred blobs) | **No** — gitignored | Yes (`apiKeyEnc` / `secretKeyEnc`, AES-256-GCM via `BULL_VAULT_KEY`) |
+| [`memory/shared/bots-registry.json`](../memory/shared/bots-registry.json) | Sanitized cloud-side projection (just `accounts[].{id,mode}` + `bots[].{id,accountId,strategySlug,allocation,enabled,routineFilter}`) | **Yes** | No |
+
+`scripts/bots.sh` reads `dashboard-settings.json` first; if the file is
+absent (a fresh cloud clone), it falls back to `bots-registry.json`. The
+cloud agent uses the namespaced `ALPACA_<NS>_*` env vars for actual
+authentication — it never needs the encrypted blobs.
+
+**Keeping them in sync.** When you add or edit bots through the
+dashboard, only `dashboard-settings.json` updates locally. Run
+[`scripts/sync-bots-registry.sh`](../scripts/sync-bots-registry.sh) to
+regenerate `bots-registry.json` from the dashboard's view, then commit.
+The pre-push hook (`.githooks/pre-push`, installed via
+`scripts/install-githooks.sh`) re-runs the sync and refuses to push if
+the two have drifted, so the cloud never sees a stale registry.
+
+**Trap to avoid.** The sync script projects fields with explicit `if .enabled
+== false then false else true end` — *not* `(.enabled // true)`, which is a
+jq footgun: `//` returns the right operand when the left is `null` *or* `false`,
+so `false // true → true` would silently re-enable a disabled bot.
+
 ---
 
 ## 5. Credential resolution (bash side)
@@ -237,7 +265,8 @@ duplicate entry. Implementations:
 
 | If you want to…                                  | Edit                                                                      |
 |--------------------------------------------------|---------------------------------------------------------------------------|
-| Add a new memory file                            | Register scope in [`dashboard/lib/memoryPath.ts`](../dashboard/lib/memoryPath.ts) |
+| Add a new memory file                            | Register scope in [`dashboard/lib/memoryPath.ts`](../dashboard/lib/memoryPath.ts); add cloud-routine writes to `SHARED_FILES` or `PER_BOT_FILES` in [`scripts/sync-cloud-memory.sh`](../scripts/sync-cloud-memory.sh) |
+| Add or edit a bot                                | Use the dashboard's BotsManager (`/bots`); then run [`scripts/sync-bots-registry.sh`](../scripts/sync-bots-registry.sh) and commit `memory/shared/bots-registry.json` so the cloud sees the change |
 | Change BOT_ID / BOT_MODE precedence              | [`scripts/_lib.sh`](../scripts/_lib.sh) `_resolve_bot_id`                 |
 | Add a new namespaced env var                     | Update [`scripts/alpaca.sh`](../scripts/alpaca.sh) cred resolver          |
 | Add a new fan-out helper                         | [`scripts/_routine-header.sh`](../scripts/_routine-header.sh)             |

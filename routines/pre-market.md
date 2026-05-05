@@ -31,56 +31,46 @@ IMPORTANT — PER-BOT MEMORY LAYOUT:
   BENCHMARK.md, RESEARCH-LOG.md, SECTOR-LEDGER.md, WEEKLY-REVIEW.md,
   EARNINGS-CALENDAR.md, BACKTEST-RESULTS.{md,json}.
 - Shared files: SECTOR-MAP.md, ECONOMIC-CALENDAR.md, MARKET-EARNINGS.md,
-  PERPLEXITY-LOG.md, DASHBOARD-AUDIT.jsonl, dashboard-settings.json.
+  PERPLEXITY-LOG.md, DAILY-SUMMARY.md, DASHBOARD-AUDIT.jsonl,
+  dashboard-settings.json.
 
-PER-BOT FAN-OUT — every routine that touches per-bot state runs once per
-enabled bot. Source the shared scaffolding once at the top, then iterate:
+## MANDATORY — RUN THIS SETUP BLOCK BEFORE ANY STEP
 
-  source scripts/_routine-header.sh
-  _routine_assert_bots_present pre-market   # Discord error + exit when registry empty
-  _routine_emit_start          pre-market   # heartbeat: routine fired
+This sources the registry helpers, aborts cleanly if the registry has no
+enabled bots, and emits the routine-fired heartbeat to every enabled
+bot's RUN-LOG.jsonl. **Skipping it makes the daily-summary watchdog
+report this routine as "missing" even when it ran.**
 
-The registry lives in memory/shared/dashboard-settings.json and is queried
-via `bash scripts/bots.sh list`, which emits TAB-separated rows:
-`bot_id  account_id  strategy  allocation  mode`. Each STEP block below
-runs inside this loop:
+```bash
+DATE=$(date +%Y-%m-%d)
+source scripts/_routine-header.sh
+_routine_assert_bots_present pre-market
+_routine_emit_start pre-market
+```
 
-  while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    # Per-bot preflight (each account checked independently — one bad
-    # account must not abort the others). The helper posts Discord +
-    # emits a discriminated RUN-LOG entry on failure.
-    _routine_preflight_or_skip pre-market || continue
-    # Run STEPS 1..N below. All memory paths use $BOT_ID/$STRATEGY.
-    # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-  done < <(bash scripts/bots.sh list --routine=pre-market)
+## MANDATORY — WRAP STEPS 1..N IN THIS PER-BOT FAN-OUT LOOP
 
+The numbered STEP blocks below execute **once per enabled bot**. Source
+the bot list from `bash scripts/bots.sh list --routine=pre-market`
+(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode`)
+and iterate. The auth preflight inside the loop posts Discord + emits a
+discriminated RUN-LOG entry on failure, so a bad-creds bot is logged
+loudly and skipped without aborting the others.
 
-PER-BOT FAN-OUT — every numbered STEP below runs ONCE PER ENABLED BOT.
-Read the registry first:
+```bash
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+  _routine_preflight_or_skip pre-market || continue
+  # ── STEPS 1..N from below run here for this bot ──
+  # All memory paths use $BOT_ID/$STRATEGY.
+  # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+done < <(bash scripts/bots.sh list --routine=pre-market)
+```
 
-  if [[ "$(bash scripts/bots.sh count)" == "0" ]]; then
-    bash scripts/discord.sh --type=error "No enabled bots in registry — aborting pre-market"
-    exit 0
-  fi
+After the loop completes, run the FINAL STEP from the footer (also
+mandatory — it emits the routine-completed heartbeat and commits + pushes
+all per-bot writes in a single batch).
 
-  while IFS=$'	' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-    export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
-    bash scripts/auth-preflight.sh pre-market --account-id="$ACCOUNT_ID" || continue
-    # ─── run STEPS 1..N below for this bot ────────────────────────────
-  done < <(bash scripts/bots.sh list --routine=pre-market)
-
-Everything beneath this preamble runs inside that loop. $BOT_ID,
-$ACCOUNT_ID, $STRATEGY, $BOT_ALLOCATION, $BOT_MODE are guaranteed set.
-Memory paths use $BOT_ID/$STRATEGY. Every alpaca.sh call already
-includes --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
-
-NOTE: pre-market does Perplexity research that is conceptually shared
-across bots. The grep-first idempotency rule on PERPLEXITY-LOG.md means
-the 2nd, 3rd, … bot iterations will skip the duplicate Perplexity call
-when today's answer is already cached. daily-summary and weekly-review
-post one Discord summary per bot in this Phase 1 implementation; a Phase
-2 refactor aggregates them into a single multi-bot summary.
 
 STEP 1 — Read memory for context:
 - memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
@@ -197,19 +187,24 @@ If a Perplexity query exits 3 (key missing), append a final line "Note:
 Perplexity unavailable — used WebSearch fallback." before the Decision line.
 Truncate any section to keep the total under ~1800 chars (Discord limit).
 
-FINAL STEP — log heartbeat end + COMMIT AND PUSH (runs ONCE after the
-per-bot loop completes — captures every bot's writes in a single commit):
-  _routine_emit_end pre-market ok
-  # `memory/` includes every per-bot subdir touched in the loop plus the
-  # shared writes (PERPLEXITY-LOG, calendars, sector cache, audit log).
-  git add memory/
-  if git diff --cached --quiet; then
-    echo "no memory changes to commit"
-  else
-    git commit -m "pre-market $DATE ($(bash scripts/bots.sh count) bots)"
-    git push origin main
-  fi
-On push failure (rule #21): retry up to 3 times — `git pull --rebase
-origin main && git push origin main`, sleeping ~3s between attempts.
-If still failing after 3 tries, exit with an error Discord post;
-never force-push.
+## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
+
+Emits the routine-completed heartbeat to every enabled bot's
+RUN-LOG.jsonl, then commits + pushes every per-bot and shared write
+captured during the loop in a single batch.
+
+```bash
+_routine_emit_end pre-market ok
+git add memory/
+if git diff --cached --quiet; then
+  echo "no memory changes to commit"
+else
+  git commit -m "pre-market $DATE ($(bash scripts/bots.sh count) bots)"
+  git push origin main
+fi
+```
+
+**On push failure** (rule #21): retry up to 3 times —
+`git pull --rebase origin main && git push origin main`, sleeping ~3s
+between attempts. If still failing after 3 tries, send one Discord
+--type=error post and exit non-zero. Never force-push.
