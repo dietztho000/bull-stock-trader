@@ -16,7 +16,7 @@
       "accountId": "live-main",
       "strategySlug": "default",
       "allocation": null,
-      "enabled": true,
+      "enabled": false,
       "routineFilter": null
     },
     {

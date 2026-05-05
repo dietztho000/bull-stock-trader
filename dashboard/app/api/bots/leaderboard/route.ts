@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { listAccounts, listBots, type Bot } from "@/lib/settings";
 import { botEquity } from "@/lib/bots/virtualEquity";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
@@ -92,9 +92,12 @@ async function rowFor(
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const [bots, accounts] = await Promise.all([listBots(), listAccounts()]);
+    const includeDisabled =
+      req.nextUrl.searchParams.get("includeDisabled") === "true";
+    const [allBots, accounts] = await Promise.all([listBots(), listAccounts()]);
+    const bots = includeDisabled ? allBots : allBots.filter((b) => b.enabled);
     const accountById = new Map(accounts.map((a) => [a.id, a]));
     // Fan out per-bot fetches in parallel — no single slow bot blocks the
     // others, and a credential failure on one is isolated to that row.

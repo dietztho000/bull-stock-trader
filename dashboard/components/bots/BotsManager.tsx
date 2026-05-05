@@ -18,7 +18,9 @@ import { RotateAccountCredsModal } from "./RotateAccountCredsModal";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const ACCOUNTS_URL = "/api/accounts";
-const BOTS_URL = "/api/bots";
+// includeDisabled=true so the admin page can still see disabled bots and
+// re-enable them. The unscoped /api/bots default filters to enabled-only.
+const BOTS_URL = "/api/bots?includeDisabled=true";
 
 const ENDPOINT_DEFAULTS: Record<"live" | "paper", string> = {
   live: "https://api.alpaca.markets/v2",

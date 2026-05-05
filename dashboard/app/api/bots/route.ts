@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { addBot, listBots } from "@/lib/settings";
 
@@ -20,9 +20,12 @@ const createBody = z.object({
   enabled: z.boolean().default(true),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const bots = await listBots();
+    const includeDisabled =
+      req.nextUrl.searchParams.get("includeDisabled") === "true";
+    const all = await listBots();
+    const bots = includeDisabled ? all : all.filter((b) => b.enabled);
     return NextResponse.json(
       { bots },
       { headers: { "Cache-Control": "no-store" } }

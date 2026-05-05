@@ -32,7 +32,9 @@ projected="$(jq '{
     accountId,
     strategySlug: (.strategySlug // "default"),
     allocation,
-    enabled: (.enabled // true),
+    # jq `//` treats false like null, so `.enabled // true` would
+    # silently re-enable a disabled bot. Default explicitly via `if`.
+    enabled: (if .enabled == false then false else true end),
     routineFilter: (.routineFilter // null)
   }))
 }' "$SETTINGS")"
