@@ -5,8 +5,18 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Default to node — most lib tests don't need a DOM and starting one
+    // costs real wall time. Component tests under components/**/__tests__
+    // opt into happy-dom via the per-file pragma:
+    //
+    //   // @vitest-environment happy-dom
+    //
+    // at the top of the test file. (vitest 4 dropped environmentMatchGlobs.)
     environment: "node",
-    include: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
+    include: [
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx",
+    ],
     exclude: ["**/node_modules/**", "**/.next/**"],
     globals: false,
   },
