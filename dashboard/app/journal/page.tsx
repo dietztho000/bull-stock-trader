@@ -14,6 +14,7 @@ import {
 } from "@/lib/parsers/runLog";
 import { CrossBotRoutineGrid } from "@/components/journal/CrossBotRoutineGrid";
 import { WeeklyReviewDraft } from "@/components/journal/WeeklyReviewDraft";
+import { RoutineHealthPopover } from "@/components/journal/RoutineHealthPopover";
 import { todayInCT, isFridayCT, fmtClockCT } from "@/lib/time";
 import { fmtRelativeTime } from "@/lib/format";
 import { cooldownStatus } from "@/lib/stats/cooldown";
@@ -65,11 +66,11 @@ export default async function JournalPage({
   );
 }
 
-/** Surfaces the time since the latest RUN-LOG.jsonl entry as a colored pill.
- *  Green = within 12h (today's routines are flowing), amber = 12–36h (last
- *  ran yesterday — normal on weekends), red = >36h or never (likely scheduler
- *  outage). Catches the failure mode where the dashboard reads a frozen
- *  per-bot file because cloud routines have stopped pushing. */
+/** Surfaces the time since the latest RUN-LOG.jsonl entry as a clickable
+ *  pill that opens a per-routine breakdown popover. Catches the failure
+ *  mode where the dashboard reads a frozen per-bot file because cloud
+ *  routines stopped pushing — and lets the user spot WHICH specific
+ *  routine missed at a glance. Audit B drill-down. */
 async function RoutineHealthBadge({
   botId,
   strategy,
@@ -78,6 +79,9 @@ async function RoutineHealthBadge({
   strategy: string;
 }) {
   const runs = await loadRunLog({ bot: botId, strategy });
+  const today = todayInCT();
+  const summary = summarizeToday(runs, today, isFridayCT(today));
+
   let latestTs: number | null = null;
   for (const r of runs) {
     const ts = r.endTs ?? r.startTs;
@@ -86,15 +90,29 @@ async function RoutineHealthBadge({
     if (!Number.isFinite(ms)) continue;
     if (latestTs == null || ms > latestTs) latestTs = ms;
   }
-  if (latestTs == null) {
-    return <Badge tone="warn">Routines: never</Badge>;
-  }
-  const diffH = (Date.now() - latestTs) / 3_600_000;
-  const tone = diffH <= 12 ? "up" : diffH <= 36 ? "neutral" : "down";
+
+  const popoverRoutines = summary.map((s) => {
+    const lastRun = s.lastRun;
+    let status: "ok" | "error" | "unknown" | "missing" = "missing";
+    if (lastRun) {
+      if (lastRun.status === "error") status = "error";
+      else if (lastRun.endTs == null) status = "unknown";
+      else status = "ok";
+    }
+    return {
+      routine: s.routine,
+      startTs: lastRun?.startTs ?? null,
+      endTs: lastRun?.endTs ?? null,
+      status,
+    };
+  });
+
   return (
-    <span title={`Last routine entry at ${fmtClockCT(new Date(latestTs))} CT`}>
-      <Badge tone={tone}>Last run {fmtRelativeTime(latestTs)} ago</Badge>
-    </span>
+    <RoutineHealthPopover
+      latestTs={latestTs}
+      routines={popoverRoutines}
+      todayCT={today}
+    />
   );
 }
 
