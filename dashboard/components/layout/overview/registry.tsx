@@ -253,9 +253,22 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
 function LatestBriefSection({ latest }: { latest: ResearchEntry | null }) {
   if (!latest) {
     return (
-      <Card title="No research yet">
-        <div className="text-xs text-[var(--color-muted)]">
-          Pre-market research lands at 6 AM ET.
+      <Card title="Latest brief">
+        <div className="space-y-1.5">
+          <p className="text-xs text-[var(--color-muted)] leading-relaxed">
+            Today's pre-market research will appear here. Until then, the most
+            recent brief is in the Journal.
+          </p>
+          <p className="text-[11px] text-[var(--color-muted)] tabular">
+            <span className="text-[var(--color-text)]">Next:</span> ~6 AM CT
+            (Mon–Fri)
+          </p>
+          <Link
+            href="/journal"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] hover:underline pt-1"
+          >
+            Open journal <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </Card>
     );

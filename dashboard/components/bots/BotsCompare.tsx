@@ -93,9 +93,20 @@ export function BotsCompare() {
     return (
       <div className="space-y-5">
         <Header />
-        <Card title="No bots configured">
-          <div className="text-xs text-[var(--color-muted)]">
-            Add bots at <Link href="/bots" className="text-[var(--color-accent)] hover:underline">/bots</Link> to compare them here.
+        <Card title="No bots to compare">
+          <div className="space-y-2 text-xs text-[var(--color-muted)] leading-relaxed">
+            <p>
+              Compare runs side-by-side once you have at least one bot
+              configured. Add a bot in /bots, point it at a paper or live
+              Alpaca account, and equity curves will populate as the daily
+              routines fire.
+            </p>
+            <Link
+              href="/bots"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] hover:underline"
+            >
+              Configure a bot <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </Card>
       </div>

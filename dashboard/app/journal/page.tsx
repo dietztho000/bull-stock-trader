@@ -15,6 +15,7 @@ import {
 import { CrossBotRoutineGrid } from "@/components/journal/CrossBotRoutineGrid";
 import { WeeklyReviewDraft } from "@/components/journal/WeeklyReviewDraft";
 import { RoutineHealthPopover } from "@/components/journal/RoutineHealthPopover";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { todayInCT, isFridayCT, fmtClockCT } from "@/lib/time";
 import { fmtRelativeTime } from "@/lib/format";
 import { cooldownStatus } from "@/lib/stats/cooldown";
@@ -130,12 +131,12 @@ async function ResearchTab({ botId, strategy }: { botId: string; strategy: strin
 
   if (entries.length === 0) {
     return (
-      <Card title="No entries yet">
-        <div className="text-sm text-[var(--color-muted)]">
-          Pre-market research will appear here once the bot starts running its 6 AM
-          routine.
-        </div>
-      </Card>
+      <EmptyState
+        title="No research yet"
+        reason="The pre-market routine drops a research brief here every trading morning, with catalysts, sector reads, and a watchlist."
+        schedule="Next fire ~6 AM CT (Mon–Fri)"
+        action={{ href: "/bots", label: "Check bot health" }}
+      />
     );
   }
 
@@ -242,12 +243,17 @@ async function WeeklyTab({ botId, strategy }: { botId: string; strategy: string 
     return (
       <div className="space-y-4">
         <WeeklyReviewDraft botId={botId} />
-        <Card title="No reviews yet">
-          <div className="text-sm text-[var(--color-muted)]">
-            Weekly reviews land Friday afternoon after the /weekly-review routine.
-            Use the draft generator above to start a week early.
-          </div>
-        </Card>
+        <EmptyState
+          title="No weekly reviews yet"
+          reason="The weekly-review routine writes a Friday afternoon recap with grade, alpha vs SPY, and the week's biggest learnings."
+          schedule="Next fire Friday ~3:15 PM CT"
+        >
+          <p className="text-xs text-[var(--color-muted)]">
+            Use the draft generator above to seed a review before the routine
+            runs — fill in the body and the routine will preserve your notes
+            on the next fire.
+          </p>
+        </EmptyState>
       </div>
     );
   }
@@ -295,11 +301,12 @@ async function DailyTab() {
   const summaries = await loadDailySummaries();
   if (summaries.length === 0) {
     return (
-      <Card title="No daily summaries yet">
-        <div className="text-sm text-[var(--color-muted)]">
-          The /daily-summary routine appends an entry after each trading day.
-        </div>
-      </Card>
+      <EmptyState
+        title="No daily summaries yet"
+        reason="The daily-summary routine writes a unified cross-bot recap after market close each trading day — total P&L, vs-SPY alpha, and a per-bot breakdown."
+        schedule="Next fire ~3:15 PM CT after the close"
+        action={{ href: "/bots", label: "Verify enabled bots" }}
+      />
     );
   }
   return (

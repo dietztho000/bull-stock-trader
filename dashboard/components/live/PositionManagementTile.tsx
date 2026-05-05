@@ -55,9 +55,17 @@ export function PositionManagementTile() {
 
   if (positions.length === 0) {
     return (
-      <Card title="Position management" subtitle="No open positions to manage.">
-        <div className="text-xs text-[var(--color-muted)]">
-          New entries land via the Order entry tile.
+      <Card
+        title="Position management"
+        subtitle="Manage stops on open positions"
+      >
+        <div className="space-y-2 text-xs text-[var(--color-muted)] leading-relaxed">
+          <p>
+            Nothing to manage right now — there are no open positions on this
+            account. When you take an entry (via the Order entry tile or a
+            routine fill), this panel surfaces stop-tightening controls and
+            the take-profit ladder.
+          </p>
         </div>
       </Card>
     );
