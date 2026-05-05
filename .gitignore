@@ -30,3 +30,8 @@ memory/.price-monitor.log
 # Holds secrets — never commit. Lives under memory/shared/ post-migration.
 memory/shared/dashboard-settings.json
 memory/dashboard-settings.json
+
+# cron-sync.sh status file consumed by the dashboard's MemoryFreshness pill.
+# Per-machine state — never commit.
+.cron-sync-status.json
+.cron-sync-status.json.tmp

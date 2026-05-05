@@ -3,6 +3,7 @@ import { loadMemoryFreshness } from "@/lib/memoryFreshness";
 import { fmtRelativeTime } from "@/lib/format";
 import { fmtDateTimeCT } from "@/lib/time";
 import type { BotId } from "@/lib/alpacaMode";
+import { MemorySyncButton } from "@/components/MemorySyncButton";
 
 const DOT: Record<"fresh" | "warn" | "stale", string> = {
   fresh: "bg-[var(--color-up)]",
@@ -18,33 +19,40 @@ const TINT: Record<"fresh" | "warn" | "stale", string> = {
 
 export async function MemoryFreshness({ botId }: { botId: BotId }) {
   const f = await loadMemoryFreshness({ bot: botId });
-  const ageLabel = f.syncMtimeMs != null ? fmtRelativeTime(f.syncMtimeMs) : "—";
-  const mtimeStamp =
-    f.syncMtimeMs != null ? fmtDateTimeCT(f.syncMtimeMs) : "—";
-  const detail =
-    f.latestRowDate === f.todayCT
-      ? "today"
-      : f.latestRowDate
-        ? `row ${f.latestRowDate}`
-        : "no rows";
+
+  const pullLabel = f.lastSyncMs != null ? fmtRelativeTime(f.lastSyncMs) : "—";
+  const dataLabel = f.dataWriteMs != null ? fmtRelativeTime(f.dataWriteMs) : "—";
+  const pullStamp = f.lastSyncMs != null ? fmtDateTimeCT(f.lastSyncMs) : "—";
+  const dataStamp = f.dataWriteMs != null ? fmtDateTimeCT(f.dataWriteMs) : "—";
+
+  const tooltipLines = [
+    `Last pull: ${pullStamp} CT (${pullLabel} ago) [${f.lastSyncStatus}${f.lastSyncTrigger ? `, ${f.lastSyncTrigger}` : ""}]`,
+    f.lastSyncMessage ? `  → ${f.lastSyncMessage}` : null,
+    `Last data write (BENCHMARK.md): ${dataStamp} CT (${dataLabel} ago)`,
+    `Latest BENCHMARK row: ${f.latestRowDate ?? "—"}`,
+    `Today (CT): ${f.todayCT}${f.isTradingDay ? "" : " · non-trading day"}`,
+  ].filter(Boolean) as string[];
 
   return (
     <div
       className={clsx(
-        "glass rounded-full px-3 py-1.5 inline-flex items-center gap-2",
+        "glass rounded-full pl-3 pr-1.5 py-1 inline-flex items-center gap-2",
         TINT[f.status]
       )}
-      title={[
-        `Sync: ${mtimeStamp} CT (${ageLabel} ago)`,
-        `Latest BENCHMARK row: ${f.latestRowDate ?? "—"}`,
-        `Today (CT): ${f.todayCT}${f.isTradingDay ? "" : " · non-trading day"}`,
-      ].join("\n")}
+      title={tooltipLines.join("\n")}
     >
       <span className={clsx("w-2 h-2 rounded-full", DOT[f.status])} />
       <span className="text-xs font-semibold tracking-wide">Memory</span>
-      <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--color-muted)]">
-        {ageLabel} · {detail}
+      <span className="text-[10px] uppercase tracking-[0.10em] text-[var(--color-muted)] flex items-center gap-1.5">
+        <span>
+          <span className="opacity-70">PULL</span> {pullLabel}
+        </span>
+        <span className="opacity-40">·</span>
+        <span>
+          <span className="opacity-70">DATA</span> {dataLabel}
+        </span>
       </span>
+      <MemorySyncButton initialStatus={f.lastSyncStatus} />
     </div>
   );
 }

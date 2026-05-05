@@ -1,27 +1,53 @@
 import fs from "node:fs/promises";
-import { resolveMemoryFile, type MemoryCtx } from "./memoryPath";
+import path from "node:path";
+import { resolveMemoryFile, BOT_ROOT, type MemoryCtx } from "./memoryPath";
 import { loadBenchmark } from "./parsers/benchmark";
 import { todayInCT, isTradingDayCT } from "./time";
 
+export type SyncStatus = "ok" | "error" | "running" | "unknown";
+
 export type MemoryFreshness = {
-  syncMtimeMs: number | null;
+  /** mtime of BENCHMARK.md — when the cloud routines last wrote data. */
+  dataWriteMs: number | null;
+  /** finishedAt of the last cron-sync.sh run — when the local pull last
+   *  completed. Distinct from `dataWriteMs`: pulls can succeed every 15 min
+   *  even if no routine wrote anything to disk. */
+  lastSyncMs: number | null;
+  lastSyncStatus: SyncStatus;
+  lastSyncMessage: string | null;
+  lastSyncTrigger: "launchd" | "manual" | null;
   latestRowDate: string | null;
   todayCT: string;
   isTradingDay: boolean;
   status: "fresh" | "warn" | "stale";
 };
 
+type CronStatusFile = {
+  startedAt?: string;
+  finishedAt?: string | null;
+  exitCode?: number | null;
+  trigger?: string;
+  message?: string;
+};
+
+/** Hard cap for how old `lastSyncMs` is allowed to be before we force the
+ *  pill into stale state. The launchd job ticks every 15 min, so anything
+ *  past 30 min means it has missed at least one cycle. */
+const SYNC_STALE_MS = 30 * 60 * 1000;
+
 export async function loadMemoryFreshness(ctx: MemoryCtx): Promise<MemoryFreshness> {
   const todayCT = todayInCT();
   const tradingDay = isTradingDayCT(todayCT);
 
-  let syncMtimeMs: number | null = null;
+  let dataWriteMs: number | null = null;
   try {
     const stat = await fs.stat(resolveMemoryFile("BENCHMARK.md", ctx));
-    syncMtimeMs = stat.mtimeMs;
+    dataWriteMs = stat.mtimeMs;
   } catch {
-    syncMtimeMs = null;
+    dataWriteMs = null;
   }
+
+  const sync = await loadCronSyncStatus();
 
   let latestRowDate: string | null = null;
   try {
@@ -31,24 +57,107 @@ export async function loadMemoryFreshness(ctx: MemoryCtx): Promise<MemoryFreshne
     latestRowDate = null;
   }
 
-  const ageHours =
-    syncMtimeMs != null ? (Date.now() - syncMtimeMs) / (1000 * 60 * 60) : Infinity;
+  const dataAgeHours =
+    dataWriteMs != null ? (Date.now() - dataWriteMs) / (1000 * 60 * 60) : Infinity;
   const rowIsToday = latestRowDate === todayCT;
   const rowIsYesterday =
     latestRowDate != null && rowIsBeforeOrEqual(latestRowDate, todayCT, 1);
 
   let status: "fresh" | "warn" | "stale";
   if (!tradingDay) {
-    status = ageHours < 24 ? "fresh" : "warn";
-  } else if (rowIsToday && ageHours < 2) {
+    status = dataAgeHours < 24 ? "fresh" : "warn";
+  } else if (rowIsToday && dataAgeHours < 2) {
     status = "fresh";
-  } else if ((rowIsToday && ageHours < 6) || rowIsYesterday) {
+  } else if ((rowIsToday && dataAgeHours < 6) || rowIsYesterday) {
     status = "warn";
   } else {
     status = "stale";
   }
 
-  return { syncMtimeMs, latestRowDate, todayCT, isTradingDay: tradingDay, status };
+  // The pull job is the dashboard's only data path — if it has stopped
+  // ticking or errored, surface that even when BENCHMARK.md happens to be
+  // recent (e.g. the user manually edited it).
+  const syncIsBroken =
+    sync.lastSyncStatus === "error" ||
+    (sync.lastSyncMs != null && Date.now() - sync.lastSyncMs > SYNC_STALE_MS);
+  if (syncIsBroken && status === "fresh") status = "warn";
+  if (syncIsBroken && sync.lastSyncStatus === "error") status = "stale";
+
+  return {
+    dataWriteMs,
+    lastSyncMs: sync.lastSyncMs,
+    lastSyncStatus: sync.lastSyncStatus,
+    lastSyncMessage: sync.lastSyncMessage,
+    lastSyncTrigger: sync.lastSyncTrigger,
+    latestRowDate,
+    todayCT,
+    isTradingDay: tradingDay,
+    status,
+  };
+}
+
+type CronSyncStatusResult = {
+  lastSyncMs: number | null;
+  lastSyncStatus: SyncStatus;
+  lastSyncMessage: string | null;
+  lastSyncTrigger: "launchd" | "manual" | null;
+};
+
+async function loadCronSyncStatus(): Promise<CronSyncStatusResult> {
+  const filePath = path.join(BOT_ROOT, ".cron-sync-status.json");
+  let raw: string;
+  try {
+    raw = await fs.readFile(filePath, "utf8");
+  } catch {
+    return {
+      lastSyncMs: null,
+      lastSyncStatus: "unknown",
+      lastSyncMessage: null,
+      lastSyncTrigger: null,
+    };
+  }
+
+  let parsed: CronStatusFile;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {
+      lastSyncMs: null,
+      lastSyncStatus: "unknown",
+      lastSyncMessage: "status file corrupt",
+      lastSyncTrigger: null,
+    };
+  }
+
+  const trigger =
+    parsed.trigger === "launchd" || parsed.trigger === "manual"
+      ? parsed.trigger
+      : null;
+  const message = typeof parsed.message === "string" ? parsed.message : null;
+
+  // No finishedAt → script wrote the in-flight marker but hasn't returned.
+  // This is normal for the few seconds a manual sync is mid-flight.
+  if (!parsed.finishedAt) {
+    const startedMs = parsed.startedAt ? Date.parse(parsed.startedAt) : NaN;
+    return {
+      lastSyncMs: Number.isFinite(startedMs) ? startedMs : null,
+      lastSyncStatus: "running",
+      lastSyncMessage: message,
+      lastSyncTrigger: trigger,
+    };
+  }
+
+  const finishedMs = Date.parse(parsed.finishedAt);
+  const exit = parsed.exitCode;
+  const status: SyncStatus =
+    typeof exit !== "number" ? "unknown" : exit === 0 ? "ok" : "error";
+
+  return {
+    lastSyncMs: Number.isFinite(finishedMs) ? finishedMs : null,
+    lastSyncStatus: status,
+    lastSyncMessage: message,
+    lastSyncTrigger: trigger,
+  };
 }
 
 function rowIsBeforeOrEqual(rowDate: string, today: string, daysBack: number): boolean {

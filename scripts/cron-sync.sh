@@ -23,6 +23,32 @@ cd "$ROOT" || exit 1
 ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 log() { printf '[%s] cron-sync: %s\n' "$(ts)" "$*"; }
 
+# Status file consumed by the dashboard's MemoryFreshness pill so it can
+# distinguish "the pull is broken" from "pulls succeed but no routine wrote
+# anything". Both launchd and the dashboard's manual-sync API spawn this
+# script, so this is the single source of truth for last-pull-time.
+# CRON_SYNC_TRIGGER lets the API route stamp `manual` instead of `launchd`.
+STATUS_FILE="$ROOT/.cron-sync-status.json"
+TRIGGER="${CRON_SYNC_TRIGGER:-launchd}"
+STARTED_AT="$(ts)"
+
+# Escape backslashes and double quotes for safe embedding in a JSON string.
+json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+
+write_status() {
+  local exit_code="$1" message="$2" finished_at
+  finished_at="$(ts)"
+  printf '{"startedAt":"%s","finishedAt":"%s","exitCode":%s,"trigger":"%s","message":"%s"}\n' \
+    "$STARTED_AT" "$finished_at" "$exit_code" "$TRIGGER" "$(json_escape "$message")" \
+    > "$STATUS_FILE.tmp" \
+    && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+}
+
+# Write a "running" marker (no finishedAt yet) so the dashboard can show an
+# in-flight indicator if it polls during a long pull.
+printf '{"startedAt":"%s","finishedAt":null,"exitCode":null,"trigger":"%s","message":"running"}\n' \
+  "$STARTED_AT" "$TRIGGER" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+
 # Serialize against any concurrent local commit/push (rule #21).
 # Non-blocking: if another process holds the lock, exit silently — the
 # next 15-min tick will catch up. Avoids piling up jobs behind a stuck
@@ -31,6 +57,7 @@ log() { printf '[%s] cron-sync: %s\n' "$(ts)" "$*"; }
 LOCK_DIR="$ROOT/.git/.commit-lock.d"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   log "another git op holds .commit-lock — skipping this tick"
+  write_status 0 "skipped: another git op holds the commit lock"
   exit 0
 fi
 trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
@@ -40,23 +67,27 @@ log "starting"
 branch="$(git symbolic-ref --short HEAD 2>/dev/null || echo "")"
 if [[ "$branch" != "main" ]]; then
   log "ERROR: not on main (currently '$branch') — skipping"
+  write_status 1 "not on main (currently '$branch')"
   exit 1
 fi
 
 if ! git diff --quiet -- . ':!memory/' || ! git diff --cached --quiet -- . ':!memory/'; then
   log "uncommitted changes outside memory/ — skipping (finish other work first)"
+  write_status 0 "skipped: uncommitted changes outside memory/"
   exit 0
 fi
 
 log "git pull --rebase origin main"
 if ! git pull --rebase origin main; then
   log "ERROR: pull failed (rebase conflict?) — aborting"
+  write_status 1 "git pull failed (rebase conflict or network)"
   exit 1
 fi
 
 log "running scripts/sync-cloud-memory.sh"
 if ! bash scripts/sync-cloud-memory.sh; then
   log "ERROR: sync script failed"
+  write_status 1 "sync-cloud-memory.sh failed"
   exit 1
 fi
 
@@ -65,6 +96,7 @@ if ! git diff --cached --quiet -- memory/; then
   log "committing: $msg"
   if ! git commit -m "$msg"; then
     log "ERROR: commit failed — leaving staged for manual inspection"
+    write_status 1 "commit failed — staged changes left for manual inspection"
     exit 1
   fi
 else
@@ -72,3 +104,4 @@ else
 fi
 
 log "done"
+write_status 0 "done"

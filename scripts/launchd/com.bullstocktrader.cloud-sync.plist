@@ -38,7 +38,7 @@
     <integer>900</integer>
 
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 
     <key>StandardOutPath</key>
     <string>/Users/dietz/Library/Logs/bull-stock-trader-sync.out.log</string>
