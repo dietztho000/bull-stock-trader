@@ -94,3 +94,18 @@
 - No thesis breaks detected.
 - No take-profit ladder triggers (<+20% all positions).
 - No actions taken this scan.
+
+---
+
+### May 05 — EOD Snapshot (Day 4, Tuesday)
+**Portfolio:** $101,558.20 | **Cash:** $34,963.49 (34.4%) | **Day P&L:** +$1,905.67 (+1.91%) | **Phase P&L:** +$1,558.20 (+1.56%)
+**vs SPY:** day +1.06% alpha (SPY +0.85%) | phase -2.85% alpha
+
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| AMKR | 220 | $68.14 | $77.25 | +8.86% | +$2,004.20 (+13.37%) | $69.80 |
+| GOOGL | 31 | $382.79 | $395.49 | +3.19% | +$393.70 (+3.32%) | $349.70 |
+| NVDA | 95 | $209.24 | $196.95 | -0.77% | -$1,167.77 (-5.88%) | $182.70 |
+| XOM | 120 | $152.51 | $155.00 | +0.85% | +$298.80 (+1.63%) | $139.76 |
+
+**Notes:** Strong close — portfolio +1.91% vs SPY +0.85%, +1.06% daily alpha. AMKR surged +8.86% to $77.25, 13.37% unrealized — approaching the +15% tighten threshold. GOOGL jumped +3.19% to $395.49, +3.32% unrealized, stop $349.70 (10% trail, HWM $388.56). NVDA slipped -0.77% but holds above the -7% cut floor; earnings exit required by May 19. XOM quiet +0.85%. No new trades; week at 1/3 cap. All four trailing stops active.

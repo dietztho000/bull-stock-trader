@@ -45,14 +45,14 @@ No positions yet. Bot launches tomorrow.
 ---
 
 ### May 05 — EOD Snapshot (Day 4, Tuesday)
-**Portfolio:** $101,128.09 | **Cash:** $34,963.49 (34.6%) | **Day P&L:** +$1,475.56 (+1.48%) | **Phase P&L:** +$1,128.09 (+1.13%)
-**vs SPY:** day +0.63% alpha (SPY +0.85%) | phase -3.28% alpha
+**Portfolio:** $101,558.20 | **Cash:** $34,963.49 (34.4%) | **Day P&L:** +$1,905.67 (+1.91%) | **Phase P&L:** +$1,558.20 (+1.56%)
+**vs SPY:** day +1.06% alpha (SPY +0.85%) | phase -2.85% alpha
 
 | Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
 |--------|--------|-------|-------|---------|----------------|------|
-| AMKR | 220 | $68.14 | $76.82 | +8.26% | +$1,909.60 (+12.74%) | $69.80 |
-| GOOGL | 31 | $382.79 | $388.38 | +1.34% | +$173.29 (+1.46%) | $349.70 |
-| NVDA | 95 | $209.24 | $196.25 | -1.12% | -$1,234.28 (-6.21%) | $182.70 |
-| XOM | 120 | $152.51 | $154.88 | +0.77% | +$284.40 (+1.55%) | $139.76 |
+| AMKR | 220 | $68.14 | $77.25 | +8.86% | +$2,004.20 (+13.37%) | $69.80 |
+| GOOGL | 31 | $382.79 | $395.49 | +3.19% | +$393.70 (+3.32%) | $349.70 |
+| NVDA | 95 | $209.24 | $196.95 | -0.77% | -$1,167.77 (-5.88%) | $182.70 |
+| XOM | 120 | $152.51 | $155.00 | +0.85% | +$298.80 (+1.63%) | $139.76 |
 
-**Notes:** Strong day: portfolio +1.48% vs SPY +0.85%, generating +0.63% daily alpha. AMKR was the standout (+8.26% intraday) on semiconductor packaging momentum, now +12.74% unrealized — approaching the +15% tighten-stop threshold. GOOGL promoted to trailing 10% stop mid-morning after crossing +1%; holding well. NVDA lagged again (-1.12%, -6.21% unrealized) — watch closely tomorrow, stop at $182.70. XOM quiet +0.77%. No new trades; week at 1/3 cap. Auth-canary, mid-morning, late-morning, stops, and afternoon routines did not log completion — watchdog alert fired.
+**Notes:** Strong close — portfolio +1.91% vs SPY +0.85%, +1.06% daily alpha. AMKR surged +8.86% to $77.25, 13.37% unrealized — approaching the +15% tighten threshold (trail tightens to 7% once crossed). GOOGL jumped +3.19% to $395.49, +3.32% unrealized, stop $349.70 (10% trail, HWM $388.56). NVDA slipped -0.77% but holds well above the -7% cut floor; earnings exit required by May 19. XOM quiet +0.85%, +1.63% unrealized. No new trades; week at 1/3 cap. All four stops active and current.
