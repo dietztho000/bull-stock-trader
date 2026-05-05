@@ -32,3 +32,12 @@ No positions yet. Bot launches tomorrow.
 | XOM | 120 | $152.51 | $152.75 | -1.02% | +$28.80 (+0.16%) | $140.12 |
 
 **Notes:** Market surged +3.94% today (SPY $693.23 → $720.56). Portfolio essentially flat (-0.01%) due to 53% deployment — cash drag cost ~2% alpha alone. AMKR led +1.79% intraday; NVDA -0.50% and XOM -1.02%. NVDA now -5.10% unrealized, approaching -7% cut threshold — watch closely Monday. Trailing stops updated: AMKR HWM $71.67/stop $64.50, NVDA HWM $203.00/stop $182.70, XOM HWM $155.69/stop $140.12. No trades today; week closes at 3/3 trade cap. Priority Monday: deploy remaining $46.8k into 1-2 positions to reach 75-85% target.
+
+---
+
+### May 05 11:10 CT — Stop Promotion
+
+- GOOGL: promoted fixed stop_limit ($355.99/$352.17) → trailing_stop 10% GTC
+  - Order ID: efb5844c-4419-4e64-bdf3-e3140ffb2155 (client: bsl-1777997403-9cf699e5)
+  - HWM: $387.68 | Stop: $348.91 | unrealized_plpc at promotion: +1.19%
+  - (Alpaca API does not support type-change via PATCH; cancel+reissue with minimal gap)
