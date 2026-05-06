@@ -32,4 +32,14 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-05 11:09 UTC | sonar | When is the next earnings report for NVDA Nvidia? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
 | 2026-05-05 11:09 UTC | sonar | When is the next earnings report for XOM ExxonMobil? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
 | 2026-05-05 11:09 UTC | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-05. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
-| 2026-05-06 08:36 UTC | sonar | current S&P 500 level (one number) |
+| 2026-05-06 11:10 UTC | sonar | WTI and Brent crude oil price right now May 6 2026 |
+| 2026-05-06 11:10 UTC | sonar | S&P 500 futures premarket today May 6 2026 |
+| 2026-05-06 11:10 UTC | sonar | VIX level today May 6 2026 |
+| 2026-05-06 11:10 UTC | sonar | Top stock market catalysts today May 6 2026 |
+| 2026-05-06 11:10 UTC | sonar | Earnings reports today May 6 2026 before market open |
+| 2026-05-06 11:10 UTC | sonar | Economic calendar May 6 2026 ISM Services JOLTS Fed speakers |
+| 2026-05-06 11:11 UTC | sonar | AMKR Amkor Technology stock news May 2026 |
+| 2026-05-06 11:11 UTC | sonar | XOM ExxonMobil stock news May 6 2026 premarket |
+| 2026-05-06 11:11 UTC | sonar | NVDA Nvidia stock news May 6 2026 |
+| 2026-05-06 11:11 UTC | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors |
+| 2026-05-06 11:12 UTC | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-06. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name, importance (high|medium|low),  |

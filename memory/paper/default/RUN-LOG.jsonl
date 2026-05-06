@@ -6,5 +6,5 @@
 {"ts":"2026-05-05T17:10:44Z","routine":"midday","action":"end","status":"ok","git_sha":"12972fa"}
 {"ts":"2026-05-05T20:04:17Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"9234d39"}
 {"ts":"2026-05-05T20:08:30Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"9234d39"}
-{"ts":"2026-05-06T08:36:15Z","routine":"auth-canary","action":"start","status":"ok","git_sha":"8c40863"}
-{"ts":"2026-05-06T08:37:06Z","routine":"auth-canary","action":"end","status":"ok","git_sha":"8c40863"}
+{"ts":"2026-05-06T11:09:39Z","routine":"pre-market","action":"start","status":"ok","git_sha":"8c40863"}
+{"ts":"2026-05-06T11:15:57Z","routine":"pre-market","action":"end","status":"ok","git_sha":"8c40863"}

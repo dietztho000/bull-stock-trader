@@ -59,29 +59,58 @@ Format each entry:
 ### Decision
 HOLD — VIX elevated at 18.51 (+9% prior day), ISM Services/JOLTS this morning could be volatile, Jobs Report Friday. Oil spike bullish for XOM but adds macro uncertainty. Watch NVDA closely vs -7% cut ($194.49). Plan NVDA exit by May 19. COP and FCX queued as potential entries — revisit Wednesday post-GDP (May 6) and post-Jobs Report (May 8) if VIX settles below 17.
 
-## YYYY-MM-DD — Pre-market Research
+## 2026-05-06 — Pre-market Research
 
 ### Account
-- Equity: $X
-- Cash: $X
-- Buying power: $X
-- Daytrade count: N
+- Equity: $101,827.44
+- Cash: $34,963.49 (34.3% — below 75-85% target)
+- Buying power: $136,790.93
+- Daytrade count: 0
+- Week trades used: 1/3 (GOOGL entered May 4)
+
+### Positions (live)
+| Ticker | Shares | Entry | Current | Unreal % | Today % | Stop |
+|--------|--------|-------|---------|----------|---------|------|
+| AMKR | 220 | $68.14 | $80.81 | +18.59% | +5.35% | $69.80 (10% trail) |
+| GOOGL | 31 | $382.79 | $396.65 | +3.62% | +2.12% | $349.70 (10% trail) |
+| NVDA | 95 | $209.24 | $201.24 | -3.82% | +2.41% | $182.70 (10% trail) |
+| XOM | 120 | $152.51 | $147.40 | -3.35% | -4.83% | $139.76 (10% trail) |
 
 ### Market Context
-- WTI / Brent:
-- S&P 500 futures:
-- VIX:
-- Today's catalysts:
-- Earnings before open:
-- Economic calendar:
-- Sector momentum:
+- WTI: ~$102-104/bbl (pulled back from $120 highs; Middle East ceasefire developments)
+- Brent: ~$104-106/bbl est (no live quote)
+- S&P 500 futures: ESM26 7,303.25 (+0.22%) — mildly positive open
+- VIX: 17.38 (May 5 close, down from 18.29 May 4) — improving but still elevated
+- **Today's catalysts:** Q1 2026 GDP Advance at 08:30 ET (HIGH importance); Disney (DIS) BMO earnings; 424 companies reporting
+- Earnings before open: DIS (BMO), HSBC, AGCO, ATKR, SUN, ARM (424 total)
+- Economic calendar: Q1 GDP 08:30 (high), State Employment 10:00 (medium), Fed Barr 12:30 (medium)
+- Sector momentum YTD: Energy +21%, Materials +17%, Staples +15%, Industrials +12%; Tech lagging
+
+### Portfolio Ticker News
+- **AMKR $80.81 (+18.59%):** Q1 record $1.685B revenue (+27% YoY), EPS beat, $300M buyback. Investor Day May 21. Analyst avg target $72.68 — stock extended above consensus. **Take-profit ladder triggers at $81.77 (+20% from $68.14 entry) — 1 point away.**
+- **GOOGL $396.65 (+3.62%):** Q1 massive beat intact; Cloud +63%. Thesis very strong. 10% trail stop $349.70 (HWM $388.56). No concerns.
+- **NVDA $201.24 (-3.82%):** Earnings May 20 AMC confirmed. Must exit by May 19 (rule #13). Inference demand strong; hyperscaler supply constraints bullish. Stop $182.70 safe. Monitor.
+- **XOM $147.40 (-4.83% today):** Energy sector fell 14% in April despite Q1 EPS beat. WTI pullback from $120 headwind. Premarket ~$153 per one source but live position shows -4.83% vs yesterday close $154.88. Stop $139.76 (still -5.1% away). Thesis under pressure.
 
 ### Trade Ideas
-1. TICKER — catalyst, entry $X, stop $X, target $X, R:R X:1
-2. ...
+1. **FCX (Freeport-McMoRan)** — Materials sector +17% YTD; copper demand from AI data center buildout + EV transition; entry ~$42-44, stop -7% (~$39-41), target $52+, R:R ~2:1. Sector: Materials (0 current positions — clean). Score: est. 7/10 (catalyst real, sector in momentum, R:R borderline 2:1).
+2. **CAT (Caterpillar)** — Industrials +12% YTD; infrastructure spending + global construction demand; entry ~$370, stop -7%, target $430+. Sector: Industrials (0 positions). Score: est. 7/10.
+
+### Sector Check (rule #10)
+- Energy: XOM held, no closed trades → no streak. But sector showing weakness today (-4.83%).
+- Materials: 0 current positions, no closed trades → clean for FCX entry.
+- Industrials: 0 positions → clean for CAT entry.
+- IT: AMKR + NVDA = 2/3 max. No streak.
+- Communication Services: GOOGL = 1/3. No streak.
 
 ### Risk Factors
-- ...
+- **Q1 GDP at 08:30 today** — high-importance release; could surprise either way and move markets sharply
+- **XOM -4.83% today** — energy sector rotation risk; stop $139.76 holds but thesis weakening
+- **AMKR near +20% take-profit trigger ($81.77)** — intraday scans will fire the ladder; be ready
+- **NVDA earnings gate:** exit required by May 19 (11 trading days, plan exit window)
+- **Jobs Report Friday May 8** — do not overextend into this week's macro risk
+- **VIX 17.38** — improving but still cautious zone; FCX/CAT entries would carry GDP + Jobs event risk
+- Deployment 65.7% (target 75-85%) — room exists but macro caution valid
 
 ### Decision
-TRADE or HOLD (default HOLD if no edge)
+HOLD — Q1 GDP release this morning is a potential market-mover; VIX still elevated. Watch AMKR for +20% take-profit ladder trigger (~$81.77). Monitor XOM stop ($139.76). FCX and CAT queued — revisit post-GDP (today) and post-Jobs Report (May 8) if VIX settles toward 15-16. Week trades: 2 more allowed.
