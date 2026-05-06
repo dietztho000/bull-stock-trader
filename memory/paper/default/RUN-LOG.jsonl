@@ -34,3 +34,5 @@
 {"ts":"2026-05-06T18:32:50Z","routine":"stops","action":"end","status":"ok","git_sha":"1b1e379"}
 {"ts":"2026-05-06T19:05:26Z","routine":"afternoon","action":"start","status":"ok","git_sha":"1b1e379"}
 {"ts":"2026-05-06T19:06:56Z","routine":"afternoon","action":"end","status":"ok","git_sha":"1b1e379"}
+{"ts":"2026-05-06T20:04:34Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"d174698"}
+{"ts":"2026-05-06T20:08:27Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"d174698"}

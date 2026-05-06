@@ -132,3 +132,18 @@
 | XOM | 120 | $152.51 | $155.00 | +0.85% | +$298.80 (+1.63%) | $139.76 |
 
 **Notes:** Strong close — portfolio +1.91% vs SPY +0.85%, +1.06% daily alpha. AMKR surged +8.86% to $77.25, 13.37% unrealized — approaching the +15% tighten threshold. GOOGL jumped +3.19% to $395.49, +3.32% unrealized, stop $349.70 (10% trail, HWM $388.56). NVDA slipped -0.77% but holds above the -7% cut floor; earnings exit required by May 19. XOM quiet +0.85%. No new trades; week at 1/3 cap. All four trailing stops active.
+
+---
+
+### May 06 — EOD Snapshot (Day 5, Wednesday)
+**Portfolio:** $101,830.02 | **Cash:** $34,963.49 (34.3%) | **Day P&L:** +$271.82 (+0.27%) | **Phase P&L:** +$1,830.02 (+1.83%)
+**vs SPY:** day -1.14% alpha (SPY +1.41%) | phase -4.05% alpha
+
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| AMKR | 220 | $68.14 | $77.22 | +0.67% | +$1,997.60 (+13.33%) | $71.06 |
+| GOOGL | 31 | $382.79 | $398.09 | +2.49% | +$474.29 (+4.00%) | $359.86 |
+| NVDA | 95 | $209.24 | $207.42 | +5.56% | -$173.12 (-0.87%) | $187.44 |
+| XOM | 120 | $152.51 | $148.58 | -4.07% | -$471.60 (-2.58%) | $139.76 |
+
+**Notes:** Portfolio +0.27% vs SPY +1.41%, -1.14% daily alpha. XOM dragged -4.07% (Energy sector -4%+ intraday; oil pressure continuing) but thesis intact — Q1 beat + Golden Pass LNG; stop $139.76 holds. NVDA staged +5.56% intraday recovery, HWM $208.27, stop $187.44; earnings exit required by May 19 (rule #13). AMKR quiet +0.67%, holding +13.33% unrealized near HWM. GOOGL +2.49%, +4.00% unrealized, trailing stop $359.86 (FOMC minutes no adverse impact). No trades today; week at 1/3 cap. All four trailing stops active.
