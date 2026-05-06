@@ -97,6 +97,18 @@
 
 ---
 
+### May 06 10:00 CT — Mid-morning scan
+
+- AMKR: +12.36% (price $76.56) — trailing 10%, HWM $78.96, stop $71.06. Below +15% tighten threshold. No action.
+- GOOGL: +3.85% (price $397.54) — trailing 10%, HWM $398.48, stop $358.63. No action.
+- NVDA: -2.15% (price $204.75) — trailing 10%, HWM $205.83, stop $185.25. Not at -7% cut floor ($194.59). No action.
+- XOM: -2.49% (price $148.72) — trailing 10%, HWM $155.29, stop $139.76. Not at -7% cut floor ($141.83). No action.
+- No earnings exits (next: NVDA May 20 AMC — must exit by May 19 per rule #13).
+- No take-profit ladder triggers (<+20% all positions).
+- No unfilled limit buys to escalate.
+
+---
+
 ### May 05 — EOD Snapshot (Day 4, Tuesday)
 **Portfolio:** $101,558.20 | **Cash:** $34,963.49 (34.4%) | **Day P&L:** +$1,905.67 (+1.91%) | **Phase P&L:** +$1,558.20 (+1.56%)
 **vs SPY:** day +1.06% alpha (SPY +0.85%) | phase -2.85% alpha
