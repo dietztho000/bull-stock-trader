@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { fmtPct } from "@/lib/format";
 import { todayInCT } from "@/lib/time";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
+import { accountScope } from "@/lib/alpacaMode";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 import { BullCharacter, type Mood } from "./BullCharacter";
 import { Confetti } from "./Confetti";
@@ -44,8 +45,7 @@ function BullMascotNavCardInner({ className }: { className?: string }) {
   }, []);
 
   const snapshot = useBullMood({
-    mode: account?.account,
-    accountId: account?.accountId,
+    scope: accountScope(account?.account, account?.accountId),
     ctxOverride: null,
     fallbackCtx: moodCtx.data,
     todayKey,

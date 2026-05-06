@@ -25,7 +25,7 @@ import { OrderEntryTile } from "@/components/live/OrderEntryTile";
 import { PositionManagementTile } from "@/components/live/PositionManagementTile";
 
 import type { PageLayoutSpec } from "@/components/layout/defaults";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import type { AlpacaMode, AlpacaScope } from "@/lib/alpacaMode";
 import type { BenchmarkData } from "@/lib/parsers/benchmark";
 import type { EarningsEntry } from "@/lib/parsers/earningsCalendar";
 import type { LadderState } from "@/lib/parsers/ladderProgress";
@@ -39,6 +39,12 @@ export type OverviewCtx = {
    *  queries the right Alpaca account, not whichever paper happens to live in
    *  `ALPACA_PAPER_*`. Null on legacy installs without the registry. */
   accountId: string | null;
+  /** Audit NA1 — discriminated `AlpacaScope` mirroring the (mode, accountId)
+   *  pair above. Tiles migrated to the new prop shape consume this directly;
+   *  legacy tiles continue to read `accountMode`/`accountId` until their next
+   *  touch. Both views are kept in sync by `app/page.tsx` which builds the
+   *  ctx in one place. */
+  scope: AlpacaScope;
   /** Bot id resolved from `?account=`. Threaded into write paths so tagged
    *  client_order_id prefixes apply for soft-allocation P&L attribution. */
   botId: string;
@@ -81,7 +87,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
       <Suspense fallback={<div className="frost rounded-2xl h-32 animate-pulse" />}>
         <AccountIdentityTile
           mode={ctx.accountMode}
-          accountId={ctx.accountId}
+          scope={ctx.scope}
           accountLabel={ctx.accountLabel}
           botId={ctx.botId}
         />
@@ -94,8 +100,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     defaultLayout: { x: 4, y: 0, w: 8, h: 4, minW: 4, minH: 3 },
     render: (ctx) => (
       <PnlHero
-        mode={ctx.accountMode}
-        accountId={ctx.accountId}
+        scope={ctx.scope}
         startingEquity={ctx.benchmark.startingEquity}
         phaseStart={ctx.benchmark.phaseStart}
         weekStartPortfolio={ctx.weekStartPortfolio}
@@ -107,31 +112,31 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     id: "equity-kpi",
     title: "Equity",
     defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <EquityKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <EquityKpiTile scope={ctx.scope} />,
   },
   {
     id: "cash-kpi",
     title: "Cash",
     defaultLayout: { x: 3, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <CashKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <CashKpiTile scope={ctx.scope} />,
   },
   {
     id: "deployed-kpi",
     title: "Deployed",
     defaultLayout: { x: 6, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <DeployedKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <DeployedKpiTile scope={ctx.scope} />,
   },
   {
     id: "buying-power-kpi",
     title: "Buying power",
     defaultLayout: { x: 9, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <BuyingPowerKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <BuyingPowerKpiTile scope={ctx.scope} />,
   },
   {
     id: "day-trades-kpi",
     title: "Day trades",
     defaultLayout: { x: 0, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
-    render: (ctx) => <DayTradesKpiTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <DayTradesKpiTile scope={ctx.scope} />,
   },
   {
     id: "risk-gate",
@@ -156,7 +161,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
           </Card>
         }
       >
-        <DrawdownNarrator account={ctx.accountMode} botId={ctx.botId} strategy={ctx.strategy} />
+        <DrawdownNarrator botId={ctx.botId} strategy={ctx.strategy} />
       </Suspense>
     ),
   },
@@ -186,8 +191,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     defaultLayout: { x: 8, y: 10, w: 4, h: 8, minW: 3, minH: 5 },
     render: (ctx) => (
       <PositionsTile
-        mode={ctx.accountMode}
-        accountId={ctx.accountId}
+        scope={ctx.scope}
         earnings={ctx.earnings}
         overnightGaps={ctx.overnightGaps}
         ladder={ctx.ladder}
@@ -210,7 +214,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     id: "orders",
     title: "Open orders",
     defaultLayout: { x: 0, y: 26, w: 12, h: 5, minW: 4, minH: 4 },
-    render: (ctx) => <OrdersTile mode={ctx.accountMode} accountId={ctx.accountId} />,
+    render: (ctx) => <OrdersTile scope={ctx.scope} />,
   },
   {
     id: "upcoming-events",
@@ -232,8 +236,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     defaultLayout: { x: 0, y: 39, w: 4, h: 6, minW: 3, minH: 5 },
     render: (ctx) => (
       <BullMascotTile
-        mode={ctx.accountMode}
-        accountId={ctx.accountId}
+        scope={ctx.scope}
         ctxOverride={{
           winStreak: ctx.winStreak,
           spyPhasePct: ctx.spyPhasePct,

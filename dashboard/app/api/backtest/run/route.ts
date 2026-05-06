@@ -39,8 +39,8 @@ const bodySchema = z
 
 export async function POST(req: Request) {
   const url = new URL(req.url);
-  const account = readBotParam(url.searchParams) ?? undefined;
-  const { botId, strategy, mode } = await resolveBotCtx({ account });
+  const bot = readBotParam(url.searchParams) ?? undefined;
+  const { botId, strategy, mode } = await resolveBotCtx({ bot });
 
   let body: z.infer<typeof bodySchema> = undefined;
   // Body is optional — accept empty/no JSON without erroring.

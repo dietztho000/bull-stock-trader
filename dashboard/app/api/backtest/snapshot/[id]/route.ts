@@ -14,8 +14,8 @@ export async function GET(
 ) {
   try {
     const url = new URL(req.url);
-    const account = readBotParam(url.searchParams) ?? undefined;
-    const { botId, strategy } = await resolveBotCtx({ account });
+    const bot = readBotParam(url.searchParams) ?? undefined;
+    const { botId, strategy } = await resolveBotCtx({ bot });
     const { id } = await ctx.params;
     const snapshot = await readBacktestSnapshotById(
       { bot: botId, strategy },

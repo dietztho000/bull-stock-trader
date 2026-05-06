@@ -38,7 +38,7 @@ import { targetPctForScore, actualPctOfEquity } from "@/lib/stats/sizing";
 import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
 import { detectAccountInfo, detectAccountInfoById } from "@/lib/mode";
 import { resolveBotCtx } from "@/lib/resolveAccount";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import { accountScope, scopeToPair, type AlpacaScope } from "@/lib/alpacaMode";
 import { loadSettings } from "@/lib/settings";
 import { ForceExitBanner } from "@/components/live/ForceExitBanner";
 
@@ -55,21 +55,19 @@ const TAB_OPTIONS: { value: Tab; label: string }[] = [
 
 type LivePositionLite = { symbol: string };
 
-async function loadLiveConcentration(opts: {
-  mode: AlpacaMode;
-  accountId: string | null;
-}): Promise<{
+async function loadLiveConcentration(scope: AlpacaScope): Promise<{
   bySector: Map<string, string[]>;
   rawCount: number;
 } | null> {
   try {
-    const probe = opts.accountId
-      ? await detectAccountInfoById(opts.accountId)
-      : await detectAccountInfo(opts.mode);
-    if (!probe.configured || probe.error) return null;
-    const runOpts: RunAlpacaOpts = opts.accountId
-      ? { accountId: opts.accountId }
-      : { mode: opts.mode };
+    const probe =
+      scope.kind === "account"
+        ? await detectAccountInfoById(scope.accountId)
+        : scope.kind === "mode"
+        ? await detectAccountInfo(scope.mode)
+        : null;
+    if (!probe || !probe.configured || probe.error) return null;
+    const runOpts: RunAlpacaOpts = scopeToPair(scope);
     const positions = (await runAlpaca("positions", [], runOpts)) as
       | LivePositionLite[]
       | { error: string };
@@ -96,6 +94,7 @@ export default async function TradesPage({
   const tab = activeTab<Tab>(sp, "tab", TABS, "all");
   const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
   const memCtx = { bot: botId, strategy };
+  const scope = accountScope(accountMode, accountId);
 
   const [ledger, tradeLog, settings] = await Promise.all([
     loadSectorLedger(memCtx),
@@ -166,8 +165,7 @@ export default async function TradesPage({
         <SectorsTab
           ledger={ledger}
           kpiTiles={kpiTiles}
-          mode={accountMode}
-          accountId={accountId}
+          scope={scope}
           botId={botId}
           strategy={strategy}
           SECTOR_CAP={SECTOR_CAP}
@@ -327,16 +325,14 @@ function AllTradesTab({
 function SectorsTab({
   ledger,
   kpiTiles,
-  mode,
-  accountId,
+  scope,
   botId,
   strategy,
   SECTOR_CAP,
 }: {
   ledger: Awaited<ReturnType<typeof loadSectorLedger>>;
   kpiTiles: Record<string, React.ReactNode>;
-  mode: AlpacaMode;
-  accountId: string | null;
+  scope: AlpacaScope;
   botId: string;
   strategy: string;
   SECTOR_CAP: number;
@@ -352,8 +348,7 @@ function SectorsTab({
     "live-concentration": (
       <Suspense fallback={<SkeletonBox height={180} />}>
         <LiveConcentrationSection
-          mode={mode}
-          accountId={accountId}
+          scope={scope}
           botId={botId}
           strategy={strategy}
           SECTOR_CAP={SECTOR_CAP}
@@ -460,20 +455,18 @@ function SectorsTab({
 // concentration cap. Wrapped in Suspense at the call-site so the rest of the
 // Sectors tab paints immediately and this card streams in once Alpaca responds.
 async function LiveConcentrationSection({
-  mode,
-  accountId,
+  scope,
   botId,
   strategy,
   SECTOR_CAP,
 }: {
-  mode: AlpacaMode;
-  accountId: string | null;
+  scope: AlpacaScope;
   botId: string;
   strategy: string;
   SECTOR_CAP: number;
 }) {
   const [concentration, research, sectorMap] = await Promise.all([
-    loadLiveConcentration({ mode, accountId }),
+    loadLiveConcentration(scope),
     loadResearchLog({ bot: botId, strategy }),
     loadSectorMap(),
   ]);

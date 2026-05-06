@@ -1,5 +1,6 @@
 import { Card, Badge } from "@/components/ui/Card";
-import { runAlpaca, type AlpacaMode } from "@/lib/alpaca";
+import { runAlpaca } from "@/lib/alpaca";
+import { scopeToPair, type AlpacaScope } from "@/lib/alpacaMode";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
 import { fmtPct } from "@/lib/format";
 import { currentWeekMondayCT } from "@/lib/time";
@@ -30,12 +31,10 @@ function weekStartPortfolio(
 }
 
 export async function DrawdownBreaker({
-  mode,
-  accountId,
+  scope,
   botId,
 }: {
-  mode: AlpacaMode;
-  accountId?: string | null;
+  scope: AlpacaScope;
   botId?: string | null;
 }) {
   let equity: number | null = null;
@@ -43,8 +42,9 @@ export async function DrawdownBreaker({
   let probeError: string | null = null;
   // Prefer the bot binding for both Alpaca call + memory ctx so a $10k slice
   // breaker reflects its own benchmark, not the env default.
-  const runOpts = accountId ? { accountId } : { mode };
-  const memBot = botId ?? mode;
+  const runOpts = scopeToPair(scope);
+  const memBot =
+    botId ?? (scope.kind === "mode" ? scope.mode : scope.kind === "account" ? scope.accountId : "live");
   try {
     const account = (await runAlpaca("account", [], runOpts)) as AccountResp;
     equity = Number(account.equity);

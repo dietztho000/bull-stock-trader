@@ -2,26 +2,19 @@ import { marked } from "marked";
 import { Card } from "@/components/ui/Card";
 import { getDrawdownNarrative } from "@/lib/ai/drawdown";
 import { fmtClockCT } from "@/lib/time";
-import type { AlpacaMode } from "@/lib/alpacaMode";
 
+/** `botId` is the bot key for memory paths; the legacy `account: AlpacaMode`
+ *  arg is gone now that callers route via `OverviewCtx.botId` (audit NA1). */
 export async function DrawdownNarrator({
-  account,
   botId,
   strategy,
 }: {
-  account: AlpacaMode;
-  botId?: string;
+  botId: string;
   strategy?: string;
 }) {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
-  // Prefer the registered bot id so non-`live`/`paper` bots also get
-  // narrative (the legacy `account: AlpacaMode` arg only worked for the two
-  // built-in bots — see audit 7.12).
-  const result = await getDrawdownNarrative({
-    bot: botId ?? account,
-    strategy,
-  });
+  const result = await getDrawdownNarrative({ bot: botId, strategy });
   if (!result.triggered) return null;
 
   return (

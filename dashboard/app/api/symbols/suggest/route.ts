@@ -24,8 +24,9 @@ const TICKER_RE = /\b([A-Z]{1,5})\b/g;
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const account = readBotParam(url.searchParams) ?? undefined;
-    const { botId, strategy } = await resolveBotCtx({ account });
+    const { botId, strategy } = await resolveBotCtx({
+      bot: readBotParam(url.searchParams) ?? undefined,
+    });
     const ctx = { bot: botId, strategy };
     const bots = await listBots();
     const bot = bots.find((b) => b.id === botId);

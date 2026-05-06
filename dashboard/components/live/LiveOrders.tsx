@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { fmtMoney } from "@/lib/format";
-import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { alpacaApiUrl, type AlpacaScope } from "@/lib/alpacaMode";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 import { useLiveSwr } from "@/lib/useLiveSwr";
 import { Badge } from "@/components/ui/Card";
@@ -36,13 +36,16 @@ function LimitFloorCell({ o }: { o: Order }) {
   return <span className="text-[var(--color-muted)]">—</span>;
 }
 
-export function LiveOrders({
-  mode,
-  accountId,
-}: { mode?: AlpacaMode; accountId?: string | null } = {}) {
+export function LiveOrders({ scope }: { scope?: AlpacaScope } = {}) {
   const ctx = useTradingAccountOptional();
-  const effectiveAccountId = accountId ?? ctx?.accountId ?? null;
-  const effectiveMode = mode ?? ctx?.account;
+  const effectiveAccountId =
+    scope?.kind === "account" ? scope.accountId : ctx?.accountId ?? null;
+  const effectiveMode =
+    scope?.kind === "mode"
+      ? scope.mode
+      : scope?.kind === "account"
+      ? ctx?.account
+      : ctx?.account;
   const liveOpts = useLiveSwr(8000);
   const { data, error } = useSWR<AlpacaOrder[] | AlpacaErrorEnvelope>(
     alpacaApiUrl(

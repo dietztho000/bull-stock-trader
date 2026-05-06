@@ -55,7 +55,7 @@ async function safeNamed<T>(
 
 async function assembleBrief(opts: {
   test?: boolean;
-  account?: string;
+  bot?: string;
 } = {}): Promise<{
   message: string;
   warnings: Warning[];
@@ -76,7 +76,7 @@ async function assembleBrief(opts: {
     };
   }
 
-  const { botId, strategy, accountId } = await resolveBotCtx({ account: opts.account });
+  const { botId, strategy, accountId } = await resolveBotCtx({ bot: opts.bot });
   const ctx = { bot: botId, strategy };
   // When the bot has no registry-bound account, fall back to the host's
   // legacy BOT_MODE — never silently default to live for any non-"paper"
@@ -180,8 +180,8 @@ async function assembleBrief(opts: {
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const account = readBotParam(url.searchParams) ?? undefined;
-    const { message, warnings, stats } = await assembleBrief({ account });
+    const bot = readBotParam(url.searchParams) ?? undefined;
+    const { message, warnings, stats } = await assembleBrief({ bot });
     return NextResponse.json(
       { message, warnings, stats },
       { headers: { "Cache-Control": "no-store" } }
@@ -196,8 +196,8 @@ export async function POST(req: Request) {
   try {
     const url = new URL(req.url);
     const test = url.searchParams.get("test") === "true";
-    const account = readBotParam(url.searchParams) ?? undefined;
-    const { message } = await assembleBrief({ test, account });
+    const bot = readBotParam(url.searchParams) ?? undefined;
+    const { message } = await assembleBrief({ test, bot });
 
     // Test sends bypass user-configured filters and quiet hours so the user
     // can verify the webhook without fighting their own preferences.
@@ -219,7 +219,7 @@ export async function POST(req: Request) {
 
     // Per-bot webhook override (audit F10) routes the brief to the bot's
     // dedicated channel when set; falls back to the global webhook otherwise.
-    const briefBot = await resolveBotCtx({ account });
+    const briefBot = await resolveBotCtx({ bot });
     const result = await sendDiscord("research", message, { botId: briefBot.botId });
     return NextResponse.json(
       {

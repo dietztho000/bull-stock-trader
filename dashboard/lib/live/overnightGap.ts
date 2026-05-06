@@ -1,4 +1,4 @@
-import { runAlpaca, type AlpacaMode } from "@/lib/alpaca";
+import { runAlpaca, type AlpacaMode, type RunAlpacaOpts } from "@/lib/alpaca";
 
 // Computes overnight gap = (today_open - yesterday_close) / yesterday_close
 // for each symbol. Server-side only. Returns Map<symbol, gapPctOrNull>.
@@ -12,17 +12,21 @@ type BarsResp = {
 
 export async function loadOvernightGaps(
   symbols: string[],
-  mode: AlpacaMode
+  mode: AlpacaMode,
+  accountId?: string | null
 ): Promise<Map<string, number | null>> {
   const out = new Map<string, number | null>();
+  const opts: RunAlpacaOpts = accountId ? { accountId } : { mode };
   // Run bars fetches in parallel; failures are non-fatal (gap badge just
   // shows nothing for that symbol).
   await Promise.all(
     symbols.map(async (sym) => {
       try {
-        const resp = (await runAlpaca("bars", [sym, "1Day", "", "", "2"], {
-          mode,
-        })) as BarsResp;
+        const resp = (await runAlpaca(
+          "bars",
+          [sym, "1Day", "", "", "2"],
+          opts
+        )) as BarsResp;
         const bars = resp.bars ?? [];
         if (bars.length < 2) {
           out.set(sym, null);

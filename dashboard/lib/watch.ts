@@ -1,6 +1,6 @@
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import { MEMORY_ROOT } from "./memoryPath";
+import { MEMORY_ROOT, isKnownMemoryFile } from "./memoryPath";
 
 export type MemoryEvent = {
   /** Absolute path that changed. */
@@ -70,6 +70,10 @@ function classify(absPath: string, knownBots: Set<string>): MemoryEvent | null {
   if (!WATCHED_EXTS.has(ext)) return null;
   const segments = relPath.split(path.sep);
   const file = segments[segments.length - 1];
+  // Filter to registry-known filenames so backtest snapshot dumps
+  // (memory/<bot>/<strategy>/backtests/<id>.json) and settings backups
+  // don't trigger SSE flushes no client cares about.
+  if (!isKnownMemoryFile(file)) return null;
   if (segments[0] === "shared") {
     return { path: absPath, relPath, file, bot: "shared", strategy: null };
   }

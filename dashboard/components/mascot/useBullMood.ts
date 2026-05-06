@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { useLiveSwr } from "@/lib/useLiveSwr";
-import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { alpacaApiUrl, type AlpacaScope } from "@/lib/alpacaMode";
 import {
   type AlpacaPosition,
   type AlpacaErrorEnvelope,
@@ -59,23 +59,26 @@ export type BullMoodSnapshot =
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 export function useBullMood(opts: {
-  mode?: AlpacaMode;
-  accountId?: string | null;
+  scope?: AlpacaScope;
   ctxOverride?: Pick<MoodContext, "winStreak" | "spyPhasePct" | "phaseStart" | "startingEquity"> | null;
   fallbackCtx?: MoodContext | null;
   todayKey: string;
 }): BullMoodSnapshot {
-  const summary = useAccountSummary({ mode: opts.mode, accountId: opts.accountId });
+  const summary = useAccountSummary(opts.scope);
   const settingsCtx = useSettingsOptional();
   const strategy = settingsCtx?.settings.strategy ?? DEFAULTS.strategy;
   const { data: strategyState } = useStrategyState();
   const liveOpts = useLiveSwr(5000);
+  const positionsAccountId =
+    opts.scope?.kind === "account" ? opts.scope.accountId : null;
   const positionsKey =
     summary.loading || "error" in summary
       ? null
       : alpacaApiUrl(
           "positions",
-          opts.accountId ? { accountId: opts.accountId } : { mode: summary.mode }
+          positionsAccountId
+            ? { accountId: positionsAccountId }
+            : { mode: summary.mode }
         );
   const { data: positionsData } = useSWR<Position[] | AlpacaErrorEnvelope>(
     positionsKey,

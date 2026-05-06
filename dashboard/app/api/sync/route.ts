@@ -32,8 +32,11 @@ const SYNC_LOG_ERR = path.join(
   "Library/Logs/bull-stock-trader-sync.err.log"
 );
 
-const MAX_DURATION_MS = 60_000;
-
+/** Audit NA6 — fire-and-forget. cron-sync.sh holds `.git/.commit-lock`
+ *  so concurrent invocations serialize safely; we spawn the child without
+ *  awaiting so the Next.js function returns immediately. The client polls
+ *  `/api/sync/status` until `.cron-sync-status.json#finishedAt` advances
+ *  past the wall-clock the request was issued. */
 export async function POST(req: NextRequest) {
   if (!isLoopbackHost(req.headers.get("host"))) {
     return NextResponse.json(
@@ -43,6 +46,7 @@ export async function POST(req: NextRequest) {
   }
 
   const script = path.join(BOT_ROOT, "scripts", "cron-sync.sh");
+  const triggeredAt = new Date().toISOString();
 
   // Append to the same logs launchd writes to so all sync runs (cron +
   // manual) live in one place — matches the documented `tail -f` flow in
@@ -50,64 +54,35 @@ export async function POST(req: NextRequest) {
   const outStream = fs.createWriteStream(SYNC_LOG_OUT, { flags: "a" });
   const errStream = fs.createWriteStream(SYNC_LOG_ERR, { flags: "a" });
 
-  const result = await new Promise<{
-    exitCode: number;
-    timedOut: boolean;
-  }>((resolve) => {
+  try {
     const child = spawn("bash", [script], {
       cwd: BOT_ROOT,
       env: { ...process.env, CRON_SYNC_TRIGGER: "manual" },
       stdio: ["ignore", "pipe", "pipe"],
     });
-
     child.stdout.pipe(outStream);
     child.stderr.pipe(errStream);
-
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      resolve({ exitCode: -1, timedOut: true });
-    }, MAX_DURATION_MS);
-
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ exitCode: code ?? -1, timedOut: false });
+    child.on("close", () => {
+      outStream.end();
+      errStream.end();
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve({ exitCode: -1, timedOut: false });
+      outStream.end();
+      errStream.end();
     });
-  });
-
-  outStream.end();
-  errStream.end();
-
-  // Read the status file the script just wrote so the client gets the same
-  // `message` field the dashboard pill reads — single source of truth.
-  let status: Record<string, unknown> | null = null;
-  try {
-    const raw = fs.readFileSync(
-      path.join(BOT_ROOT, ".cron-sync-status.json"),
-      "utf8"
+    return NextResponse.json(
+      { ok: true, started: true, triggeredAt, pid: child.pid ?? null },
+      { status: 202 }
     );
-    status = JSON.parse(raw);
-  } catch {
-    status = null;
-  }
-
-  if (result.timedOut) {
+  } catch (err) {
+    outStream.end();
+    errStream.end();
     return NextResponse.json(
       {
         ok: false,
-        error: `cron-sync.sh exceeded ${MAX_DURATION_MS / 1000}s — killed`,
-        status,
+        error: err instanceof Error ? err.message : String(err),
       },
-      { status: 504 }
+      { status: 500 }
     );
   }
-
-  return NextResponse.json({
-    ok: result.exitCode === 0,
-    exitCode: result.exitCode,
-    status,
-  });
 }

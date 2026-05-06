@@ -6,8 +6,19 @@ import { ForceExitBanner } from "@/components/live/ForceExitBanner";
 import { EarningsGateBanner } from "@/components/live/EarningsGateBanner";
 import { Card } from "@/components/ui/Card";
 import { loadBenchmark } from "@/lib/parsers/benchmark";
+import {
+  loadEarningsCalendar,
+  type EarningsEntry,
+} from "@/lib/parsers/earningsCalendar";
+import {
+  loadLadderProgress,
+  type LadderState,
+} from "@/lib/parsers/ladderProgress";
+import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
+import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { resolveBotCtx } from "@/lib/resolveAccount";
 import { listAccounts } from "@/lib/settings";
+import { accountScope } from "@/lib/alpacaMode";
 import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
 import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
 import {
@@ -54,13 +65,16 @@ export default async function GlancePage({
 }) {
   const sp = await searchParams;
   const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
+  const memCtx = { bot: botId, strategy };
+  const scope = accountScope(accountMode, accountId);
+  const runOpts: RunAlpacaOpts = accountId ? { accountId } : { mode: accountMode };
   const forceSymbol = typeof sp.force === "string" ? sp.force : null;
 
   const accounts = accountId ? await listAccounts() : [];
   const accountLabel =
     accountId ? accounts.find((a) => a.id === accountId)?.label ?? null : null;
 
-  const benchmark = await loadBenchmark({ bot: botId, strategy });
+  const benchmark = await loadBenchmark(memCtx);
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
   const mdWeekStart = weekStartFromRows(benchmark.rows);
   const today = todayInCT();
@@ -68,11 +82,39 @@ export default async function GlancePage({
   const [liveSpy, liveWeek] = isStale
     ? await Promise.all([
         liveSpyPhasePct(benchmark.phaseStart),
-        liveWeekStartPortfolio(accountMode),
+        liveWeekStartPortfolio(accountMode, accountId),
       ])
     : [null, null];
   const spyPhasePct = liveSpy ?? last?.spyPhasePct ?? null;
   const weekStart = liveWeek ?? mdWeekStart;
+
+  const [botEarningsMap, ladderMap] = await Promise.all([
+    loadEarningsCalendar(memCtx).catch(() => new Map<string, EarningsEntry>()),
+    loadLadderProgress(memCtx).catch(() => new Map<string, LadderState>()),
+  ]);
+
+  let earnings: Record<string, EarningsEntry> | undefined;
+  try {
+    earnings = Object.fromEntries(botEarningsMap);
+  } catch {
+    earnings = undefined;
+  }
+
+  let overnightGaps: Record<string, number | null> | undefined;
+  try {
+    const positions = (await runAlpaca("positions", [], runOpts)) as Array<{
+      symbol: string;
+    }>;
+    const symbols = positions.map((p) => p.symbol);
+    if (symbols.length > 0) {
+      const gapMap = await loadOvernightGaps(symbols, accountMode, accountId);
+      overnightGaps = Object.fromEntries(gapMap);
+    }
+  } catch {
+    overnightGaps = undefined;
+  }
+
+  const ladder = ladderMap.size > 0 ? Object.fromEntries(ladderMap) : undefined;
 
   return (
     <div className="space-y-4 max-w-md mx-auto">
@@ -97,8 +139,7 @@ export default async function GlancePage({
       {forceSymbol ? <ForceExitBanner symbol={forceSymbol} /> : null}
 
       <PnlHero
-        mode={accountMode}
-        accountId={accountId}
+        scope={scope}
         startingEquity={benchmark.startingEquity}
         phaseStart={benchmark.phaseStart}
         weekStartPortfolio={weekStart}
@@ -111,7 +152,12 @@ export default async function GlancePage({
         <MarketClock />
       </Card>
 
-      <LivePositions mode={accountMode} accountId={accountId} />
+      <LivePositions
+        scope={scope}
+        earnings={earnings}
+        overnightGaps={overnightGaps}
+        ladder={ladder}
+      />
     </div>
   );
 }

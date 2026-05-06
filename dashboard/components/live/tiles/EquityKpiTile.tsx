@@ -4,13 +4,13 @@ import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import type { AlpacaScope } from "@/lib/alpacaMode";
 
 export const EquityKpiTile = memo(function EquityKpiTile({
-  mode,
-  accountId,
-}: { mode?: AlpacaMode; accountId?: string | null }) {
-  const s = useAccountSummary({ mode, accountId });
+  scope,
+}: { scope?: AlpacaScope }) {
+  const s = useAccountSummary(scope);
+  const mode = scope?.kind === "mode" ? scope.mode : undefined;
   const label = mode === "paper" ? "Equity (paper)" : "Equity (live)";
 
   if (s.loading) return <Kpi label={label} value="—" />;

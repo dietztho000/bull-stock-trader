@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { DrawdownBreaker } from "@/components/live/DrawdownBreaker";
 import { detectAccountInfo, detectAccountInfoById } from "@/lib/mode";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import type { AlpacaMode, AlpacaScope } from "@/lib/alpacaMode";
 
 const COPY: Record<
   AlpacaMode,
@@ -21,17 +21,22 @@ const COPY: Record<
   },
 };
 
+/** `mode` stays as a required prop because COPY is keyed by it — even when
+ *  the scope is account-shaped, the bot's resolved mode tells us which copy
+ *  set to render (the parent already knows it from `useTradingAccount` /
+ *  registry resolution; no extra async lookup needed here). */
 export async function AccountIdentityTile({
   mode,
-  accountId,
+  scope,
   accountLabel,
   botId,
 }: {
   mode: AlpacaMode;
-  accountId?: string | null;
+  scope: AlpacaScope;
   accountLabel?: string | null;
   botId?: string | null;
 }) {
+  const accountId = scope.kind === "account" ? scope.accountId : null;
   // Prefer the multi-account probe when we have an accountId — picks the
   // right account_number on installs with multiple paper accounts (audit A2).
   // Fall back to the legacy env probe only when no registry binding exists.
@@ -109,7 +114,7 @@ export async function AccountIdentityTile({
           ) : null}
         </div>
       </div>
-      <DrawdownBreaker mode={mode} accountId={accountId ?? null} botId={botId ?? null} />
+      <DrawdownBreaker scope={scope} botId={botId ?? null} />
     </div>
   );
 }

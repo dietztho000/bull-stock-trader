@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const account = readBotParam(url.searchParams) ?? undefined;
-    const { botId, strategy } = await resolveBotCtx({ account });
+    const bot = readBotParam(url.searchParams) ?? undefined;
+    const { botId, strategy } = await resolveBotCtx({ bot });
     const snapshots = await listBacktestSnapshots({ bot: botId, strategy });
     return NextResponse.json(
       { botId, strategy, snapshots },

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     const { botId, strategy } = await resolveBotCtx({
-      account: readBotParam(req.nextUrl.searchParams) ?? undefined,
+      bot: readBotParam(req.nextUrl.searchParams) ?? undefined,
     });
     const state = await loadStrategyState({ bot: botId, strategy });
     return NextResponse.json(state, {

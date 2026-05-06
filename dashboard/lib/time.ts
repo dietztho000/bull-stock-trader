@@ -69,6 +69,13 @@ export function addDaysISO(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Days between two `YYYY-MM-DD` strings (`to - from`, calendar arithmetic, TZ-invariant). */
+export function daysBetweenISO(fromIso: string, toIso: string): number {
+  const a = Date.parse(`${fromIso}T00:00:00Z`);
+  const b = Date.parse(`${toIso}T00:00:00Z`);
+  return Math.round((b - a) / 86400000);
+}
+
 // ───────────────────────── Display formatters ─────────────────────────
 
 /** `HH:MM` 24-hour in CT. */

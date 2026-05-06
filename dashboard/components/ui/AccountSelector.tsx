@@ -1,30 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import useSWR from "swr";
 import { useEffect, useRef, useState } from "react";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 import { useTradingAccount } from "@/lib/tradingAccountContext";
-import { alpacaApiUrl } from "@/lib/alpacaMode";
+import { useMarketClock } from "@/lib/useMarketClock";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
-import {
-  type AlpacaClock,
-  type AlpacaErrorEnvelope,
-  isAlpacaError,
-} from "@/lib/types/alpaca";
 import type { Bot, RedactedAccount } from "@/lib/settings";
-
-const fetcher = (u: string) => fetch(u).then((r) => r.json());
-
-function useMarketIsOpen(account: AlpacaMode): boolean {
-  const { data } = useSWR<AlpacaClock | AlpacaErrorEnvelope>(
-    alpacaApiUrl("clock", account),
-    fetcher,
-    { refreshInterval: 30_000, revalidateOnFocus: false, keepPreviousData: true }
-  );
-  if (!data || isAlpacaError(data)) return false;
-  return Boolean(data.is_open);
-}
 
 const TINT_FOR: Record<AlpacaMode, string> = {
   live: "glass-tint-down",
@@ -257,7 +239,7 @@ function LiveConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const marketOpen = useMarketIsOpen(currentMode);
+  const marketOpen = useMarketClock({ mode: currentMode }).isOpen ?? false;
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     confirmRef.current?.focus();

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cache } from "react";
 import { marked } from "marked";
 import { Card, Badge } from "@/components/ui/Card";
 import { UrlTabs } from "@/components/ui/UrlTabs";
@@ -25,6 +26,16 @@ import { listBots } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Per-render dedup of RUN-LOG.jsonl parses. RoutineHealthBadge (always
+// rendered) and RoutinesTab (when on the routines tab) both want the
+// active bot's runs; RoutinesTab also fans out across every enabled bot.
+// React.cache keys on primitive args, so we expose a (bot, strategy)
+// signature rather than the {bot, strategy} object literal that the
+// underlying parser uses (object identity would defeat the cache).
+const cachedLoadRunLog = cache((bot: string, strategy: string) =>
+  loadRunLog({ bot, strategy })
+);
 
 const TABS = ["research", "daily", "weekly", "routines"] as const;
 type Tab = (typeof TABS)[number];
@@ -80,7 +91,7 @@ async function RoutineHealthBadge({
   botId: string;
   strategy: string;
 }) {
-  const runs = await loadRunLog({ bot: botId, strategy });
+  const runs = await cachedLoadRunLog(botId, strategy);
   const today = todayInCT();
   const summary = summarizeToday(runs, today, isFridayCT(today));
 
@@ -375,13 +386,13 @@ async function RoutinesTab({ botId, strategy }: { botId: string; strategy: strin
   const perBotRuns = await Promise.all(
     enabledBots.map(async (b) => ({
       bot: b,
-      runs: await loadRunLog({ bot: b.id, strategy: b.strategySlug }),
+      runs: await cachedLoadRunLog(b.id, b.strategySlug),
     }))
   );
 
   const activeRuns =
     perBotRuns.find((p) => p.bot.id === botId)?.runs ??
-    (await loadRunLog({ bot: botId, strategy }));
+    (await cachedLoadRunLog(botId, strategy));
   const today = summarizeToday(activeRuns, todayCT, isFriday);
 
   const firedCount = today.filter((r) => r.lastRun != null).length;

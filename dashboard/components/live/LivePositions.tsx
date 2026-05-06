@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import clsx from "clsx";
 import { fmtMoney, fmtPct, fmtSignedMoney } from "@/lib/format";
-import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { alpacaApiUrl, type AlpacaScope } from "@/lib/alpacaMode";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 import { useLiveSwr } from "@/lib/useLiveSwr";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
@@ -102,14 +102,12 @@ function LadderCell({
 }
 
 export function LivePositions({
-  mode,
-  accountId,
+  scope,
   earnings,
   overnightGaps,
   ladder,
 }: {
-  mode?: AlpacaMode;
-  accountId?: string | null;
+  scope?: AlpacaScope;
   earnings?: EarningsMapJson;
   overnightGaps?: Record<string, number | null>;
   ladder?: LadderJson;
@@ -118,8 +116,14 @@ export function LivePositions({
   const settingsCtx = useSettingsOptional();
   const display = settingsCtx?.settings.display;
   const live = settingsCtx?.settings.live;
-  const effectiveAccountId = accountId ?? ctx?.accountId ?? null;
-  const effectiveMode = mode ?? ctx?.account;
+  const effectiveAccountId =
+    scope?.kind === "account" ? scope.accountId : ctx?.accountId ?? null;
+  const effectiveMode =
+    scope?.kind === "mode"
+      ? scope.mode
+      : scope?.kind === "account"
+      ? ctx?.account
+      : ctx?.account;
   const liveOpts = useLiveSwr(5000);
   const { data, error, isLoading } = useSWR<AlpacaPosition[] | AlpacaErrorEnvelope>(
     alpacaApiUrl(

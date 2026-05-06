@@ -8,6 +8,44 @@ import type { SyncStatus } from "@/lib/memoryFreshness";
 
 type ButtonState = "idle" | "syncing" | "ok" | "error";
 
+type SyncRunStatus = {
+  startedAt?: string;
+  finishedAt?: string;
+  exitCode?: number;
+  message?: string;
+};
+
+const POLL_MS = 1_000;
+const POLL_TIMEOUT_MS = 60_000;
+
+/** Polls `/api/sync/status` until the script reports a `finishedAt` later
+ *  than `triggeredAtMs`. Returns null on timeout. The status file is
+ *  shared with launchd-cron runs, so we use the timestamp gate to avoid
+ *  picking up a stale completion from a cron tick that landed seconds
+ *  before the user clicked. */
+async function pollSyncStatus(
+  triggeredAtMs: number
+): Promise<SyncRunStatus | null> {
+  const deadline = triggeredAtMs + POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_MS));
+    try {
+      const resp = await fetch("/api/sync/status");
+      if (!resp.ok) continue;
+      const body = (await resp.json()) as { status: SyncRunStatus | null };
+      const status = body.status;
+      if (!status?.finishedAt) continue;
+      const finishedMs = Date.parse(status.finishedAt);
+      if (Number.isFinite(finishedMs) && finishedMs >= triggeredAtMs - 1000) {
+        return status;
+      }
+    } catch {
+      // transient — keep polling until the deadline
+    }
+  }
+  return null;
+}
+
 export function MemorySyncButton({
   initialStatus,
 }: {
@@ -23,15 +61,38 @@ export function MemorySyncButton({
   async function trigger() {
     if (state === "syncing") return;
     setState("syncing");
+    const triggeredAtMs = Date.now();
     try {
       const resp = await fetch("/api/sync", { method: "POST" });
       const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data.ok) {
+      if (!resp.ok || !data.ok) {
+        setState("error");
+        toast?.push({
+          tone: "error",
+          title: "Sync failed",
+          detail: data?.error ?? `HTTP ${resp.status}`,
+        });
+        return;
+      }
+      // Audit NA6 — POST returns 202 immediately. Poll the status file
+      // until the script's most recent `finishedAt` is newer than when we
+      // pressed the button (giving the kicked-off run time to land).
+      const finalStatus = await pollSyncStatus(triggeredAtMs);
+      if (!finalStatus) {
+        setState("error");
+        toast?.push({
+          tone: "error",
+          title: "Sync timed out",
+          detail: "cron-sync.sh did not report completion within 60s",
+        });
+        return;
+      }
+      if (finalStatus.exitCode === 0) {
         setState("ok");
         toast?.push({
           tone: "success",
           title: "Pulled cloud routine writes",
-          detail: data.status?.message ?? undefined,
+          detail: finalStatus.message ?? undefined,
           ttl: 3000,
         });
         // SSE-driven LiveRefresh handles UI updates when memory files
@@ -43,10 +104,7 @@ export function MemorySyncButton({
         toast?.push({
           tone: "error",
           title: "Sync failed",
-          detail:
-            data?.status?.message ??
-            data?.error ??
-            `HTTP ${resp.status}`,
+          detail: finalStatus.message ?? `exit ${finalStatus.exitCode}`,
         });
       }
     } catch (err) {

@@ -3,13 +3,12 @@
 import { memo } from "react";
 import { Kpi } from "@/components/ui/Card";
 import { useAccountSummary } from "@/components/live/useAccountSummary";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import type { AlpacaScope } from "@/lib/alpacaMode";
 
 export const DeployedKpiTile = memo(function DeployedKpiTile({
-  mode,
-  accountId,
-}: { mode?: AlpacaMode; accountId?: string | null }) {
-  const s = useAccountSummary({ mode, accountId });
+  scope,
+}: { scope?: AlpacaScope }) {
+  const s = useAccountSummary(scope);
   if (s.loading) return <Kpi label="Deployed" value="—" />;
   if ("error" in s)
     return (

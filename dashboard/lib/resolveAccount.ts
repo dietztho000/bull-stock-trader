@@ -1,22 +1,8 @@
-import { activeTab } from "./activeTab";
 import { readBotMode } from "./mode";
 import { listAccounts, listBots } from "./settings";
 import type { AlpacaMode, BotId } from "./alpacaMode";
 
-/** Built-in bot ids that exist after the env-seed migration runs. The
- *  generic `BotId` is any registered slug; this tuple is just the legacy
- *  pair retained for type-narrowing in places that still need a literal
- *  `AlpacaMode`. */
-export const ACCOUNT_TABS = ["live", "paper"] as const;
-
 type SearchParamMap = { [key: string]: string | string[] | undefined } | undefined;
-
-/** Legacy resolver: returns "live" | "paper" for code paths that haven't
- *  migrated to bot ids yet. Prefer `resolveBotId` for new code. */
-export async function resolveAccount(searchParams: SearchParamMap): Promise<AlpacaMode> {
-  const fallback = await readBotMode();
-  return activeTab<AlpacaMode>(searchParams, "account", ACCOUNT_TABS, fallback);
-}
 
 /** Multi-bot resolver: looks at the URL `?bot=<bot-id>` (with `?account=`
  *  accepted as a one-release back-compat shim for old bookmarks — A4 in

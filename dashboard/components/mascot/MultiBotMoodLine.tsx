@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import clsx from "clsx";
-import type { LeaderboardRow } from "@/app/api/bots/leaderboard/route";
+import type { SnapshotRow } from "@/app/api/bots/snapshot/route";
 import { useLiveSwr } from "@/lib/useLiveSwr";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
@@ -12,11 +12,15 @@ const fetcher = (u: string) => fetch(u).then((r) => r.json());
  *  whole fleet — surface a green/red/flat tally instead. Audit U7: also
  *  renders for single-bot installs so the "1 green of 1 bot" reading
  *  still appears (was previously suppressed for fewer than 2 bots).
- *  Backs off to once-per-minute when the market is closed (audit P3). */
+ *  Backs off to once-per-minute when the market is closed (audit P3).
+ *
+ *  Audit NU4 — uses the slim `/api/bots/snapshot` endpoint instead of the
+ *  full leaderboard payload, since the mood line only consumes `dayPct`.
+ *  Skips Alpaca shells + drawdown/ledger compute for every Overview render. */
 export function MultiBotMoodLine() {
   const liveOpts = useLiveSwr(60_000);
-  const { data } = useSWR<{ rows: LeaderboardRow[] }>(
-    "/api/bots/leaderboard",
+  const { data } = useSWR<{ rows: SnapshotRow[] }>(
+    "/api/bots/snapshot",
     fetcher,
     { ...liveOpts, keepPreviousData: true }
   );

@@ -33,6 +33,7 @@ import { drawdownSeries, maxDrawdown } from "@/lib/stats/drawdown";
 import { sharpe, sortino, calmar, annualizedReturn } from "@/lib/stats/sharpe";
 import { computeTradeStats } from "@/lib/stats/tradeStats";
 import { rMultiples, avgR } from "@/lib/stats/rMultiple";
+import { todayInCT, daysBetweenISO } from "@/lib/time";
 import { bestWorst, monthlyAggregates } from "@/lib/stats/streaks";
 import { readBacktestSnapshot } from "@/lib/backtest/cache";
 import type { Trade } from "@/lib/backtest/types";
@@ -235,12 +236,11 @@ async function RiskTab({ botId, strategy }: { botId: string; strategy: string })
 
   const tradesPerWeek = (() => {
     if (!ledger.closed.length) return "—";
-    const days = Math.max(
+    const weeks = Math.max(
       1,
-      (new Date().getTime() - new Date(ledger.closed[0].date).getTime()) /
-        (7 * 86400000)
+      daysBetweenISO(ledger.closed[0].date, todayInCT()) / 7
     );
-    return (ledger.closed.length / days).toFixed(2);
+    return (ledger.closed.length / weeks).toFixed(2);
   })();
 
   const tiles: Record<string, React.ReactNode> = {

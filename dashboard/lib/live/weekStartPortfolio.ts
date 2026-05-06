@@ -1,4 +1,4 @@
-import { runAlpaca } from "@/lib/alpaca";
+import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
 import type { AlpacaMode } from "@/lib/alpacaMode";
 import { currentWeekMondayCT } from "@/lib/time";
 
@@ -11,26 +11,29 @@ const TTL_MS = 60_000;
 const cache = new Map<string, { value: number | null; expires: number }>();
 
 export async function liveWeekStartPortfolio(
-  mode: AlpacaMode = "live"
+  mode: AlpacaMode = "live",
+  accountId?: string | null
 ): Promise<number | null> {
   const monday = currentWeekMondayCT();
-  const key = `${mode}:${monday}`;
+  const key = `${accountId ?? mode}:${monday}`;
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.value;
 
-  const value = await fetchWeekStart(mode, monday).catch(() => null);
+  const value = await fetchWeekStart(mode, monday, accountId).catch(() => null);
   cache.set(key, { value, expires: Date.now() + TTL_MS });
   return value;
 }
 
 async function fetchWeekStart(
   mode: AlpacaMode,
-  mondayISO: string
+  mondayISO: string,
+  accountId?: string | null
 ): Promise<number | null> {
+  const opts: RunAlpacaOpts = accountId ? { accountId } : { mode };
   const resp = (await runAlpaca(
     "portfolio-history",
     ["1W", "1D"],
-    { mode }
+    opts
   )) as PortfolioHistory;
   const ts = resp.timestamp ?? [];
   const eq = resp.equity ?? [];

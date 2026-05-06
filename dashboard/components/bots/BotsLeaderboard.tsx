@@ -8,6 +8,7 @@ import { Card, Badge } from "@/components/ui/Card";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
 import type { LeaderboardRow } from "@/app/api/bots/leaderboard/route";
 import { useLiveSwr } from "@/lib/useLiveSwr";
+import { useMarketIsOpen } from "@/lib/useMarketIsOpen";
 import { HealthDot } from "./HealthDot";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
@@ -46,15 +47,19 @@ function compareNullable(
 }
 
 export function BotsLeaderboard() {
-  // Audit P3 — useLiveSwr backs the poll off to once-per-minute when the
-  // market is closed (overnight, weekends), instead of fanning out N
-  // alpaca calls every 60s on a Sunday afternoon.
+  // useLiveSwr already clamps to a 60s floor when the market is closed,
+  // but bot equity barely moves after-hours — pause polling entirely when
+  // the market is closed so 5 enabled bots don't fan out 5 Alpaca shells
+  // per minute all night. Focus revalidation still updates the panel when
+  // the user comes back to the tab.
   const liveOpts = useLiveSwr(60_000);
+  const marketOpen = useMarketIsOpen();
   const { data, error, isLoading } = useSWR<{ rows: LeaderboardRow[] }>(
     "/api/bots/leaderboard",
     fetcher,
     {
       ...liveOpts,
+      refreshInterval: marketOpen === false ? 0 : liveOpts.refreshInterval,
       keepPreviousData: true,
     }
   );

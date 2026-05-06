@@ -24,6 +24,7 @@ import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { mergeEarnings } from "@/lib/calendar/events";
 import { resolveBotCtx } from "@/lib/resolveAccount";
 import { listAccounts } from "@/lib/settings";
+import { accountScope } from "@/lib/alpacaMode";
 import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
 import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
 import { todayInCT, isTradingDayCT, currentWeekMondayCT } from "@/lib/time";
@@ -58,9 +59,7 @@ export default async function OverviewPage({
   const sp = await searchParams;
   // Multi-bot context: `botId` keys all memory loads (BENCHMARK, RESEARCH-LOG,
   // EARNINGS-CALENDAR, ladder progress) and `accountId` scopes Alpaca queries
-  // to the bot's bound account — fixes audit C1/7.2 where the legacy
-  // `ACCOUNT_TABS = ["live","paper"]` literal silently rendered the env
-  // account for any new registry-defined bot.
+  // to the bot's bound account.
   const { botId, strategy, accountId, mode: accountMode } = await resolveBotCtx(sp);
   const memCtx = { bot: botId, strategy };
   const runOpts: RunAlpacaOpts = accountId ? { accountId } : { mode: accountMode };
@@ -80,7 +79,7 @@ export default async function OverviewPage({
   const [liveSpy, liveWeek] = mdIsStaleToday
     ? await Promise.all([
         liveSpyPhasePct(benchmark.phaseStart),
-        liveWeekStartPortfolio(accountMode),
+        liveWeekStartPortfolio(accountMode, accountId),
       ])
     : [null, null];
   const spyPhasePct = liveSpy ?? mdSpyPhasePct;
@@ -114,7 +113,7 @@ export default async function OverviewPage({
     }>;
     const symbols = positions.map((p) => p.symbol);
     if (symbols.length > 0) {
-      const gapMap = await loadOvernightGaps(symbols, accountMode);
+      const gapMap = await loadOvernightGaps(symbols, accountMode, accountId);
       overnightGaps = Object.fromEntries(gapMap);
     }
   } catch {
@@ -131,6 +130,7 @@ export default async function OverviewPage({
   const ctx: OverviewCtx = {
     accountMode,
     accountId,
+    scope: accountScope(accountMode, accountId),
     botId,
     strategy,
     accountLabel,

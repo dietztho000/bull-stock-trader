@@ -4,7 +4,7 @@ import useSWR from "swr";
 import clsx from "clsx";
 import { motion } from "framer-motion";
 import { fmtMoney, fmtPct, fmtSignedMoney, colorOf } from "@/lib/format";
-import { alpacaApiUrl, type AlpacaMode } from "@/lib/alpacaMode";
+import { alpacaApiUrl, scopeToPair, type AlpacaScope } from "@/lib/alpacaMode";
 import { useLiveSwr } from "@/lib/useLiveSwr";
 import {
   type AlpacaAccount,
@@ -17,22 +17,20 @@ import { BreakerPills } from "./BreakerPills";
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
 export function PnlHero({
-  mode = "live",
-  accountId,
+  scope,
   startingEquity,
   phaseStart,
   weekStartPortfolio,
   spyPhasePct,
 }: {
-  mode?: AlpacaMode;
-  accountId?: string | null;
+  scope: AlpacaScope;
   startingEquity: number | null;
   phaseStart: string | null;
   weekStartPortfolio: number | null;
   spyPhasePct: number | null;
 }) {
   const liveOpts = useLiveSwr(5000);
-  const idOpts = accountId ? { accountId } : { mode };
+  const idOpts = scopeToPair(scope);
   const { data: account } = useSWR<AlpacaAccount | AlpacaErrorEnvelope>(
     alpacaApiUrl("account", idOpts),
     fetcher,

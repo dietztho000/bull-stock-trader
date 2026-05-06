@@ -87,6 +87,14 @@ export function memoryFileScope(file: string): FileScope {
   return scope;
 }
 
+/** Non-throwing predicate for the watcher: a file change is worth surfacing
+ *  as a `MemoryEvent` only if the bare filename is registered. Backtest
+ *  snapshots (`backtests/<id>.json`), settings backups, and other untracked
+ *  json files would otherwise trigger SSE flushes that no client cares about. */
+export function isKnownMemoryFile(file: string): boolean {
+  return Object.prototype.hasOwnProperty.call(MEMORY_FILE_SCOPE, file);
+}
+
 export function resolveMemoryFile(file: string, ctx?: MemoryCtx): string {
   const scope = memoryFileScope(file);
   if (scope.scope === "shared") {

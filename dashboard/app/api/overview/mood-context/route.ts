@@ -28,7 +28,7 @@ function resolveWeekStartPortfolio(
 export async function GET(req: NextRequest) {
   try {
     const { botId, strategy } = await resolveBotCtx({
-      account: readBotParam(req.nextUrl.searchParams) ?? undefined,
+      bot: readBotParam(req.nextUrl.searchParams) ?? undefined,
     });
     const benchmark = await loadBenchmark({ bot: botId, strategy });
     const rows = benchmark.rows;

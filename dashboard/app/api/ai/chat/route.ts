@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { botId, strategy } = await resolveBotCtx({
-    account: readBotParam(req.nextUrl.searchParams) ?? undefined,
+    bot: readBotParam(req.nextUrl.searchParams) ?? undefined,
   });
 
   let client, context;

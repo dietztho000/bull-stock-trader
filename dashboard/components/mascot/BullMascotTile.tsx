@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { Card } from "@/components/ui/Card";
 import { fmtPct } from "@/lib/format";
 import { todayInCT } from "@/lib/time";
-import type { AlpacaMode } from "@/lib/alpacaMode";
+import type { AlpacaScope } from "@/lib/alpacaMode";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
 import { BullCharacter } from "./BullCharacter";
 import { Confetti } from "./Confetti";
@@ -22,8 +22,7 @@ import { useAchievementWatcher } from "./useAchievementWatcher";
 import { MascotErrorBoundary } from "./MascotErrorBoundary";
 
 export type BullMascotTileProps = {
-  mode: AlpacaMode;
-  accountId?: string | null;
+  scope: AlpacaScope;
   ctxOverride: {
     winStreak: number | null;
     spyPhasePct: number | null;
@@ -49,7 +48,7 @@ export function BullMascotTile(props: BullMascotTileProps) {
   );
 }
 
-function BullMascotTileInner({ mode, accountId, ctxOverride }: BullMascotTileProps) {
+function BullMascotTileInner({ scope, ctxOverride }: BullMascotTileProps) {
   const settings = useSettingsOptional();
   const [open, setOpen] = useState(false);
   const [todayKey, setTodayKey] = useState("init");
@@ -60,8 +59,7 @@ function BullMascotTileInner({ mode, accountId, ctxOverride }: BullMascotTilePro
   }, []);
 
   const snapshot = useBullMood({
-    mode,
-    accountId,
+    scope,
     ctxOverride,
     fallbackCtx: null,
     todayKey,
