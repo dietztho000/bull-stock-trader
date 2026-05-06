@@ -104,12 +104,17 @@ export function RoutineHealthPopover({
                   <StatusDot status={r.status} />
                   <span className="truncate">{r.routine}</span>
                 </span>
-                <span className="tabular text-[var(--color-muted)] text-[11px]">
-                  {r.endTs
-                    ? fmtClockCT(new Date(r.endTs))
-                    : r.startTs
-                    ? `started ${fmtClockCT(new Date(r.startTs))}`
-                    : "—"}
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span className="tabular text-[var(--color-muted)] text-[11px]">
+                    {r.endTs
+                      ? fmtClockCT(new Date(r.endTs))
+                      : r.startTs
+                      ? `started ${fmtClockCT(new Date(r.startTs))}`
+                      : "—"}
+                  </span>
+                  {(r.status === "error" || r.status === "missing") && (
+                    <CopySlashButton routine={r.routine} />
+                  )}
                 </span>
               </li>
             ))}
@@ -117,19 +122,52 @@ export function RoutineHealthPopover({
           {missing > 0 && (
             <div className="mt-3 pt-2 border-t border-[rgba(255,255,255,0.08)] text-[11px] text-[var(--color-muted)]">
               <strong className="text-[var(--color-warn)]">{missing} missing.</strong>{" "}
-              Check the cloud Routines UI to rerun them, or wait for the next
-              scheduled fire.
+              Click 📋 to copy a slash command — paste into Claude Code to
+              rerun, or wait for the next scheduled fire.
             </div>
           )}
           {errored > 0 && (
             <div className="mt-2 text-[11px] text-[var(--color-down)]">
               <strong>{errored} errored.</strong> Tail the routine's logs in the
-              cloud Routines UI for the stack trace.
+              cloud Routines UI for the stack trace; or copy the slash command
+              above to retry locally.
             </div>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Audit NF6 — local rerun ergonomics. The full "trigger routine" surface
+ *  lives in the cloud (the dashboard machine has no creds for the bot's
+ *  account env vars), but the user runs Claude Code locally too — copying
+ *  `/<routine>` lets them paste-rerun in one stroke without leaving the
+ *  popover. */
+function CopySlashButton({ routine }: { routine: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    const slash = `/${routine}`;
+    try {
+      await navigator.clipboard.writeText(slash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // older browser / permission denied — surface the text so the user
+      // can copy by hand. The popover stays open since this is fire-and-
+      // forget feedback only.
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={`Copy /${routine} for paste into Claude Code`}
+      aria-label={`Copy slash command for ${routine}`}
+      className="text-[10px] opacity-60 hover:opacity-100 hover:text-[var(--color-accent)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded px-1"
+    >
+      {copied ? "✓" : "📋"}
+    </button>
   );
 }
 

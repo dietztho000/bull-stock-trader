@@ -17,7 +17,7 @@ import {
 import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
 import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { resolveBotCtx } from "@/lib/resolveAccount";
-import { listAccounts } from "@/lib/settings";
+import { listAccounts, listBots } from "@/lib/settings";
 import { accountScope } from "@/lib/alpacaMode";
 import { liveSpyPhasePct } from "@/lib/live/spyPhasePct";
 import { liveWeekStartPortfolio } from "@/lib/live/weekStartPortfolio";
@@ -70,9 +70,13 @@ export default async function GlancePage({
   const runOpts: RunAlpacaOpts = accountId ? { accountId } : { mode: accountMode };
   const forceSymbol = typeof sp.force === "string" ? sp.force : null;
 
-  const accounts = accountId ? await listAccounts() : [];
+  // Audit NF1 — bot-pill switcher needs the registry list (and accounts for
+  // mode-dot tinting). Cheap fetch on /glance since this is the only mobile
+  // view without the desktop selector.
+  const [allAccounts, allBots] = await Promise.all([listAccounts(), listBots()]);
+  const enabledBots = allBots.filter((b) => b.enabled);
   const accountLabel =
-    accountId ? accounts.find((a) => a.id === accountId)?.label ?? null : null;
+    accountId ? allAccounts.find((a) => a.id === accountId)?.label ?? null : null;
 
   const benchmark = await loadBenchmark(memCtx);
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
@@ -135,6 +139,40 @@ export default async function GlancePage({
           Full view →
         </Link>
       </header>
+
+      {enabledBots.length > 1 && (
+        <nav
+          aria-label="Switch bot"
+          className="flex gap-1.5 overflow-x-auto px-1 pb-1 -mx-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {enabledBots.map((b) => {
+            const isActive = b.id === botId;
+            const acct = allAccounts.find((a) => a.id === b.accountId);
+            const mode = acct?.mode ?? "paper";
+            return (
+              <Link
+                key={b.id}
+                href={`/glance?bot=${encodeURIComponent(b.id)}`}
+                aria-current={isActive ? "page" : undefined}
+                className={
+                  isActive
+                    ? "glass glass-tint-up rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap shrink-0 ring-1 ring-[var(--color-accent)]"
+                    : "glass rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap shrink-0 opacity-70 hover:opacity-100"
+                }
+              >
+                <span
+                  className={
+                    mode === "live"
+                      ? "inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle bg-[var(--color-down)]"
+                      : "inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle bg-[var(--color-warn)]"
+                  }
+                />
+                {b.name}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {forceSymbol ? <ForceExitBanner symbol={forceSymbol} /> : null}
 

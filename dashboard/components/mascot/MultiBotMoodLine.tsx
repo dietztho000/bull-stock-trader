@@ -51,17 +51,67 @@ export function MultiBotMoodLine() {
       ? "bg-[var(--color-down)]"
       : "bg-[var(--color-muted)]";
 
+  const synthesis = synthesizeFleet({ green, red, flat, total: rows.length });
+
   return (
-    <div className="mt-2 mb-3 flex items-center justify-center gap-2 text-[11px] text-[var(--color-muted)]">
-      <span className={clsx("inline-block w-1.5 h-1.5 rounded-full", dot)} />
-      <span>
-        Fleet: {green > 0 && <span className="text-[var(--color-up)]">{green} green</span>}
-        {green > 0 && (red > 0 || flat > 0) && " · "}
-        {red > 0 && <span className="text-[var(--color-down)]">{red} red</span>}
-        {red > 0 && flat > 0 && " · "}
-        {flat > 0 && <span>{flat} flat</span>}{" "}
-        of {rows.length} bot{rows.length === 1 ? "" : "s"}
-      </span>
+    <div className="mt-2 mb-3 space-y-1 px-2">
+      {synthesis && (
+        <div className="text-center text-[11px] italic text-[var(--color-muted)]">
+          “{synthesis}”
+        </div>
+      )}
+      <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-muted)]">
+        <span className={clsx("inline-block w-1.5 h-1.5 rounded-full", dot)} />
+        <span>
+          Fleet: {green > 0 && <span className="text-[var(--color-up)]">{green} green</span>}
+          {green > 0 && (red > 0 || flat > 0) && " · "}
+          {red > 0 && <span className="text-[var(--color-down)]">{red} red</span>}
+          {red > 0 && flat > 0 && " · "}
+          {flat > 0 && <span>{flat} flat</span>}{" "}
+          of {rows.length} bot{rows.length === 1 ? "" : "s"}
+        </span>
+      </div>
     </div>
   );
+}
+
+/** Audit NF4 — single-line fleet-wide mascot voice that complements the
+ *  tally. Skips for single-bot installs (the per-bot flavor already covers
+ *  that case). Deterministic from {green, red, flat, total} so it doesn't
+ *  flicker between similar fleet states; intentionally short so the mascot
+ *  card stays compact. */
+function synthesizeFleet(s: {
+  green: number;
+  red: number;
+  flat: number;
+  total: number;
+}): string | null {
+  if (s.total < 2) return null;
+  const greenAll = s.green === s.total;
+  const redAll = s.red === s.total;
+  const greenMajority = s.green > s.total / 2;
+  const redMajority = s.red > s.total / 2;
+
+  if (greenAll) {
+    if (s.total >= 3) return "Whole fleet green. Strong session.";
+    return "Both bots green. Nice.";
+  }
+  if (redAll) {
+    if (s.total >= 3) return "Fleet-wide red. Risk-off.";
+    return "Both bots red. Defense.";
+  }
+  if (greenMajority) {
+    return s.red > 0
+      ? `${s.green} green vs ${s.red} red — leaders pulling.`
+      : `${s.green} green, rest flat. Quiet up-day.`;
+  }
+  if (redMajority) {
+    return s.green > 0
+      ? `${s.red} red vs ${s.green} green — laggards dragging.`
+      : `${s.red} red, rest flat. Bleed without panic.`;
+  }
+  if (s.green === s.red && s.green > 0) {
+    return `Split: ${s.green}/${s.green} green/red. Strategy spread, not the market.`;
+  }
+  return null;
 }

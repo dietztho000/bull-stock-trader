@@ -23,6 +23,8 @@ import { BullMascotTile } from "@/components/mascot/BullMascotTile";
 import { EarningsGateBanner } from "@/components/live/EarningsGateBanner";
 import { OrderEntryTile } from "@/components/live/OrderEntryTile";
 import { PositionManagementTile } from "@/components/live/PositionManagementTile";
+import { FleetSummaryTile } from "@/components/bots/FleetSummaryTile";
+import { SinceLastVisitTile } from "@/components/live/SinceLastVisitTile";
 
 import type { PageLayoutSpec } from "@/components/layout/defaults";
 import type { AlpacaMode, AlpacaScope } from "@/lib/alpacaMode";
@@ -80,9 +82,21 @@ export type OverviewTileDef = {
 
 export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
+    id: "fleet-summary",
+    title: "Fleet",
+    defaultLayout: { x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 },
+    render: () => <FleetSummaryTile />,
+  },
+  {
+    id: "since-last-visit",
+    title: "Since last visit",
+    defaultLayout: { x: 0, y: 48, w: 4, h: 4, minW: 3, minH: 3 },
+    render: () => <SinceLastVisitTile />,
+  },
+  {
     id: "account-identity",
     title: "Account",
-    defaultLayout: { x: 0, y: 0, w: 4, h: 4, minW: 3, minH: 3 },
+    defaultLayout: { x: 0, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
     render: (ctx) => (
       <Suspense fallback={<div className="frost rounded-2xl h-32 animate-pulse" />}>
         <AccountIdentityTile
@@ -97,7 +111,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "pnl-hero",
     title: "P&L hero",
-    defaultLayout: { x: 4, y: 0, w: 8, h: 4, minW: 4, minH: 3 },
+    defaultLayout: { x: 4, y: 3, w: 8, h: 4, minW: 4, minH: 3 },
     render: (ctx) => (
       <PnlHero
         scope={ctx.scope}
@@ -111,43 +125,43 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "equity-kpi",
     title: "Equity",
-    defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
+    defaultLayout: { x: 0, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <EquityKpiTile scope={ctx.scope} />,
   },
   {
     id: "cash-kpi",
     title: "Cash",
-    defaultLayout: { x: 3, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
+    defaultLayout: { x: 3, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <CashKpiTile scope={ctx.scope} />,
   },
   {
     id: "deployed-kpi",
     title: "Deployed",
-    defaultLayout: { x: 6, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
+    defaultLayout: { x: 6, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <DeployedKpiTile scope={ctx.scope} />,
   },
   {
     id: "buying-power-kpi",
     title: "Buying power",
-    defaultLayout: { x: 9, y: 4, w: 3, h: 3, minW: 2, minH: 2 },
+    defaultLayout: { x: 9, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <BuyingPowerKpiTile scope={ctx.scope} />,
   },
   {
     id: "day-trades-kpi",
     title: "Day trades",
-    defaultLayout: { x: 0, y: 7, w: 3, h: 3, minW: 2, minH: 2 },
+    defaultLayout: { x: 0, y: 10, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <DayTradesKpiTile scope={ctx.scope} />,
   },
   {
     id: "risk-gate",
     title: "Risk gate",
-    defaultLayout: { x: 0, y: 7, w: 12, h: 5, minW: 4, minH: 3 },
+    defaultLayout: { x: 0, y: 10, w: 12, h: 5, minW: 4, minH: 3 },
     render: () => <EarningsGateBanner />,
   },
   {
     id: "drawdown-narrator",
     title: "Drawdown narrator",
-    defaultLayout: { x: 3, y: 12, w: 9, h: 3, minW: 4, minH: 2 },
+    defaultLayout: { x: 3, y: 15, w: 9, h: 3, minW: 4, minH: 2 },
     render: (ctx) => (
       <Suspense
         fallback={
@@ -168,7 +182,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "equity-curve",
     title: "Equity vs SPY",
-    defaultLayout: { x: 0, y: 10, w: 8, h: 8, minW: 4, minH: 5 },
+    defaultLayout: { x: 0, y: 13, w: 8, h: 8, minW: 4, minH: 5 },
     render: (ctx) => (
       <Card
         title="Equity vs SPY"
@@ -188,7 +202,7 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "positions",
     title: "Positions",
-    defaultLayout: { x: 8, y: 10, w: 4, h: 8, minW: 3, minH: 5 },
+    defaultLayout: { x: 8, y: 13, w: 4, h: 8, minW: 3, minH: 5 },
     render: (ctx) => (
       <PositionsTile
         scope={ctx.scope}
@@ -201,25 +215,25 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "order-entry",
     title: "Order entry",
-    defaultLayout: { x: 0, y: 18, w: 6, h: 8, minW: 4, minH: 6 },
+    defaultLayout: { x: 0, y: 21, w: 6, h: 8, minW: 4, minH: 6 },
     render: () => <OrderEntryTile />,
   },
   {
     id: "position-management",
     title: "Position management",
-    defaultLayout: { x: 6, y: 18, w: 6, h: 8, minW: 4, minH: 6 },
+    defaultLayout: { x: 6, y: 21, w: 6, h: 8, minW: 4, minH: 6 },
     render: () => <PositionManagementTile />,
   },
   {
     id: "orders",
     title: "Open orders",
-    defaultLayout: { x: 0, y: 26, w: 12, h: 5, minW: 4, minH: 4 },
+    defaultLayout: { x: 0, y: 29, w: 12, h: 5, minW: 4, minH: 4 },
     render: (ctx) => <OrdersTile scope={ctx.scope} />,
   },
   {
     id: "upcoming-events",
     title: "Upcoming events",
-    defaultLayout: { x: 0, y: 31, w: 7, h: 8, minW: 3, minH: 4 },
+    defaultLayout: { x: 0, y: 34, w: 7, h: 8, minW: 3, minH: 4 },
     render: (ctx) => (
       <UpcomingEventsCard earnings={ctx.upcomingEarnings} economic={ctx.economic} />
     ),
@@ -227,13 +241,13 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
   {
     id: "latest-brief",
     title: "Latest brief",
-    defaultLayout: { x: 7, y: 31, w: 5, h: 8, minW: 3, minH: 4 },
+    defaultLayout: { x: 7, y: 34, w: 5, h: 8, minW: 3, minH: 4 },
     render: (ctx) => <LatestBriefSection latest={ctx.latestBrief} />,
   },
   {
     id: "bull-mascot",
     title: "Trader Max",
-    defaultLayout: { x: 0, y: 39, w: 4, h: 6, minW: 3, minH: 5 },
+    defaultLayout: { x: 0, y: 42, w: 4, h: 6, minW: 3, minH: 5 },
     render: (ctx) => (
       <BullMascotTile
         scope={ctx.scope}
