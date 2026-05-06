@@ -32,14 +32,6 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-05 11:09 UTC | sonar | When is the next earnings report for NVDA Nvidia? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
 | 2026-05-05 11:09 UTC | sonar | When is the next earnings report for XOM ExxonMobil? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
 | 2026-05-05 11:09 UTC | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-05. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
-| 2026-05-06 11:10 UTC | sonar | WTI and Brent crude oil price right now May 6 2026 |
-| 2026-05-06 11:10 UTC | sonar | S&P 500 futures premarket today May 6 2026 |
-| 2026-05-06 11:10 UTC | sonar | VIX level today May 6 2026 |
-| 2026-05-06 11:10 UTC | sonar | Top stock market catalysts today May 6 2026 |
-| 2026-05-06 11:10 UTC | sonar | Earnings reports today May 6 2026 before market open |
-| 2026-05-06 11:10 UTC | sonar | Economic calendar May 6 2026 ISM Services JOLTS Fed speakers |
-| 2026-05-06 11:11 UTC | sonar | AMKR Amkor Technology stock news May 2026 |
-| 2026-05-06 11:11 UTC | sonar | XOM ExxonMobil stock news May 6 2026 premarket |
-| 2026-05-06 11:11 UTC | sonar | NVDA Nvidia stock news May 6 2026 |
-| 2026-05-06 11:11 UTC | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors |
-| 2026-05-06 11:12 UTC | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-06. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name, importance (high|medium|low),  |
+| 2026-05-06 13:37 UTC | sonar | Market open research for 2026-05-06: 1) SPY/QQQ pre-market direction, 2) VIX current level, 3) Key macro events today (GDP, Fed, economic data), 4) Top sector movers pre-market, 5) Any strong momentum |
+| 2026-05-06 13:37 UTC | sonar | May 6 2026 premarket: 1) FOMC Fed rate decision today or this week? 2) US-China trade deal news this week? 3) COP ConocoPhillips stock setup — recent news and price action. 4) FCX Freeport-McMoRan s |
+| 2026-05-06 13:38 UTC | sonar | Stock market May 6 2026: 1) AMKR Amkor Technology stock news and price today - any new catalysts. 2) NVDA Nvidia stock today - premarket direction. 3) XOM ExxonMobil stock today - oil price impact. 4) |
