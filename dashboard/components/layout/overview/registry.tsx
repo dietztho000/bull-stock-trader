@@ -47,7 +47,6 @@ export type OverviewCtx = {
   /** Display label for the bot's bound account, when resolved. */
   accountLabel: string | null;
   benchmark: BenchmarkData;
-  yesterdayPortfolio: number | null;
   weekStartPortfolio: number | null;
   spyPhasePct: number | null;
   winStreak: number | null;
@@ -99,7 +98,6 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
         accountId={ctx.accountId}
         startingEquity={ctx.benchmark.startingEquity}
         phaseStart={ctx.benchmark.phaseStart}
-        yesterdayPortfolio={ctx.yesterdayPortfolio}
         weekStartPortfolio={ctx.weekStartPortfolio}
         spyPhasePct={ctx.spyPhasePct}
       />

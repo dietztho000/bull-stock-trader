@@ -28,7 +28,7 @@ export async function MemoryFreshness({ botId }: { botId: BotId }) {
   const tooltipLines = [
     `Last pull: ${pullStamp} CT (${pullLabel} ago) [${f.lastSyncStatus}${f.lastSyncTrigger ? `, ${f.lastSyncTrigger}` : ""}]`,
     f.lastSyncMessage ? `  → ${f.lastSyncMessage}` : null,
-    `Last data write (BENCHMARK.md): ${dataStamp} CT (${dataLabel} ago)`,
+    `Last data write (any memory file): ${dataStamp} CT (${dataLabel} ago)`,
     `Latest BENCHMARK row: ${f.latestRowDate ?? "—"}`,
     `Today (CT): ${f.todayCT}${f.isTradingDay ? "" : " · non-trading day"}`,
   ].filter(Boolean) as string[];

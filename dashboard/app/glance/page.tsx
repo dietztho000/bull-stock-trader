@@ -62,7 +62,6 @@ export default async function GlancePage({
 
   const benchmark = await loadBenchmark({ bot: botId, strategy });
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
-  const yesterday = lastPortfolio(benchmark.rows);
   const mdWeekStart = weekStartFromRows(benchmark.rows);
   const today = todayInCT();
   const isStale = last?.date !== today && isTradingDayCT(today);
@@ -102,7 +101,6 @@ export default async function GlancePage({
         accountId={accountId}
         startingEquity={benchmark.startingEquity}
         phaseStart={benchmark.phaseStart}
-        yesterdayPortfolio={yesterday}
         weekStartPortfolio={weekStart}
         spyPhasePct={spyPhasePct}
       />

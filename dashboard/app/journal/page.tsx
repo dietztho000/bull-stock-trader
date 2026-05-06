@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { marked } from "marked";
 import { Card, Badge } from "@/components/ui/Card";
 import { UrlTabs } from "@/components/ui/UrlTabs";
 import { activeTab } from "@/lib/activeTab";
@@ -317,9 +318,15 @@ async function DailyTab() {
           title={s.timestamp}
           right={s.note ? <Badge tone="warn">{s.note}</Badge> : null}
         >
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-text)]">
-            {s.body}
-          </pre>
+          <article
+            className="prose-ai text-sm"
+            dangerouslySetInnerHTML={{
+              __html: marked.parse(s.body, {
+                async: false,
+                gfm: true,
+              }) as string,
+            }}
+          />
         </Card>
       ))}
     </div>

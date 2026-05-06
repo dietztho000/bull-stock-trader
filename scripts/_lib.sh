@@ -73,6 +73,12 @@ _load_env() {
       [[ -z "${!key:-}" ]] && export "$key=$val"
     fi
   done < "$env_file"
+  # The last command of the loop body is `[[ -z … ]] && export`, which
+  # short-circuits to status 1 whenever the final .env line names a var that
+  # is already set in the process env. With `set -e` in the caller, that
+  # propagates as a silent script death. Force a clean status so the
+  # function's success doesn't depend on the .env's last line.
+  return 0
 }
 
 # _require_env VAR1 VAR2 …  exits 1 with a uniform message if any are unset.

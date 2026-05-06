@@ -6,8 +6,21 @@ import { todayInCT, isTradingDayCT } from "./time";
 
 export type SyncStatus = "ok" | "error" | "running" | "unknown";
 
+/** Per-bot memory files we treat as "data writes". The freshest mtime among
+ *  them drives `dataWriteMs`. BENCHMARK alone was misleading mid-morning —
+ *  it's only rewritten by daily-summary, so a TRADE-LOG/RUN-LOG write at
+ *  market-open didn't count and the pill showed yesterday's mtime. */
+const PER_BOT_DATA_FILES = [
+  "BENCHMARK.md",
+  "TRADE-LOG.md",
+  "RESEARCH-LOG.md",
+  "RUN-LOG.jsonl",
+  "SECTOR-LEDGER.md",
+] as const;
+
 export type MemoryFreshness = {
-  /** mtime of BENCHMARK.md — when the cloud routines last wrote data. */
+  /** Newest mtime among per-bot data files (BENCHMARK, TRADE-LOG, RESEARCH-
+   *  LOG, RUN-LOG, SECTOR-LEDGER) — when any cloud routine last wrote data. */
   dataWriteMs: number | null;
   /** finishedAt of the last cron-sync.sh run — when the local pull last
    *  completed. Distinct from `dataWriteMs`: pulls can succeed every 15 min
@@ -39,13 +52,19 @@ export async function loadMemoryFreshness(ctx: MemoryCtx): Promise<MemoryFreshne
   const todayCT = todayInCT();
   const tradingDay = isTradingDayCT(todayCT);
 
-  let dataWriteMs: number | null = null;
-  try {
-    const stat = await fs.stat(resolveMemoryFile("BENCHMARK.md", ctx));
-    dataWriteMs = stat.mtimeMs;
-  } catch {
-    dataWriteMs = null;
-  }
+  const mtimes = await Promise.all(
+    PER_BOT_DATA_FILES.map(async (file) => {
+      try {
+        const stat = await fs.stat(resolveMemoryFile(file, ctx));
+        return stat.mtimeMs;
+      } catch {
+        return null;
+      }
+    })
+  );
+  const validMtimes = mtimes.filter((m): m is number => m != null);
+  const dataWriteMs: number | null =
+    validMtimes.length > 0 ? Math.max(...validMtimes) : null;
 
   const sync = await loadCronSyncStatus();
 

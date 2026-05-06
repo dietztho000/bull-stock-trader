@@ -144,7 +144,7 @@ describe("loadMemoryFreshness — cron status file", () => {
 });
 
 describe("loadMemoryFreshness — dataWriteMs", () => {
-  it("uses BENCHMARK.md mtime, not the status file", async () => {
+  it("picks up a memory file's mtime, not the status file", async () => {
     const benchPath = path.join(
       tmpRoot,
       "memory",
@@ -158,8 +158,26 @@ describe("loadMemoryFreshness — dataWriteMs", () => {
     expect(out.dataWriteMs).toBeGreaterThan(Date.now() - 60_000);
   });
 
-  it("returns null dataWriteMs when BENCHMARK.md is absent", async () => {
+  it("returns null dataWriteMs when no per-bot data files exist", async () => {
     const out = await mod.loadMemoryFreshness({ bot: "live" });
     expect(out.dataWriteMs).toBeNull();
+  });
+
+  it("uses the newest mtime across data files (TRADE-LOG newer than BENCHMARK)", async () => {
+    const dir = path.join(tmpRoot, "memory", "live", "default");
+    const benchPath = path.join(dir, "BENCHMARK.md");
+    const tradePath = path.join(dir, "TRADE-LOG.md");
+    await fs.writeFile(benchPath, "## YTD\n");
+    // Backdate BENCHMARK by 24h, then write TRADE-LOG fresh.
+    const oldMs = Date.now() - 24 * 60 * 60 * 1000;
+    await fs.utimes(benchPath, oldMs / 1000, oldMs / 1000);
+    await fs.writeFile(tradePath, "## Trades\n");
+
+    const out = await mod.loadMemoryFreshness({ bot: "live" });
+    expect(out.dataWriteMs).not.toBeNull();
+    // dataWriteMs should reflect the fresh TRADE-LOG, not yesterday's BENCHMARK.
+    expect(out.dataWriteMs!).toBeGreaterThan(Date.now() - 60_000);
+
+    await fs.rm(tradePath, { force: true });
   });
 });

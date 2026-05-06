@@ -72,7 +72,6 @@ export default async function OverviewPage({
   const benchmark = await loadBenchmark(memCtx);
 
   const last = benchmark.rows[benchmark.rows.length - 1] ?? null;
-  const yesterday = lastPortfolio(benchmark.rows);
   const mdWeekStart = weekStartPortfolio(benchmark.rows);
   const mdSpyPhasePct = last?.spyPhasePct ?? null;
 
@@ -136,7 +135,6 @@ export default async function OverviewPage({
     strategy,
     accountLabel,
     benchmark,
-    yesterdayPortfolio: yesterday,
     weekStartPortfolio: weekStart,
     spyPhasePct,
     winStreak: consecutiveWinningDays(benchmark.rows),

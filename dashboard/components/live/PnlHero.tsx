@@ -21,7 +21,6 @@ export function PnlHero({
   accountId,
   startingEquity,
   phaseStart,
-  yesterdayPortfolio,
   weekStartPortfolio,
   spyPhasePct,
 }: {
@@ -29,7 +28,6 @@ export function PnlHero({
   accountId?: string | null;
   startingEquity: number | null;
   phaseStart: string | null;
-  yesterdayPortfolio: number | null;
   weekStartPortfolio: number | null;
   spyPhasePct: number | null;
 }) {
@@ -48,12 +46,16 @@ export function PnlHero({
 
   const isError = !account || isAlpacaError(account);
   const equity = !isError ? Number(account.equity) : null;
+  // last_equity is Alpaca's authoritative previous-session close, updated in
+  // lockstep with `equity`. Earlier this code subtracted yesterday's BENCHMARK
+  // row, which drifts when BENCHMARK hasn't been rewritten yet today.
+  const lastEquity = !isError ? Number(account.last_equity) : null;
 
   const dayPnl =
-    equity != null && yesterdayPortfolio != null ? equity - yesterdayPortfolio : null;
+    equity != null && lastEquity != null ? equity - lastEquity : null;
   const dayPct =
-    equity != null && yesterdayPortfolio != null && yesterdayPortfolio > 0
-      ? ((equity - yesterdayPortfolio) / yesterdayPortfolio) * 100
+    equity != null && lastEquity != null && lastEquity > 0
+      ? ((equity - lastEquity) / lastEquity) * 100
       : null;
 
   const phasePnl =
