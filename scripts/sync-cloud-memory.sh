@@ -109,7 +109,22 @@ _newest_writer_for_path() {
             --format='%(committerdate:iso-strict)|%(refname:short)')
 }
 
+# Dispatch on file extension. .jsonl is append-only (RUN-LOG); the
+# checkout-replace mode would silently drop every earlier routine's rows
+# on a multi-routine day where each cloud routine pushed to its own
+# claude/* branch off the same origin/main (hit on 2026-05-06: 6 of 7
+# routines lost). All other files (.md) use grep-first idempotency in
+# the writer, so the newest writer's version is always a superset and
+# replace is fine.
 _pick_one() {
+  local label="$1" path="$2"
+  case "$path" in
+    *.jsonl) _pick_one_union "$label" "$path" ;;
+    *)       _pick_one_replace "$label" "$path" ;;
+  esac
+}
+
+_pick_one_replace() {
   local label="$1" path="$2"
   local result ref date
   result="$(_newest_writer_for_path "$path" || true)"
@@ -125,6 +140,60 @@ _pick_one() {
   fi
   git checkout "$ref" -- "$path"
   printf '  %-44s ← %s (%s)\n' "$label" "$ref" "$date"
+  return 0
+}
+
+# Union-merge mode: collect every memory-only claude/* branch that
+# touched $path, concatenate with the local file, dedupe by full line
+# (each JSONL row is a deterministic complete object), and sort by .ts.
+# Each individual writer is gated through the same non-memory safety
+# check as _pick_one_replace — a dirty branch is excluded from the
+# union, not the entire path.
+_pick_one_union() {
+  local label="$1" path="$2"
+  local writers=() ref base diff_files
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    base="$(git merge-base "$ref" origin/main 2>/dev/null || true)"
+    [[ -z "$base" ]] && continue
+    diff_files="$(git diff --name-only "$base..$ref" 2>/dev/null)"
+    grep -qx "$path" <<<"$diff_files" || continue
+    grep -qv '^memory/' <<<"$diff_files" && continue
+    writers+=("$ref")
+  done < <(git for-each-ref --sort=-committerdate refs/remotes/origin/claude/ \
+            --format='%(refname:short)')
+
+  if [[ ${#writers[@]} -eq 0 ]]; then
+    printf '  %-44s — no cloud writer found, leaving as-is\n' "$label"
+    return 1
+  fi
+
+  local tmp merged
+  tmp="$(mktemp)"
+  [[ -f "$path" ]] && cat "$path" >> "$tmp"
+  for ref in "${writers[@]}"; do
+    git show "$ref:$path" 2>/dev/null >> "$tmp" || true
+  done
+  merged="$(grep -v '^[[:space:]]*$' "$tmp" | sort -u \
+            | jq -s 'sort_by(.ts) | .[]' -c 2>/dev/null || true)"
+  rm -f "$tmp"
+
+  if [[ -z "$merged" ]]; then
+    printf '  %-44s — empty union, leaving as-is\n' "$label"
+    return 1
+  fi
+
+  # Skip staging when the merged content matches the local file —
+  # avoids gratuitous "no-op" backfill commits when cloud branches
+  # only repeat rows already in local.
+  if [[ -f "$path" ]] && diff -q <(printf '%s\n' "$merged") "$path" >/dev/null 2>&1; then
+    printf '  %-44s = already up to date (%d branch(es) checked)\n' "$label" "${#writers[@]}"
+    return 1
+  fi
+
+  printf '%s\n' "$merged" > "$path.tmp" && mv "$path.tmp" "$path"
+  git add -- "$path"
+  printf '  %-44s ⊕ %d branch(es) union-merged\n' "$label" "${#writers[@]}"
   return 0
 }
 

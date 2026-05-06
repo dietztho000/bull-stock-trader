@@ -109,6 +109,17 @@
 
 ---
 
+### May 06 14:00 CT — Afternoon scan
+
+- AMKR: +13.60% (price $77.41) — trailing 10%, HWM $78.96, stop $71.06. Below +15% tighten threshold. No action.
+- GOOGL: +3.59% (price $396.53) — trailing 10%, HWM $399.85, stop $359.86. FOMC minutes (2PM ET) released — no adverse reaction, thesis intact. No action.
+- NVDA: -0.99% (price $207.17) — trailing 10%, HWM $208.05, stop $187.25. +5.43% intraday recovery. Above -7% cut floor ($194.59). Earnings exit required by May 19 (rule #13). No action.
+- XOM: -3.13% (price $147.73) — trailing 10%, HWM $155.29, stop $139.76. Energy sector -4.6% intraday; oil pressure continues. Above -7% cut floor ($141.83). Q1 beat + Golden Pass LNG thesis intact — fundamental not broken by short-term oil move. No action.
+- No earnings exits today. No stops to promote (all trailing). No tightenings (<+15% all). No take-profit triggers (<+20% all).
+- No thesis breaks detected.
+
+---
+
 ### May 05 — EOD Snapshot (Day 4, Tuesday)
 **Portfolio:** $101,558.20 | **Cash:** $34,963.49 (34.4%) | **Day P&L:** +$1,905.67 (+1.91%) | **Phase P&L:** +$1,558.20 (+1.56%)
 **vs SPY:** day +1.06% alpha (SPY +0.85%) | phase -2.85% alpha
