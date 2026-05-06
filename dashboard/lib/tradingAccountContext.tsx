@@ -198,16 +198,28 @@ export function TradingAccountProvider({
       // fires. Defaulting to "paper" here was a footgun: a click on a
       // live bot during the loading window would skip confirmation.
       const nextMode = nextAccount?.mode ?? "live";
-      const needsConfirm =
+      // Audit NU2 — also fire when switching live→live with a different
+      // bound account. Two live bots wired to different Alpaca accounts
+      // (e.g. `live-prod` vs `live-rotate`) are no less risky to mix up
+      // than paper→live — order entry would hit the wrong tape. We still
+      // honor the per-session ack since most operators only need one
+      // confirm per session before they're "in live mode".
+      const switchingToDifferentLive =
         nextMode === "live" &&
-        account === "paper" &&
-        (() => {
-          try {
-            return window.sessionStorage.getItem(SESSION_LIVE_CONFIRMED) !== "1";
-          } catch {
-            return true;
-          }
-        })();
+        account === "live" &&
+        nextBot != null &&
+        nextBot.accountId !== accountId;
+      const needsConfirm =
+        (nextMode === "live" && account === "paper") ||
+        switchingToDifferentLive
+          ? (() => {
+              try {
+                return window.sessionStorage.getItem(SESSION_LIVE_CONFIRMED) !== "1";
+              } catch {
+                return true;
+              }
+            })()
+          : false;
       return {
         requiresConfirm: needsConfirm,
         commit: () => {

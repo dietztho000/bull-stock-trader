@@ -28,12 +28,16 @@ export function useDashboardSettings(): {
   // Settings rarely change. SettingsProvider drives instant updates via the
   // chokidar→SSE stream when dashboard-settings.json is touched; this poll
   // is just a safety net for missed events / disconnected tabs (audit H3).
+  // Audit NP1 — dedupingInterval prevents focus-revalidations across tabs
+  // from each firing /api/settings within 30s of each other when the user
+  // alt-tabs through a dashboard with multiple windows open.
   const { data, error, isLoading, mutate } = useSWR<RedactedSettings>(
     "/api/settings",
     fetcher,
     {
       refreshInterval: 600_000,
       revalidateOnFocus: true,
+      dedupingInterval: 30_000,
       keepPreviousData: true,
     }
   );

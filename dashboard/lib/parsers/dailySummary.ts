@@ -1,5 +1,13 @@
 import { readMemory } from "../memoryPath";
 
+/** DAILY-SUMMARY.md is a `shared`-scoped file (see `MEMORY_FILE_SCOPE` in
+ *  lib/memoryPath.ts) — every bot writes a dated section into the same
+ *  cross-bot file rather than a per-bot copy. That's why this loader takes
+ *  no `MemoryCtx`: the resolver in `readMemory` ignores ctx for shared
+ *  files and walks straight to `memory/shared/DAILY-SUMMARY.md`. If a
+ *  future change scopes daily summaries per-bot, this signature must add
+ *  `ctx: MemoryCtx` and the registry entry must flip to `per-bot`. */
+
 export type DailySummaryEntry = {
   timestamp: string;
   date: string | null;

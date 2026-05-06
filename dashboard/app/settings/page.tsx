@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { VaultKeyBanner } from "@/components/bots/VaultKeyBanner";
+import { Card } from "@/components/ui/Card";
 import { loadRedactedSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,25 @@ export default async function SettingsPage() {
       </header>
 
       <SettingsForm initial={initial} />
+
+      {/* Audit U2 — operators routinely look here for "bot/account stuff"
+          (creds, allocation, sentinels). Point them at the dedicated
+          /bots admin page so settings stays scoped to per-machine prefs. */}
+      <Card title="Looking for bot or account settings?">
+        <div className="space-y-2 text-sm">
+          <p className="text-[var(--color-muted)] leading-relaxed">
+            Alpaca account credentials, bot bindings, capital allocation, and
+            the auto-disable sentinel all live on a dedicated admin page so
+            this form can stay focused on per-machine preferences.
+          </p>
+          <Link
+            href="/bots"
+            className="inline-block text-[var(--color-accent)] hover:underline text-xs font-semibold"
+          >
+            Open /bots →
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -97,12 +97,16 @@ function BullMascotTileInner({ scope, ctxOverride }: BullMascotTileProps) {
   const activeGesture = petGesture ?? idleGesture;
 
   // Day-scoped one-shot confetti when celebrating.
+  // Audit NU5 — keyed by location so the nav card and the dashboard tile
+  // each fire once per day. Previously both raced for the same key and
+  // whichever mounted first suppressed the other; this way both render
+  // confetti in their own region.
   const [confettiActive, setConfettiActive] = useState(false);
   const isCelebrating = !snapshot.loading && !("error" in snapshot) && snapshot.mood === "celebrating";
 
   useEffect(() => {
     if (!confettiOnWin || !isCelebrating || todayKey === "init") return;
-    const key = `mascot:confetti:${todayKey}`;
+    const key = `mascot:confetti:tile:${todayKey}`;
     try {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");

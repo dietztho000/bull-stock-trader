@@ -127,18 +127,37 @@ export function fmtWeekdayTimeCT(input: DateInput): string {
 /**
  * Convert an `HH:MM` clock string that was stored as ET (e.g. the
  * `ECONOMIC-CALENDAR.md` `Time (ET)` column) into the equivalent CT clock
- * string. Builds a real `Date` so DST is handled correctly even on the rare
- * transition-day mismatch.
+ * string. DST-correct on transition days: tries both ET offsets and picks
+ * the one whose UTC instant round-trips back to `HH:MM` in ET — handles
+ * (a) spring-forward "lost" hour by falling back to the surrounding offset
+ * and (b) fall-back ambiguous hour by preferring the first occurrence
+ * (DST → standard, which is what the source-data writer would mean).
  */
 export function etTimeStringToCT(timeHHMM: string, dateStr: string): string {
   const [hh, mm] = timeHHMM.split(":").map((s) => Number(s));
   if (!Number.isFinite(hh) || !Number.isFinite(mm)) return timeHHMM;
-  // Build a UTC instant that, when read in ET, is `dateStr HH:MM`.
-  // Easier: format an ISO with ET offset for the date in question, then
-  // re-format via Intl in CT.
-  const etOffset = etOffsetForDate(dateStr); // e.g. "-04:00" or "-05:00"
-  const isoEt = `${dateStr}T${pad(hh)}:${pad(mm)}:00${etOffset}`;
-  return fmtClockCT(new Date(isoEt));
+
+  // Try both candidate offsets (EDT -04:00, EST -05:00). Format each in ET
+  // and pick the one whose ET wall-clock matches the input. On non-DST-
+  // boundary days both candidates resolve to the same matching offset; on
+  // a boundary day only one will round-trip correctly.
+  for (const offset of ["-04:00", "-05:00"] as const) {
+    const candidate = new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00${offset}`);
+    const etClock = candidate.toLocaleTimeString("en-US", {
+      timeZone: "America/New_York",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    if (etClock === `${pad(hh)}:${pad(mm)}`) {
+      return fmtClockCT(candidate);
+    }
+  }
+  // Fallback: empirical noon-probe (the legacy path) — used only on
+  // genuinely ambiguous instants like 02:30 spring-forward, where neither
+  // candidate matches and any answer is best-effort.
+  const noonOffset = etOffsetForDate(dateStr);
+  return fmtClockCT(new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00${noonOffset}`));
 }
 
 function pad(n: number): string {
@@ -147,8 +166,9 @@ function pad(n: number): string {
 
 /**
  * Returns the ET UTC-offset string ("-04:00" during EDT, "-05:00" during
- * EST) for the given `YYYY-MM-DD`. Determined empirically via Intl rather
- * than hardcoding DST rules.
+ * EST) for the given `YYYY-MM-DD` at noon. Determined empirically via Intl
+ * rather than hardcoding DST rules. Used as a fallback only — primary path
+ * in `etTimeStringToCT` round-trips both candidate offsets.
  */
 function etOffsetForDate(dateStr: string): string {
   const probe = new Date(`${dateStr}T12:00:00Z`);

@@ -16,6 +16,27 @@ type Payload = {
  *  policy, so this is purely additive — adding a new page without an entry
  *  preserves prior behavior (audit H1). */
 const ROUTE_ALLOW_LISTS: Record<string, ReadonlySet<string>> = {
+  // / and /glance render the same data: BENCHMARK for the equity curve,
+  // RUN-LOG for badges, EARNINGS for overlays, plus the ladder progress
+  // file. RESEARCH-LOG drives the latest-brief tile on /. Keeping these
+  // two synchronized matters because /glance is a phone bookmark that
+  // otherwise refreshes on every backtest snapshot or strategy edit.
+  "/": new Set([
+    "BENCHMARK.md",
+    "RUN-LOG.jsonl",
+    "EARNINGS-CALENDAR.md",
+    "MARKET-EARNINGS.md",
+    "ECONOMIC-CALENDAR.md",
+    "RESEARCH-LOG.md",
+    "DAILY-SUMMARY.md",
+    "dashboard-settings.json",
+  ]),
+  "/glance": new Set([
+    "BENCHMARK.md",
+    "RUN-LOG.jsonl",
+    "EARNINGS-CALENDAR.md",
+    "dashboard-settings.json",
+  ]),
   "/trades": new Set([
     "TRADE-LOG.md",
     "SECTOR-LEDGER.md",

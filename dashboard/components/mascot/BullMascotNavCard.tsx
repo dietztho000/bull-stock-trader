@@ -109,7 +109,9 @@ function BullMascotNavCardInner({ className }: { className?: string }) {
 
   useEffect(() => {
     if (!confettiOnWin || !isCelebrating || todayKey === "init") return;
-    const key = `mascot:confetti:${todayKey}`;
+    // Audit NU5 — per-location key so the nav card fires independently of
+    // the BullMascotTile on /. Previously both raced the same key.
+    const key = `mascot:confetti:nav:${todayKey}`;
     try {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
@@ -119,10 +121,29 @@ function BullMascotNavCardInner({ className }: { className?: string }) {
     setConfettiActive(true);
   }, [isCelebrating, confettiOnWin, todayKey]);
 
-  if (!mounted || !showInNav) {
-    // Preserve layout: keep the parent's `mt-auto` so the footer still
-    // pushes to the bottom of the sidebar when the mascot is hidden.
+  if (!showInNav) {
+    // Hidden by user setting — keep layout stable for the parent's mt-auto.
     return <div className={className} aria-hidden="true" />;
+  }
+  if (!mounted) {
+    // Audit NU1 — show a 60×60 skeleton-shaped placeholder pre-hydration
+    // so the sidebar doesn't reflow when the mascot mounts. Matches the
+    // real card's overall footprint (avatar + 2-line text) so the layout
+    // stays stable; aria-hidden because the real card replaces it.
+    return (
+      <div
+        className={clsx("relative", className)}
+        aria-hidden="true"
+      >
+        <div className="w-full frost rounded-2xl p-2.5 flex items-center gap-2.5">
+          <div className="shrink-0 h-[60px] w-[60px] rounded-full bg-[rgba(255,255,255,0.04)] animate-pulse" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="h-2 w-2/3 rounded bg-[rgba(255,255,255,0.04)] animate-pulse" />
+            <div className="h-3 w-1/2 rounded bg-[rgba(255,255,255,0.04)] animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const mood =

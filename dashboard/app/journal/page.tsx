@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { marked } from "marked";
 import { Card, Badge } from "@/components/ui/Card";
 import { UrlTabs } from "@/components/ui/UrlTabs";
@@ -66,7 +66,18 @@ export default async function JournalPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <RoutineHealthBadge botId={ctx.botId} strategy={ctx.strategy} />
+          {/* Audit NP4 — RUN-LOG parse + summarize blocks the journal page
+              paint until it resolves. Suspending the badge lets the rest
+              of the header (and the active tab below) paint immediately. */}
+          <Suspense
+            fallback={
+              <Badge tone="neutral">
+                <span className="opacity-60">Routines …</span>
+              </Badge>
+            }
+          >
+            <RoutineHealthBadge botId={ctx.botId} strategy={ctx.strategy} />
+          </Suspense>
           <UrlTabs<Tab> layoutId="journal-tabs" options={TAB_OPTIONS} fallback="research" />
         </div>
       </header>

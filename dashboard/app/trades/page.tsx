@@ -28,6 +28,7 @@ import { EditLayoutToggle } from "@/components/layout/EditLayoutToggle";
 import { TRADES_ALL_LAYOUT, TRADES_SECTORS_LAYOUT } from "@/components/layout/defaults";
 import { activeTab } from "@/lib/activeTab";
 import { loadSectorLedger } from "@/lib/parsers/sectorLedger";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { loadSectorMap } from "@/lib/parsers/sectorMap";
 import { loadResearchLog } from "@/lib/parsers/researchLog";
 import { loadTradeLog } from "@/lib/parsers/tradeLog";
@@ -152,7 +153,19 @@ export default async function TradesPage({
 
       {forceSymbol && <ForceExitBanner symbol={forceSymbol} />}
 
-      {tab === "all" && (
+      {tab === "all" && ledger.closed.length === 0 && (
+        <EmptyState
+          title="No closed trades yet"
+          reason="Each completed round-trip lands here once the position closes — entry, exit, P&L, sector, and conviction score all in one row."
+          schedule="The bot's stops + ladder rules trigger this; the next scheduled write happens whenever a position exits."
+          action={{ href: "/", label: "Open Overview" }}
+        >
+          <p className="text-xs text-[var(--color-muted)] leading-relaxed">
+            Backtest snapshots are available right now from <a href="/analytics" className="text-[var(--color-accent)] underline">/analytics</a> if you want to see what historical performance would have looked like under the current strategy.
+          </p>
+        </EmptyState>
+      )}
+      {tab === "all" && ledger.closed.length > 0 && (
         <AllTradesTab
           ledger={ledger}
           tradeLog={tradeLog}
