@@ -136,7 +136,7 @@ reasoning in TRADE-LOG and update SECTOR-LEDGER.
 STEP 6 — ALWAYS post an afternoon summary to the midday channel.
 
 If actions fired (earnings exits, cuts, promotions, tightens, thesis breaks):
-  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Actions: N
 • Earnings-exit SYM @ \$X.XX — pre-print forced-close (BMO|AMC today)
@@ -148,7 +148,7 @@ Actions: N
 📊 Open: N positions | 💰 Cash: \$X"
 
 If no actions were taken:
-  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 No actions taken — all positions within rules.
 • SYM ±X.X% (stop \$X.XX)

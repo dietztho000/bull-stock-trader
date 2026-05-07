@@ -103,7 +103,7 @@ STEP 6 — ALWAYS post a mid-morning summary to the midday channel. Branch
 on whether any action was taken.
 
 If actions fired (earnings exits, cuts, promotions, tightens, escalations):
-  bash scripts/discord.sh --type=midday "🎯 Mid-morning scan — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=midday "🎯 Mid-morning scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Actions: N
 • Earnings-exit SYM @ \$X.XX — pre-print forced-close (BMO|AMC today)
@@ -115,7 +115,7 @@ Actions: N
 📊 Open: N positions | 💰 Cash: \$X"
 
 If no actions were taken:
-  bash scripts/discord.sh --type=midday "🎯 Mid-morning scan — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=midday "🎯 Mid-morning scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 No actions taken — all positions within rules.
 • SYM ±X.X% (stop \$X.XX)

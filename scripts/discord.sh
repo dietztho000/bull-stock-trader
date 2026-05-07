@@ -99,7 +99,7 @@ _mirror_ntfy() {
   fi
 }
 
-stamp="$(date '+%Y-%m-%d %H:%M %Z')"
+stamp="$(TZ=America/Chicago date '+%Y-%m-%d %H:%M CT')"
 
 # alert + NTFY_TOPIC: ntfy-only routing (skip Discord)
 if [[ "$ALERT_NTFY_ONLY" == "1" ]]; then

@@ -216,7 +216,7 @@ STEP 7 — ALWAYS post a market-open summary to the fill channel. Branch
 the format on whether any trades fired.
 
 If trades fired (preserve format exactly — emojis, blank lines, bullets):
-  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Trades placed: N
 • SYM: BUY N @ \$X.XX (market|limit) — stop \$X.XX / limit \$Y.YY (fixed -7% stop-limit)
@@ -226,7 +226,7 @@ Trades placed: N
 💰 Cash: \$X | Positions: N/6 | Trades this week: X/3"
 
 If NO trades fired, post a short reason-coded confirmation:
-  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 No trades fired.
 Reason: <pick the most specific match: 'drawdown circuit breaker tripped' | 'no actionable plan in RESEARCH-LOG' | 'VIX XX.X (>=25 regime gate)' | 'sector rotation block on SYM' | 'sector concentration cap (3/3 in SECTOR)' | 'earnings within 2 trading days on all ideas' | 'all ideas failed entry-scorer (<7)' | 'position cap reached (6/6)' | 'weekly trade cap reached (3/3)' | 'PDT block'>

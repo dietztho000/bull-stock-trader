@@ -90,7 +90,7 @@ if any stops were modified, placed, or canceled. Format:
 STEP 7 — ALWAYS post a stop-reconciliation summary to the stops channel.
 
 If any stop was placed/modified/canceled (build a bullet per change):
-  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Stops checked: N
 • SYM: promoted fixed -7% → trail 10% (at +X.X%)
@@ -101,7 +101,7 @@ Stops checked: N
 ✓ All positions stopped correctly."
 
 If everything was already correct (no changes made):
-  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Stops checked: N
 • SYM: stop-limit -7% (no change, X.X%)
@@ -111,7 +111,7 @@ Stops checked: N
 ✓ All positions stopped correctly."
 
 If the routine exited early (market closed or within 5 min of close):
-  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(date +%H:%M) CT
+  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
 Skipped: <market closed | within 5 min of close — order replacement unsafe in low-liquidity windows>"
 
