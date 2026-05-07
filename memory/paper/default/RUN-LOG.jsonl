@@ -57,3 +57,5 @@
 {"ts":"2026-05-07T05:11:36Z","routine":"refresh-earnings-results","action":"end","status":"ok","git_sha":"c56ff5d"}
 {"ts":"2026-05-07T08:34:19Z","routine":"auth-canary","action":"start","status":"ok","git_sha":"c56ff5d"}
 {"ts":"2026-05-07T08:35:10Z","routine":"auth-canary","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T11:07:27Z","routine":"pre-market","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T11:11:56Z","routine":"pre-market","action":"end","status":"ok","git_sha":"c56ff5d"}

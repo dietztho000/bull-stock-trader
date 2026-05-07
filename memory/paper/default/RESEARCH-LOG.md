@@ -134,3 +134,53 @@ HOLD — No fresh catalysts for COP or FCX; FOMC minutes create afternoon uncert
 
 ### Decision
 TRADE or HOLD (default HOLD if no edge)
+
+## 2026-05-07 — Pre-market Research
+
+### Account
+- Equity: $101,933.08
+- Cash: $34,963.49 (34.3% — room for 1-2 positions)
+- Buying power: $136,896.57
+- Daytrade count: 0
+
+### Market Context
+- WTI: ~$101.6/bbl (down ~4.5% intraday) / Brent: ~$110.8/bbl (down ~3.2%)
+- S&P 500 futures: May 6 closed +1.41%; May 7 premarket limited data, broadly positive
+- VIX: 17.38 (May 5 close); May avg ~18.3 — elevated but manageable
+- Today's releases: 8:30 AM Productivity & Costs Q1 preliminary (medium); 11:30 AM Challenger Job Cuts (low)
+- Earnings BMO today: DDOG ($0.50 est), MCD ($2.74 est)
+- Earnings AMC today: ABNB ($0.31 est), COIN ($0.26 est), GILD ($1.83 est), NET ($0.23 est)
+- MAJOR event TOMORROW: Jobs Report May 8 (high importance) — creates week-end event risk
+- Sector momentum: Energy leading YTD but reversing (April -14%); Industrials/Consumer Staples strong; Tech lagging YTD but AI names recovering
+
+### Open Position Status
+- AMKR: $77.00 (-0.28% today), +13.00% unrealized — trailing 10% stop $71.06 (HWM $78.96). Q1 beat ($0.33 vs $0.22 est); Q2 guided $1.75-1.85B; advanced packaging/AI demand. Thesis intact. Next earnings: 2026-07-27 AMC.
+- GOOGL: $402.42 (+1.10% today), +5.13% unrealized — trailing 10% stop $359.86 (HWM $399.85). Q1 beat ($5.11 vs $2.62 est); Cloud +63%; Anthropic $200B deal. Thesis very intact. Next earnings: 2026-07-23 AMC.
+- NVDA: $208.84 (+0.49% today), -0.19% unrealized — trailing 10% stop $187.44 (HWM $208.27). Stabilizing high-$190s/$208 range; agentic AI demand bullish long-term. **Must exit by May 19 (earnings May 20 AMC, rule #13).** Next earnings: 2026-05-20 AMC.
+- XOM: $147.51 (-0.80% today), -3.28% unrealized — trailing 10% stop $139.76 (HWM $155.29). Oil down sharply today (-4.5% WTI); Q1 beat ($2.09 vs $1.07 est); Golden Pass LNG thesis intact. Stop $139.76 holds (15.8% below HWM). Next earnings: 2026-07-30 BMO.
+
+### Drawdown Check (rule #14)
+- Day P&L: +$103.06 vs yesterday close — OK (threshold -2%)
+- Week P&L (vs Monday May 5 EOD $101,558.20): +$374.88 (+0.37%) — OK (threshold -4%)
+- Circuit breaker: NOT tripped
+
+### Pre-market Gap Check (rule #15)
+- Positions checked individually at market-open. No pre-open data indicating a -7%+ gap on any held ticker.
+
+### Trade Ideas
+1. No viable ideas today — Jobs Report tomorrow (May 8) creates event uncertainty; no fresh <48h catalyst identified with score ≥7. Energy sector (potential 5th position via COP/DVN) dragged by oil -4.5% today. Prefer waiting for post-Jobs setup.
+
+### Sector Check
+- AMKR → IT sector; GOOGL → Communication Services; NVDA → IT; XOM → Energy
+- No sector at 2-loss streak per SECTOR-LEDGER.md (no losses logged yet)
+- Energy sector weak today; would flag any Energy entry
+
+### Risk Factors
+- Jobs Report May 8 — HIGH impact; likely to drive volatility Friday
+- Oil down sharply (-4.5% WTI) — XOM stop at $139.76 under pressure if oil continues lower
+- NVDA must exit by May 19 (8 trading days); plan the exit
+- CPI May 12 / PPI May 13 — macro cluster next week
+- VIX 17-18 elevated; market at all-time highs — minor catalyst could trigger pullback
+
+### Decision
+HOLD — No fresh catalysts + Jobs Report tomorrow. All four trailing stops active. Week trades 1/3 available for Thursday/Friday if a clean setup emerges post-Jobs-Report.
