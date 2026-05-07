@@ -318,15 +318,6 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for SQ (Block)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for RTX (RTX Corporation)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for ZS (Zscaler)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
-| 2026-05-07 11:07 UTC | sonar | WTI and Brent oil price right now |
-| 2026-05-07 11:08 UTC | sonar | S&P 500 futures premarket today May 7 2026 |
-| 2026-05-07 11:08 UTC | sonar | VIX level today May 7 2026 |
-| 2026-05-07 11:08 UTC | sonar | Top stock market catalysts today May 7 2026 |
-| 2026-05-07 11:08 UTC | sonar | Earnings reports today May 7 2026 before market open BMO |
-| 2026-05-07 11:08 UTC | sonar | Economic calendar today May 7 2026 CPI PPI FOMC jobs data |
-| 2026-05-07 11:08 UTC | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors |
-| 2026-05-07 11:08 UTC | sonar | AMKR Amkor Technology stock news May 2026 |
-| 2026-05-07 11:09 UTC | sonar | GOOGL Google stock news May 7 2026 |
-| 2026-05-07 11:09 UTC | sonar | NVDA Nvidia stock news May 7 2026 |
-| 2026-05-07 11:09 UTC | sonar | XOM ExxonMobil stock news May 7 2026 oil |
-| 2026-05-07 11:09 UTC | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-07. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
+| 2026-05-07 13:35 UTC | sonar | Today is 2026-05-07, pre-market. Give me: (1) VIX level, (2) S&P 500 futures direction, (3) key macro events today (economic calendar), (4) major earnings before open, (5) sector momentum (top and bot |
+| 2026-05-07 13:35 UTC | sonar | Today is 2026-05-07. What are the top stock trade ideas for today? Focus on: (1) any strong earnings beats in last 48h with continued momentum, (2) sector rotation plays (which sectors are seeing infl |
+| 2026-05-07 13:37 UTC | sonar | Today is 2026-05-07. DDOG (Datadog) and MCD (McDonald's) reported earnings this morning before market open. What were the actual results vs estimates? Did they beat or miss? Any guidance provided? Wha |
