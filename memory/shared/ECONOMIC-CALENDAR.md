@@ -22,8 +22,9 @@ but may be `WebSearch` (fallback) or `manual` if the user hand-edits a row.
 | Date | Time (ET) | Event | Importance | Forecast | Previous | Source | Date refreshed |
 |------|-----------|-------|------------|----------|----------|--------|----------------|
 | 2026-05-07 | 08:30 | Productivity and Costs (P) | medium |  |  | Perplexity | 2026-05-07 |
-| 2026-05-07 | 11:30 | Challenger Job Cuts | low |  | 60.62K | Perplexity | 2026-05-07 |
+| 2026-05-07 | 11:30 | Challenger Job Cuts | low |  | 56.0K | Perplexity | 2026-05-07 |
 | 2026-05-08 | 08:30 | Employment Situation | high |  |  | Perplexity | 2026-05-07 |
+| 2026-05-08 | 09:45 | Fed Cook Speech | medium |  |  | Perplexity | 2026-05-07 |
 | 2026-05-08 | 12:30 | Non Farm Payrolls | high |  | 178K | Perplexity | 2026-05-07 |
 | 2026-05-12 | 08:30 | Consumer Price Index | high |  |  | Perplexity | 2026-05-07 |
 | 2026-05-12 | 08:30 | Real Earnings | low |  |  | Perplexity | 2026-05-07 |

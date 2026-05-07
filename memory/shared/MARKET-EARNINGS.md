@@ -26,10 +26,10 @@ close. `EPS Estimate` is a string ("$5.42", "$1.87", "—" when unknown).
 ## Calendar
 | Symbol | Company | Earnings Date | BMO/AMC | EPS Estimate | Source | Date refreshed | Actual EPS | 1-day move % |
 |--------|---------|---------------|---------|--------------|--------|----------------|------------|--------------|
-| ARM | Arm Holdings | 2026-05-06 | AMC |  | Perplexity | 2026-05-06 |  |  |
-| CVS | CVS Health | 2026-05-06 | BMO | $2.21 | Perplexity | 2026-05-06 |  |  |
-| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-06 |  |  |
-| UBER | Uber Technologies | 2026-05-06 | BMO | $0.71 | Perplexity | 2026-05-07 |  |  |
+| ARM | Arm Holdings | 2026-05-06 | AMC |  | Perplexity | 2026-05-06 | $0.60 | +12% |
+| CVS | CVS Health | 2026-05-06 | BMO | $2.21 | Perplexity | 2026-05-06 | $2.57 |  |
+| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-06 | $1.57 |  |
+| UBER | Uber Technologies | 2026-05-06 | BMO | $0.71 | Perplexity | 2026-05-07 | $0.72 | +8.6% |
 | ABNB | Airbnb | 2026-05-07 | AMC | $0.31 | Perplexity | 2026-05-07 |  |  |
 | COIN | Coinbase | 2026-05-07 | AMC | $0.26 | Perplexity | 2026-05-07 |  |  |
 | DDOG | Datadog | 2026-05-07 | BMO | $0.50 | Perplexity | 2026-05-07 |  |  |

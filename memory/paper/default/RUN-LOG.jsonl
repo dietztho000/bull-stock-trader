@@ -49,3 +49,9 @@
 {"ts":"2026-05-07T03:08:23Z","routine":"refresh-watchdog","action":"end","status":"ok","git_sha":"da1a077"}
 {"ts":"2026-05-07T03:16:10Z","routine":"refresh-watchdog","action":"start","status":"ok","git_sha":"da1a077"}
 {"ts":"2026-05-07T03:16:31Z","routine":"refresh-watchdog","action":"end","status":"ok","git_sha":"da1a077"}
+{"ts":"2026-05-07T04:33:47Z","routine":"refresh-market-earnings","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T04:42:34Z","routine":"refresh-market-earnings","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T04:45:21Z","routine":"refresh-economic-events","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T04:46:05Z","routine":"refresh-economic-events","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T05:10:36Z","routine":"refresh-earnings-results","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T05:11:36Z","routine":"refresh-earnings-results","action":"end","status":"ok","git_sha":"c56ff5d"}
