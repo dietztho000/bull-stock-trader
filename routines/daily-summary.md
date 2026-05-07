@@ -148,10 +148,27 @@ the morning auth checks instead of mixing with in-flight workflow errors.
 This catches silent no-ops that look identical to legitimate quiet days.
 
 STEP 7 — Perplexity cost tally (runs ONCE, AFTER the per-bot fan-out).
-Read memory/shared/PERPLEXITY-LOG.md and count rows whose timestamp
-starts with $DATE. Estimate cost as (count * $0.0005). Compute the
-rolling 14-day median count from prior days' rows. Stash COUNT, COST,
-MEDIAN for STEP 8's EOD post.
+Run this bash block VERBATIM — do not paraphrase. PERPLEXITY-LOG rows
+start with `| YYYY-MM-DD HH:MM <TZ> | …`, so the grep prefix MUST be
+`^| $DATE ` (note the trailing space) — anchoring to the leading `|`
+and trailing space avoids both header-row matches and prefix collisions
+like `2026-05-061`. Date is forced to CT regardless of host TZ.
+
+```bash
+DATE=$(TZ=America/Chicago date '+%Y-%m-%d')
+COUNT=$(grep -c "^| $DATE " memory/shared/PERPLEXITY-LOG.md 2>/dev/null || echo 0)
+COST=$(awk -v c="$COUNT" 'BEGIN { printf "%.4f", c * 0.0005 }')
+# Rolling 14-day median: per-day counts for the prior 14 CT dates.
+# `date -v-Nd` is BSD/macOS; `date -d "N days ago"` is GNU/Linux. Try both.
+MEDIAN=$(for i in $(seq 1 14); do
+  D=$(TZ=America/Chicago date -v -"${i}"d '+%Y-%m-%d' 2>/dev/null \
+      || TZ=America/Chicago date -d "$i days ago" '+%Y-%m-%d')
+  grep -c "^| $D " memory/shared/PERPLEXITY-LOG.md 2>/dev/null || echo 0
+done | sort -n | awk 'NR==7 {print; exit}')
+export COUNT COST MEDIAN
+```
+
+Stash COUNT, COST, MEDIAN for STEP 8's EOD post.
 If today's count > 2x median, ALSO fire (preserve format):
   bash scripts/discord.sh --type=error "⚠️ Perplexity cost spike — $DATE
 
