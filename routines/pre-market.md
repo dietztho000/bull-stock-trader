@@ -108,8 +108,17 @@ table key is the Symbol column). Set `Date refreshed = $DATE` and
 Skip silently if a ticker has no upcoming earnings within 90 days; note
 "none-90d" in the Date column so we don't re-query daily.
 
-STEP 3c — Refresh memory/shared/ECONOMIC-CALENDAR.md. Query Perplexity once per
-pre-market run for the next 14 days of US economic events:
+STEP 3c — Refresh memory/shared/ECONOMIC-CALENDAR.md.
+
+**Skip guard (NEW 2026-05-06):** if
+`grep -q "Date refreshed.*$DATE" memory/shared/ECONOMIC-CALENDAR.md`
+matches, today's `refresh-economic-events` routine (04:45 CT) already
+populated the file — SKIP the rest of this step. The body below remains
+as a safety-net fallback for the day the dedicated routine fails to
+fire.
+
+Query Perplexity once per pre-market run for the next 14 days of US
+economic events:
   bash scripts/perplexity.sh "List all scheduled US economic events for the
   next 14 calendar days starting $DATE. For each event return: date
   (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC
@@ -125,9 +134,18 @@ whose Date is before today (housekeeping — keeps the file from growing
 unbounded). Like STEP 3b, this is idempotent on retry.
 
 STEP 3d — Refresh memory/shared/MARKET-EARNINGS.md (broader market view, separate
-from the per-ticker EARNINGS-CALENDAR.md). This is **weekly cadence, not
-daily**: skip this step entirely if every row in the file's `## Calendar`
-table has `Date refreshed` >= ($DATE - 6 days). Otherwise, the dashboard's
+from the per-ticker EARNINGS-CALENDAR.md).
+
+**Skip guard (NEW 2026-05-06):** if
+`grep -q "Date refreshed.*$DATE" memory/shared/MARKET-EARNINGS.md`
+matches, today's `refresh-market-earnings` routine (04:30 CT) already
+populated the file — SKIP the rest of this step. The body below remains
+as a safety-net fallback for the day the dedicated routine fails to
+fire.
+
+Otherwise, this is **weekly cadence, not daily**: also skip this step
+entirely if every row in the file's `## Calendar` table has
+`Date refreshed` >= ($DATE - 6 days). Otherwise, the dashboard's
 `/api/calendar/earnings` POST endpoint already implements this (per-ticker
 fan-out across a curated mega-cap list — see
 dashboard/lib/perplexity.ts → fetchMarketEarnings). The simplest way to
