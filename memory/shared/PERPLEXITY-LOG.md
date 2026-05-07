@@ -318,7 +318,5 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for SQ (Block)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for RTX (RTX Corporation)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for ZS (Zscaler)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
-| 2026-05-07 05:10 UTC | sonar | For ARM (Arm Holdings) earnings reported on 2026-05-06, return ONLY a JSON object: {"actualEps":"$X.XX" or empty,"postPrintMovePct":"+X.X%" with sign or empty}. |
-| 2026-05-07 05:11 UTC | sonar | For CVS (CVS Health) earnings reported on 2026-05-06, return ONLY a JSON object: {"actualEps":"$X.XX" or empty,"postPrintMovePct":"+X.X%" with sign or empty}. |
-| 2026-05-07 05:11 UTC | sonar | For DIS (Disney) earnings reported on 2026-05-06, return ONLY a JSON object: {"actualEps":"$X.XX" or empty,"postPrintMovePct":"+X.X%" with sign or empty}. |
-| 2026-05-07 05:11 UTC | sonar | For UBER (Uber Technologies) earnings reported on 2026-05-06, return ONLY a JSON object: {"actualEps":"$X.XX" or empty,"postPrintMovePct":"+X.X%" with sign or empty}. |
+| 2026-05-07 08:34 UTC | sonar | current S&P 500 level (one number) |
+| 2026-05-07 08:34 UTC | sonar | current S&P 500 level (one number) |
