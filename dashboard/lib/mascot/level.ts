@@ -15,7 +15,7 @@ export type Level = {
 };
 
 export const LEVELS: Level[] = [
-  { level: 1, title: "Rookie", startsAt: -Infinity, nextAt: 2 },
+  { level: 1, title: "Rookie", startsAt: 0, nextAt: 2 },
   { level: 2, title: "Scout", startsAt: 2, nextAt: 5 },
   { level: 3, title: "Trader", startsAt: 5, nextAt: 8 },
   { level: 4, title: "Sharp", startsAt: 8, nextAt: 12 },
@@ -45,8 +45,13 @@ export function levelFor(phasePct: number | null): LevelProgress | null {
   if (!next || current.nextAt == null) {
     return { current, next: null, progressPct: 100 };
   }
-  const span = current.nextAt - current.startsAt;
-  const traveled = phasePct - current.startsAt;
+  // Defensive floor — keeps progressPct finite even if a future LEVELS edit
+  // reintroduces -Infinity (e.g. for an "underwater" band). Negative phasePct
+  // clamps to 0 progress within the current band rather than rendering as a
+  // negative-width bar.
+  const startsAt = Number.isFinite(current.startsAt) ? current.startsAt : 0;
+  const span = current.nextAt - startsAt;
+  const traveled = Math.max(0, phasePct - startsAt);
   const progressPct = span > 0 ? Math.max(0, Math.min(100, (traveled / span) * 100)) : 0;
   return { current, next, progressPct };
 }
