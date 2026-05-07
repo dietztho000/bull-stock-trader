@@ -81,7 +81,9 @@ the EXPECTED routine set is fleet-wide (the same routines fire for every
 bot), so reading any single bot's run log is sufficient to compute
 fired-vs-expected. Stash both counts (|FIRED| / |EXPECTED|) for STEP 8.
   EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
-              midday, stops, afternoon, daily-summary}
+              midday, stops, afternoon, daily-summary,
+              refresh-market-earnings, refresh-economic-events,
+              refresh-earnings-results}
             (all weekdays; add `weekly-review` to EXPECTED on Fridays)
   FIRED    = set of routines with at least one {"action":"end","status":"ok"}
             row whose timestamp starts with $DATE

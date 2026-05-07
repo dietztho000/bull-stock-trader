@@ -1,6 +1,9 @@
+// REVAMPED 2026-05-06: re-toned to match the new /calendar palette — neutral
+// row text + small colored dot for signal (held = green, high-impact = amber)
+// instead of the loud green/blue/amber pill chips.
 import Link from "next/link";
 import clsx from "clsx";
-import { Card, Badge } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import {
   type CalendarEvent,
   mergeEvents,
@@ -131,13 +134,6 @@ function EventRow({ event }: { event: CalendarEvent }) {
   const isEarn = event.kind === "earnings";
   const isHeld = isEarn && event.entry.isHeld;
   const high = isHighImpact(event);
-  const colorCls = clsx(
-    "inline-flex items-center rounded text-[10px] font-medium border tabular px-1.5 py-0.5 max-w-full truncate",
-    isEarn && isHeld && "bg-green-500/20 text-[var(--color-up)] border-green-500/50 ring-1 ring-green-500/40",
-    isEarn && !isHeld && "bg-green-500/10 text-[var(--color-up)] border-green-500/30",
-    !isEarn && !high && "bg-blue-500/10 text-[#7ab7ff] border-blue-500/30",
-    !isEarn && high && "bg-amber-500/10 text-[var(--color-warn)] border-amber-500/40"
-  );
   let label: string;
   let title: string;
   if (event.kind === "earnings") {
@@ -157,11 +153,20 @@ function EventRow({ event }: { event: CalendarEvent }) {
     title = `${event.entry.time ? `${etTimeStringToCT(event.entry.time, event.date)} CT — ` : ""}${event.entry.event}`;
   }
   return (
-    <div className="flex items-center gap-1">
-      <span className={colorCls} title={title}>
-        {label}
-      </span>
-      {high && <Badge tone="warn">!</Badge>}
+    <div className="flex items-center gap-1.5 text-[10px] tabular truncate" title={title}>
+      {isHeld && (
+        <span
+          className="size-1 rounded-full bg-[var(--color-up)] shrink-0"
+          aria-label="held position"
+        />
+      )}
+      {high && (
+        <span
+          className="size-1 rounded-full bg-[var(--color-warn)] shrink-0"
+          aria-label="high impact"
+        />
+      )}
+      <span className="text-[var(--color-text)] truncate">{label}</span>
     </div>
   );
 }

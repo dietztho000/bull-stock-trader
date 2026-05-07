@@ -75,6 +75,8 @@ const MEMORY_FILE_SCOPE: Record<string, FileScope> = {
   "PERPLEXITY-LOG.md": { scope: "shared" },
   "DASHBOARD-AUDIT.jsonl": { scope: "shared" },
   "dashboard-settings.json": { scope: "shared" },
+  "WATCHLIST.md": { scope: "shared" },
+  "EARNINGS-PINGS.md": { scope: "shared" },
 };
 
 export function memoryFileScope(file: string): FileScope {

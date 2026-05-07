@@ -16,7 +16,7 @@ ROUTINE_DIR="$ROOT/routines"
 
 # Routines that have a cloud counterpart. /portfolio and /trade are
 # interactive — local-only, no cloud routine.
-ROUTINES=(auth-canary pre-market market-open mid-morning late-morning midday stops afternoon daily-summary weekly-review)
+ROUTINES=(auth-canary pre-market market-open mid-morning late-morning midday stops afternoon daily-summary weekly-review refresh-market-earnings refresh-economic-events refresh-earnings-results refresh-watchdog)
 
 extract_steps() {
   # Print everything between the BEGIN/END markers (markers themselves stripped).

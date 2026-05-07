@@ -13,6 +13,12 @@ export type EarningsEntry = {
   // undefined.
   company?: string;
   epsEstimate?: string;
+  // Post-print results — back-filled by the daily refresh-earnings-results
+  // routine for past-dated rows. Both stay undefined for forward-dated
+  // earnings; both are display-only (no schema impact on the bot's
+  // earnings-gate which uses date+symbol only).
+  actualEps?: string;
+  postPrintMovePct?: string;
   // Computed at merge time: true if the same symbol+date also appears in
   // the bot's per-ticker cache (i.e. the user holds or is researching it).
   isHeld?: boolean;

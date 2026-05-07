@@ -34,6 +34,10 @@ script, commit both files together. CI can verify in-sync state with
 | afternoon      | `0 14 * * 1-5` | 2:00 PM weekdays — promote stops, thesis check      |
 | daily-summary  | `0 15 * * 1-5` | 3:00 PM weekdays (market closes CT)                 |
 | weekly-review  | `0 16 * * 5`   | 4:00 PM Fridays only                                |
+| refresh-market-earnings | `30 4 * * *` | 4:30 AM daily — refresh shared MARKET-EARNINGS.md |
+| refresh-economic-events | `45 4 * * *` | 4:45 AM daily — refresh shared ECONOMIC-CALENDAR.md |
+| refresh-earnings-results | `0 5 * * *` | 5:00 AM daily — back-fill Actual EPS + 1-day move % onto past-dated rows |
+| refresh-watchdog | `0 12 * * 6,0` | 12:00 PM Sat/Sun — weekend-only watchdog for the 3 refresh routines |
 
 ## One-time prerequisites
 

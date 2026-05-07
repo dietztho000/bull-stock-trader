@@ -187,6 +187,45 @@ If a Perplexity query exits 3 (key missing), append a final line "Note:
 Perplexity unavailable — used WebSearch fallback." before the Decision line.
 Truncate any section to keep the total under ~1800 chars (Discord limit).
 
+STEP 6 — Fleet-wide held-position earnings ping (runs ONCE, AFTER the
+per-bot fan-out completes). Single Discord post listing each ticker
+with all bots holding it, instead of one ping per bot which duplicates
+when multiple bots hold the same name.
+
+For each enabled bot (re-iterate `bash scripts/bots.sh list`), run
+  bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
+and accumulate (ticker → list of bot_ids holding it). Then grep
+memory/shared/MARKET-EARNINGS.md for rows whose `Earnings Date = $DATE`
+to find which held tickers have earnings today. Build a map:
+
+  $EARNINGS_TODAY = { ticker: [bot_ids], ... }
+                    where ticker has earnings today AND is held by ≥1 bot
+
+If empty, exit silently. Otherwise:
+
+  bash scripts/discord.sh --type=research "📰 EARNINGS TODAY (fleet)
+
+<for each (ticker, bots) in $EARNINGS_TODAY>:
+• <ticker> — held by: <comma-separated bot_ids>
+
+Earnings gate (rule #13): market-open will force-exit each at the close
+BEFORE the print."
+
+**Idempotency:** before sending, grep memory/shared/DAILY-SUMMARY.md for
+`<!-- earnings-ping $DATE -->` (a hidden HTML comment used as the anchor;
+DAILY-SUMMARY.md is the natural shared home since this is a fleet-wide
+post). If the anchor exists, SKIP this step. Otherwise, after the Discord
+post succeeds, append the comment as the first line of today's section
+once daily-summary writes it (or write a one-liner section now and let
+daily-summary's grep-for-date logic merge with it). The simplest
+idempotent shape: append to a NEW shared file
+`memory/shared/EARNINGS-PINGS.md` keyed by date; grep that file for
+`## $DATE` first.
+
+If `memory/shared/EARNINGS-PINGS.md` doesn't exist, create it with header
+`# Earnings ping log — fleet-wide held-position earnings reminders` then
+the dated section. The dashboard ignores this file (informational only).
+
 ## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
 
 Emits the routine-completed heartbeat to every enabled bot's

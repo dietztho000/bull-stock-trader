@@ -97,6 +97,38 @@ export function eventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent
   return m;
 }
 
+// REVAMPED 2026-05-06: groupByDate returns ordered (date, events) pairs
+// for the new day-grouped agenda layout. Different from eventsByDate (which
+// returns a Map for O(1) selected-day lookups) — this one preserves
+// chronological order for rendering a list of <DayCard>s.
+export type CalendarDay = {
+  date: string;
+  earnings: CalendarEvent[];
+  economic: CalendarEvent[];
+  total: number;
+};
+
+export function groupByDate(
+  events: CalendarEvent[],
+  opts: { from: string; to: string }
+): CalendarDay[] {
+  const byDate = new Map<string, CalendarDay>();
+  for (const e of events) {
+    if (e.date < opts.from || e.date > opts.to) continue;
+    let day = byDate.get(e.date);
+    if (!day) {
+      day = { date: e.date, earnings: [], economic: [], total: 0 };
+      byDate.set(e.date, day);
+    }
+    if (e.kind === "earnings") day.earnings.push(e);
+    else day.economic.push(e);
+    day.total += 1;
+  }
+  return Array.from(byDate.values()).sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+}
+
 export function isoToday(d: Date = new Date()): string {
   return todayInCT(d);
 }

@@ -1,195 +1,263 @@
 "use client";
 
-import { useMemo } from "react";
+// REVAMPED 2026-05-06: replaced the month-grid + 320px right-side detail
+// panel with a day-grouped agenda. Pill colors toned down to a quiet
+// monochrome scheme with single-color dots for signal (held = green dot,
+// high-impact = amber dot). Added: search box, held-only toggle,
+// high-impact-only toggle, CSV export, watchlist stars, sector column,
+// inline post-print results — all without a parallel chip system.
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Card, Badge } from "@/components/ui/Card";
 import {
   type CalendarEvent,
   type CalendarFilter,
+  type CalendarDay,
   isHighImpact,
+  addDaysIso,
 } from "@/lib/calendar/events";
 import {
   type EarningsEntry,
   daysUntilEarnings,
 } from "@/lib/parsers/earningsCalendar.shared";
 import type { EconomicEvent } from "@/lib/parsers/economicCalendar.shared";
-import { etTimeStringToCT } from "@/lib/time";
+import { etTimeStringToCT, fmtWeekdayShortCT } from "@/lib/time";
+import { usePrefersReducedMotion } from "@/lib/hooks/usePrefersReducedMotion";
 import { RefreshEconomicButton } from "./RefreshEconomicButton";
 import { RefreshMarketEarningsButton } from "./RefreshMarketEarningsButton";
+import { SectorWeekStrip } from "./SectorWeekStrip";
+import { EarningsRecap } from "./EarningsRecap";
+import { SectorGroupAdd } from "./SectorGroupAdd";
 import { useCalendarFilters } from "./useCalendarFilters";
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 type Props = {
   earnings: EarningsEntry[];
   economic: EconomicEvent[];
   refreshedAt?: string | null;
+  sectorMap?: Map<string, string>;
+  initialWatchlist?: string[];
 };
 
-export function CalendarView({ earnings, economic, refreshedAt }: Props) {
+export function CalendarView({
+  earnings,
+  economic,
+  refreshedAt,
+  sectorMap,
+  initialWatchlist = [],
+}: Props) {
   const {
     filter,
     setFilter,
+    heldOnly,
+    setHeldOnly,
+    highImpactOnly,
+    setHighImpactOnly,
+    query,
+    setQuery,
     today,
-    cursor,
-    setCursor,
-    selected,
-    setSelected,
-    byDate,
-    selectedEvents,
+    days,
     upcoming,
   } = useCalendarFilters(earnings, economic);
 
-  const grid = useMemo(() => buildMonthGrid(cursor), [cursor]);
-  const monthLabel = useMemo(() => {
-    const m = cursor.match(/^(\d{4})-(\d{2})/);
-    if (!m) return cursor;
-    return `${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
-  }, [cursor]);
+  const [watchlist, setWatchlist] = useState<Set<string>>(
+    () => new Set(initialWatchlist.map((s) => s.toUpperCase()))
+  );
+  async function addToWatchlist(symbol: string) {
+    const sym = symbol.toUpperCase();
+    if (watchlist.has(sym)) return;
+    setWatchlist((prev) => new Set(prev).add(sym));
+    try {
+      await fetch("/api/watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: sym }),
+      });
+    } catch {
+      /* swallow — optimistic UI already updated */
+    }
+  }
+  async function removeFromWatchlist(symbol: string) {
+    const sym = symbol.toUpperCase();
+    if (!watchlist.has(sym)) return;
+    setWatchlist((prev) => {
+      const next = new Set(prev);
+      next.delete(sym);
+      return next;
+    });
+    try {
+      await fetch(`/api/watchlist?symbol=${encodeURIComponent(sym)}`, {
+        method: "DELETE",
+      });
+    } catch {
+      /* swallow */
+    }
+  }
+  async function toggleWatchlist(symbol: string) {
+    const sym = symbol.toUpperCase();
+    if (watchlist.has(sym)) await removeFromWatchlist(sym);
+    else await addToWatchlist(sym);
+  }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <FilterToggle value={filter} onChange={setFilter} />
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <FilterRow
+        filter={filter}
+        onFilterChange={setFilter}
+        heldOnly={heldOnly}
+        onHeldOnlyChange={setHeldOnly}
+        highImpactOnly={highImpactOnly}
+        onHighImpactOnlyChange={setHighImpactOnly}
+        query={query}
+        onQueryChange={setQuery}
+        refreshedAt={refreshedAt}
+        upcoming={upcoming}
+        days={days}
+        earnings={earnings}
+        sectorMap={sectorMap}
+        watchlist={watchlist}
+        onAddSymbol={addToWatchlist}
+      />
+      <div className="grid lg:grid-cols-2 gap-4">
+        {sectorMap && sectorMap.size > 0 && (
+          <SectorWeekStrip
+            events={upcoming}
+            sectorMap={sectorMap}
+            fromIso={today}
+            toIso={addDaysIso(today, 7)}
+          />
+        )}
+        <EarningsRecap earnings={earnings} todayIso={today} />
+      </div>
+      <WeekStrip today={today} days={days} />
+      <DayList
+        days={days}
+        today={today}
+        sectorMap={sectorMap}
+        watchlist={watchlist}
+        onToggleWatchlist={toggleWatchlist}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────── Filter row ───────────────────────────
+
+function FilterRow({
+  filter,
+  onFilterChange,
+  heldOnly,
+  onHeldOnlyChange,
+  highImpactOnly,
+  onHighImpactOnlyChange,
+  query,
+  onQueryChange,
+  refreshedAt,
+  upcoming,
+  days,
+  earnings,
+  sectorMap,
+  watchlist,
+  onAddSymbol,
+}: {
+  filter: CalendarFilter;
+  onFilterChange: (v: CalendarFilter) => void;
+  heldOnly: boolean;
+  onHeldOnlyChange: (v: boolean) => void;
+  highImpactOnly: boolean;
+  onHighImpactOnlyChange: (v: boolean) => void;
+  query: string;
+  onQueryChange: (v: string) => void;
+  refreshedAt?: string | null;
+  upcoming: CalendarEvent[];
+  days: CalendarDay[];
+  earnings: EarningsEntry[];
+  sectorMap?: Map<string, string>;
+  watchlist: Set<string>;
+  onAddSymbol: (symbol: string) => Promise<void>;
+}) {
+  const exportCsv = () => {
+    const all: CalendarEvent[] = days.flatMap((d) => [
+      ...d.earnings,
+      ...d.economic,
+    ]);
+    const rows = [
+      [
+        "date",
+        "kind",
+        "symbol_or_event",
+        "company",
+        "type_or_time_ct",
+        "eps_estimate_or_forecast",
+        "actual_eps_or_previous",
+        "importance_or_held",
+      ].join(","),
+      ...all.map((e) => csvRow(e)),
+    ].join("\n");
+    const blob = new Blob([rows], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bull-calendar-${todayString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center gap-3">
+        <FilterToggle value={filter} onChange={onFilterChange} />
+        <ToggleChip
+          label="Held only"
+          active={heldOnly}
+          onClick={() => onHeldOnlyChange(!heldOnly)}
+        />
+        <ToggleChip
+          label="High impact"
+          active={highImpactOnly}
+          onClick={() => onHighImpactOnlyChange(!highImpactOnly)}
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder="Search ticker or event…"
+          aria-label="Search events"
+          className="px-2.5 py-1.5 text-xs rounded border border-[var(--color-border)] bg-[var(--color-panel)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] min-w-[180px] grow max-w-[280px]"
+        />
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="px-2.5 py-1.5 text-xs rounded border border-[var(--color-border)] bg-[var(--color-panel)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-panel-2)] transition-colors"
+            aria-label="Export visible events as CSV"
+          >
+            Export CSV
+          </button>
           <RefreshMarketEarningsButton />
           <RefreshEconomicButton refreshedAt={refreshedAt} />
         </div>
       </div>
-
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
-        <Card
-          title={monthLabel}
-          right={
-            <div className="flex items-center gap-1">
-              <NavButton onClick={() => setCursor(shiftMonth(cursor, -1))} label="‹ Prev" />
-              <NavButton onClick={() => setCursor(isoFirstOfMonth(today))} label="Today" />
-              <NavButton onClick={() => setCursor(shiftMonth(cursor, 1))} label="Next ›" />
-            </div>
-          }
-        >
-          <div className="grid grid-cols-7 gap-px border border-[var(--color-border)] bg-[var(--color-border)] rounded overflow-hidden">
-            {WEEKDAYS.map((w) => (
-              <div
-                key={w}
-                className="bg-[var(--color-panel)] px-2 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] text-center"
-              >
-                {w}
-              </div>
-            ))}
-            {grid.map((cell) => {
-              const dayEvents = byDate.get(cell.iso) ?? [];
-              const isToday = cell.iso === today;
-              const isSelected = cell.iso === selected;
-              return (
-                <button
-                  key={cell.iso}
-                  type="button"
-                  onClick={() => setSelected(cell.iso)}
-                  className={clsx(
-                    "min-h-[68px] sm:min-h-[80px] bg-[var(--color-panel)] px-1.5 py-1 text-left transition-colors",
-                    "hover:bg-[var(--color-panel-2)]",
-                    !cell.inMonth && "opacity-40",
-                    isSelected && "ring-2 ring-[var(--color-accent)] ring-inset relative z-10"
-                  )}
-                >
-                  <div
-                    className={clsx(
-                      "inline-flex items-center justify-center w-5 h-5 text-[11px] tabular rounded",
-                      isToday && "bg-[var(--color-up)] text-black font-bold",
-                      !isToday && "text-[var(--color-text)]"
-                    )}
-                  >
-                    {Number(cell.iso.slice(-2))}
-                  </div>
-                  <div className="mt-0.5 flex flex-col gap-0.5">
-                    {dayEvents.slice(0, 3).map((e, i) => (
-                      <EventPill key={`${e.date}-${i}`} event={e} compact />
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div className="text-[9px] text-[var(--color-muted)] px-1">
-                        +{dayEvents.length - 3} more
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card title={selected ? `Events on ${selected}` : "Select a day"}>
-          {selectedEvents.length === 0 ? (
-            <div className="text-xs text-[var(--color-muted)] py-2">
-              No events on this date.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {selectedEvents.map((e, i) => (
-                <li key={`${e.date}-${i}`}>
-                  <EventDetail event={e} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      <Card
-        title="Upcoming events"
-        subtitle={`Next 30 days · ${upcoming.length} events`}
-      >
-        {upcoming.length === 0 ? (
-          <EmptyState filter={filter} />
-        ) : (
-          <ul className="divide-y divide-[var(--color-border)]">
-            {upcoming.map((e, i) => (
-              <li
-                key={`${e.date}-${i}`}
-                className="py-2 flex items-center justify-between gap-3 hover:bg-[var(--color-panel-2)] -mx-2 px-2 rounded cursor-pointer"
-                onClick={() => setSelected(e.date)}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="text-[11px] font-mono text-[var(--color-muted)] w-20 shrink-0">
-                    {e.date}
-                  </div>
-                  <EventPill event={e} />
-                  <div className="text-sm truncate">
-                    {e.kind === "earnings" ? (
-                      <>
-                        <span className="font-semibold">{e.entry.symbol}</span>
-                        {e.entry.type ? (
-                          <span className="text-[var(--color-muted)]"> ({e.entry.type})</span>
-                        ) : null}
-                        {e.entry.company ? (
-                          <span className="text-[var(--color-muted)]"> · {e.entry.company}</span>
-                        ) : null}
-                        {e.entry.epsEstimate ? (
-                          <span className="text-[var(--color-muted)] font-mono"> · est {e.entry.epsEstimate}</span>
-                        ) : null}
-                      </>
-                    ) : (
-                      `${e.entry.time ? `${etTimeStringToCT(e.entry.time, e.date)} CT — ` : ""}${e.entry.event}`
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {e.kind === "earnings" && e.entry.isHeld && <Badge tone="up">held</Badge>}
-                  {e.kind === "economic" && e.entry.importance && (
-                    <ImportanceBadge importance={e.entry.importance} />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+      <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex flex-wrap items-center gap-x-4 gap-y-2">
+        {sectorMap && sectorMap.size > 0 && (
+          <SectorGroupAdd
+            earnings={earnings}
+            sectorMap={sectorMap}
+            watchlist={watchlist}
+            onAddSymbol={onAddSymbol}
+          />
         )}
-      </Card>
-    </div>
+        <div className="text-[11px] text-[var(--color-muted)] flex flex-wrap gap-x-3 gap-y-1 ml-auto">
+          <span>{upcoming.length} upcoming (next 30 days)</span>
+          {refreshedAt ? (
+            <span>· last refreshed {refreshedAt.slice(0, 10)}</span>
+          ) : null}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -206,11 +274,17 @@ function FilterToggle({
     { v: "economic", label: "Economic" },
   ];
   return (
-    <div className="inline-flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs">
+    <div
+      role="tablist"
+      aria-label="Event kind filter"
+      className="inline-flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs"
+    >
       {options.map((o) => (
         <button
           key={o.v}
           type="button"
+          role="tab"
+          aria-selected={value === o.v}
           onClick={() => onChange(o.v)}
           className={clsx(
             "px-3 py-1.5 transition-colors",
@@ -226,175 +300,533 @@ function FilterToggle({
   );
 }
 
-function NavButton({ onClick, label }: { onClick: () => void; label: string }) {
+function ToggleChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-1 text-[11px] rounded border border-[var(--color-border)] bg-[var(--color-panel)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-panel-2)]"
+      className={clsx(
+        "px-2.5 py-1.5 text-xs rounded border transition-colors",
+        active
+          ? "border-[var(--color-accent)] bg-[var(--color-panel-2)] text-[var(--color-text)]"
+          : "border-[var(--color-border)] bg-[var(--color-panel)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-panel-2)]"
+      )}
     >
       {label}
     </button>
   );
 }
 
-function EventPill({ event, compact }: { event: CalendarEvent; compact?: boolean }) {
-  const isEarn = event.kind === "earnings";
-  const isHeld = isEarn && event.entry.isHeld;
-  const high = isHighImpact(event);
-  const base = "inline-flex items-center rounded text-[10px] font-medium border tabular px-1.5 py-0.5 truncate max-w-full";
-  const cls = clsx(
-    base,
-    isEarn && isHeld && "bg-green-500/20 text-[var(--color-up)] border-green-500/50 ring-1 ring-green-500/40",
-    isEarn && !isHeld && "bg-green-500/10 text-[var(--color-up)] border-green-500/30",
-    !isEarn && !high && "bg-blue-500/10 text-[#7ab7ff] border-blue-500/30",
-    !isEarn && high && "bg-amber-500/10 text-[var(--color-warn)] border-amber-500/40 ring-1 ring-amber-500/30"
-  );
-  if (compact) {
-    return (
-      <span className={cls}>
-        {event.kind === "earnings"
-          ? event.entry.symbol
-          : truncate(event.entry.event, 14)}
-      </span>
+// ─────────────────────────── Week strip ───────────────────────────
+
+function WeekStrip({
+  today,
+  days,
+}: {
+  today: string;
+  days: CalendarDay[];
+}) {
+  const reduceMotion = usePrefersReducedMotion();
+  const stripRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!stripRef.current) return;
+    const todayBtn = stripRef.current.querySelector<HTMLButtonElement>(
+      `[data-iso="${today}"]`
     );
-  }
+    if (todayBtn) {
+      todayBtn.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [today, reduceMotion]);
+
+  const scrollToDay = (iso: string) => {
+    const el = document.getElementById(`day-${iso}`);
+    if (el) {
+      el.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  if (days.length === 0) return null;
+
   return (
-    <span className={cls}>
-      {event.kind === "earnings" ? "Earnings" : "Economic"}
-    </span>
+    <Card>
+      <div
+        ref={stripRef}
+        role="tablist"
+        aria-label="Jump to day"
+        className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin"
+      >
+        {days.map((d) => (
+          <WeekStripCell
+            key={d.date}
+            day={d}
+            isToday={d.date === today}
+            onClick={() => scrollToDay(d.date)}
+          />
+        ))}
+      </div>
+    </Card>
   );
 }
 
-function ImportanceBadge({ importance }: { importance: string }) {
-  if (importance === "high") return <Badge tone="warn">high impact</Badge>;
-  if (importance === "medium") return <Badge tone="neutral">medium</Badge>;
-  if (importance === "low") return <Badge tone="neutral">low</Badge>;
-  return null;
-}
-
-function EventDetail({ event }: { event: CalendarEvent }) {
-  if (event.kind === "earnings") {
-    const e = event.entry;
-    const days = daysUntilEarnings(e.date);
-    const dayBadge =
-      days != null && days >= 0 ? (
-        days === 0 ? (
-          <Badge tone="down">EPS today</Badge>
-        ) : days <= 2 ? (
-          <Badge tone="down">T-{days}</Badge>
-        ) : days <= 5 ? (
-          <Badge tone="warn">T-{days}</Badge>
-        ) : null
-      ) : null;
-    return (
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <EventPill event={event} />
-          <div className="text-base font-semibold tabular">{e.symbol}</div>
-          {e.type && <Badge tone="neutral">{e.type}</Badge>}
-          {e.isHeld && <Badge tone="up">held</Badge>}
-          {dayBadge}
-        </div>
-        {e.company && <Detail label="Company" value={e.company} />}
-        <Detail label="Date" value={e.date} mono />
-        {e.epsEstimate && <Detail label="EPS estimate" value={e.epsEstimate} mono />}
-        {e.source && <Detail label="Source" value={e.source} />}
-        {e.refreshed && <Detail label="Refreshed" value={e.refreshed} mono />}
-        {e.isHeld && (
-          <div className="pt-2 mt-2 border-t border-[rgba(255,255,255,0.05)]">
-            <Link
-              href={`/trades?force=${encodeURIComponent(e.symbol)}`}
-              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full glass glass-interactive glass-tint-down font-semibold"
-            >
-              ⚠️ Force-exit at close (rule #13)
-            </Link>
-            <p className="mt-1.5 text-[10px] text-[var(--color-muted)]">
-              Bot routine market-open auto-exits the day before; this CTA jumps
-              to Trades for a manual override.
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  }
-  const e = event.entry;
+function WeekStripCell({
+  day,
+  isToday,
+  onClick,
+}: {
+  day: CalendarDay;
+  isToday: boolean;
+  onClick: () => void;
+}) {
+  const m = day.date.match(/^\d{4}-\d{2}-(\d{2})$/);
+  const dayNum = m ? Number(m[1]) : 0;
+  const dow = fmtWeekdayShortCT(day.date);
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2 flex-wrap">
-        <EventPill event={event} />
-        <div className="text-sm font-semibold">{e.event}</div>
-        {e.importance && <ImportanceBadge importance={e.importance} />}
-      </div>
-      {e.time && (
-        <Detail label="Time (CT)" value={etTimeStringToCT(e.time, event.date)} mono />
+    <button
+      type="button"
+      role="tab"
+      aria-label={`Jump to ${day.date} (${day.total} events)`}
+      data-iso={day.date}
+      onClick={onClick}
+      className={clsx(
+        "shrink-0 min-w-[58px] flex flex-col items-center px-2 py-1.5 rounded border transition-colors",
+        isToday
+          ? "border-[var(--color-accent)] bg-[var(--color-panel-2)]"
+          : "border-[var(--color-border)] bg-[var(--color-panel)] hover:bg-[var(--color-panel-2)]"
       )}
-      {e.forecast && <Detail label="Forecast" value={e.forecast} />}
-      {e.previous && <Detail label="Previous" value={e.previous} />}
-      {e.source && <Detail label="Source" value={e.source} />}
-      {e.refreshed && <Detail label="Refreshed" value={e.refreshed} mono />}
-    </div>
-  );
-}
-
-function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="text-[var(--color-muted)] uppercase tracking-wider text-[10px]">
-        {label}
+    >
+      <span className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
+        {dow}
       </span>
-      <span className={clsx("text-[var(--color-text)]", mono && "font-mono")}>{value}</span>
+      <span
+        className={clsx(
+          "text-base font-semibold tabular leading-tight",
+          isToday ? "text-[var(--color-up)]" : "text-[var(--color-text)]"
+        )}
+      >
+        {dayNum}
+      </span>
+      <span className="text-[10px] text-[var(--color-muted)]">
+        {day.total > 0 ? `${day.total} evt` : "—"}
+      </span>
+    </button>
+  );
+}
+
+// ─────────────────────────── Day list ───────────────────────────
+
+function DayList({
+  days,
+  today,
+  sectorMap,
+  watchlist,
+  onToggleWatchlist,
+}: {
+  days: CalendarDay[];
+  today: string;
+  sectorMap?: Map<string, string>;
+  watchlist: Set<string>;
+  onToggleWatchlist: (symbol: string) => void;
+}) {
+  if (days.length === 0) {
+    return (
+      <Card title="No events">
+        <p className="text-xs text-[var(--color-muted)] py-2">
+          No earnings or economic events match the current filters.
+        </p>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {days.map((d, idx) => (
+        <DayCard
+          key={d.date}
+          day={d}
+          today={today}
+          sectorMap={sectorMap}
+          watchlist={watchlist}
+          onToggleWatchlist={onToggleWatchlist}
+          // First 7 day-cards default open; older / further-out collapse to
+          // reduce visual noise. User can toggle them open from the header.
+          defaultOpen={idx < 7}
+        />
+      ))}
     </div>
   );
 }
 
-function EmptyState({ filter }: { filter: CalendarFilter }) {
-  const msg =
-    filter === "economic"
-      ? "No economic events cached. Click Refresh to query Perplexity for the next 14 days."
-      : filter === "earnings"
-      ? "No upcoming earnings on the bot's watchlist. The pre-market routine refreshes EARNINGS-CALENDAR.md daily."
-      : "No upcoming events. Try clicking Refresh, or run the bot's pre-market routine.";
-  return <div className="text-xs text-[var(--color-muted)] py-3">{msg}</div>;
+function DayCard({
+  day,
+  today,
+  sectorMap,
+  watchlist,
+  onToggleWatchlist,
+  defaultOpen,
+}: {
+  day: CalendarDay;
+  today: string;
+  sectorMap?: Map<string, string>;
+  watchlist: Set<string>;
+  onToggleWatchlist: (symbol: string) => void;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isToday = day.date === today;
+  const isPast = day.date < today;
+  const dow = fmtWeekdayShortCT(day.date);
+  const m = day.date.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  const monthDay = m ? `${monthName(Number(m[1]))} ${Number(m[2])}` : day.date;
+
+  const dayLabel = isToday
+    ? `Today · ${dow}, ${monthDay}`
+    : isPast
+    ? `${dow}, ${monthDay}`
+    : `${dow}, ${monthDay}`;
+
+  return (
+    <section id={`day-${day.date}`} className="frost rounded-2xl">
+      <header
+        className={clsx(
+          "flex items-center justify-between gap-3 px-5 py-3 cursor-pointer select-none",
+          open && "border-b border-[var(--color-border)]"
+        )}
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <h3
+            className={clsx(
+              "text-sm font-semibold tracking-tight",
+              isToday ? "text-[var(--color-up)]" : "text-[var(--color-text)]"
+            )}
+          >
+            {dayLabel}
+          </h3>
+          <span className="text-[10px] tabular text-[var(--color-muted)]">
+            {day.date}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-[var(--color-muted)]">
+          {day.earnings.length > 0 && (
+            <span className="tabular">{day.earnings.length} earnings</span>
+          )}
+          {day.earnings.length > 0 && day.economic.length > 0 && <span>·</span>}
+          {day.economic.length > 0 && (
+            <span className="tabular">{day.economic.length} economic</span>
+          )}
+          <Chevron open={open} />
+        </div>
+      </header>
+      {open && (
+        <div className="px-5 py-4 space-y-4">
+          {day.earnings.length > 0 && (
+            <EarningsTable
+              events={day.earnings}
+              sectorMap={sectorMap}
+              watchlist={watchlist}
+              onToggleWatchlist={onToggleWatchlist}
+            />
+          )}
+          {day.economic.length > 0 && <EconomicTable events={day.economic} />}
+        </div>
+      )}
+    </section>
+  );
 }
 
-function isoFirstOfMonth(iso: string): string {
-  return `${iso.slice(0, 7)}-01`;
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 12 12"
+      className={clsx(
+        "transition-transform text-[var(--color-muted)]",
+        open && "rotate-180"
+      )}
+      aria-hidden
+    >
+      <path
+        d="M2 4 L6 8 L10 4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
-function shiftMonth(iso: string, delta: number): string {
-  const m = iso.match(/^(\d{4})-(\d{2})/);
-  if (!m) return iso;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+// ─────────────────────────── Earnings table ───────────────────────────
+
+function EarningsTable({
+  events,
+  sectorMap,
+  watchlist,
+  onToggleWatchlist,
+}: {
+  events: CalendarEvent[];
+  sectorMap?: Map<string, string>;
+  watchlist: Set<string>;
+  onToggleWatchlist: (symbol: string) => void;
+}) {
+  return (
+    <div>
+      <h4 className="text-[11px] uppercase tracking-wider text-[var(--color-muted)] mb-1.5">
+        Earnings
+      </h4>
+      <ul className="divide-y divide-[var(--color-border)]">
+        {events.map((e, i) => {
+          if (e.kind !== "earnings") return null;
+          return (
+            <li
+              key={`${e.entry.symbol}-${i}`}
+              className="py-2 grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_180px_120px_auto_auto] gap-x-3 gap-y-1 items-baseline text-sm"
+            >
+              <StarButton
+                symbol={e.entry.symbol}
+                starred={watchlist.has(e.entry.symbol.toUpperCase())}
+                onToggle={onToggleWatchlist}
+              />
+              <div className="min-w-0 flex items-center gap-2">
+                <Link
+                  href={`https://finance.yahoo.com/quote/${encodeURIComponent(
+                    e.entry.symbol
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold tabular text-[var(--color-text)] hover:text-[var(--color-accent)]"
+                >
+                  {e.entry.symbol}
+                </Link>
+                {e.entry.isHeld && (
+                  <span
+                    className="size-1.5 rounded-full bg-[var(--color-up)] shrink-0"
+                    title="held position"
+                    aria-label="held position"
+                  />
+                )}
+                {e.entry.company && (
+                  <span className="text-[var(--color-muted)] truncate">
+                    {e.entry.company}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-[var(--color-muted)] truncate hidden sm:block">
+                {sectorMap?.get(e.entry.symbol.toUpperCase()) ?? ""}
+              </div>
+              <div className="text-xs text-[var(--color-muted)] tabular hidden sm:block">
+                {e.entry.type ? <span>{e.entry.type}</span> : null}
+                {e.entry.epsEstimate ? (
+                  <span> · est {e.entry.epsEstimate}</span>
+                ) : null}
+              </div>
+              <ResultCell entry={e.entry} />
+              <DayBadge date={e.entry.date} />
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
-function buildMonthGrid(monthStart: string): { iso: string; inMonth: boolean }[] {
-  const m = monthStart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return [];
-  const year = Number(m[1]);
-  const monthIdx = Number(m[2]) - 1;
-  // Pure-ISO arithmetic on a calendar-grid offset — no time component, so
-  // the dashboard/CLAUDE.md "Pure ISO-date arithmetic is fine" carve-out
-  // applies. We deliberately use Date.UTC + getUTCDay() instead of the CT
-  // helpers because we want a stable Sunday-anchored grid that doesn't
-  // shift with America/Chicago DST transitions on the 1st of the month.
-  const first = new Date(Date.UTC(year, monthIdx, 1));
-  const startOffset = first.getUTCDay(); // 0 = Sunday
-  const cells: { iso: string; inMonth: boolean }[] = [];
-  // 42 cells = 6 rows. Trim trailing all-out-of-month rows below.
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(Date.UTC(year, monthIdx, 1 - startOffset + i));
-    const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-    cells.push({ iso, inMonth: d.getUTCMonth() === monthIdx });
+function StarButton({
+  symbol,
+  starred,
+  onToggle,
+}: {
+  symbol: string;
+  starred: boolean;
+  onToggle: (s: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle(symbol);
+      }}
+      aria-pressed={starred}
+      aria-label={starred ? `Remove ${symbol} from watchlist` : `Add ${symbol} to watchlist`}
+      className={clsx(
+        "p-1 -m-1 rounded transition-colors",
+        starred
+          ? "text-[var(--color-warn)] hover:opacity-80"
+          : "text-[var(--color-border)] hover:text-[var(--color-muted)]"
+      )}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+        <path
+          d="M7 1.5l1.7 3.5 3.8.55-2.75 2.7.65 3.8L7 10.25l-3.4 1.8.65-3.8L1.5 5.55l3.8-.55z"
+          fill={starred ? "currentColor" : "none"}
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+function ResultCell({ entry }: { entry: EarningsEntry }) {
+  if (!entry.actualEps && !entry.postPrintMovePct) {
+    return <span className="text-xs text-[var(--color-muted)] hidden sm:block">—</span>;
   }
-  // Drop the last row if all are out-of-month (keeps grid tight for short months).
-  while (cells.length >= 7 && cells.slice(-7).every((c) => !c.inMonth)) {
-    cells.splice(-7, 7);
-  }
-  return cells;
+  const movePct = entry.postPrintMovePct?.replace(/[^\d.+-]/g, "");
+  const moveNum = movePct ? Number(movePct) : NaN;
+  const moveColor = !Number.isFinite(moveNum)
+    ? "text-[var(--color-muted)]"
+    : moveNum >= 0
+    ? "text-[var(--color-up)]"
+    : "text-[var(--color-down)]";
+  return (
+    <div className="text-xs hidden sm:flex items-baseline gap-1.5 tabular">
+      {entry.actualEps && (
+        <span className="text-[var(--color-text)]" title="actual EPS">
+          {entry.actualEps}
+        </span>
+      )}
+      {entry.postPrintMovePct && (
+        <span className={moveColor} title="1-day post-print move">
+          {entry.postPrintMovePct}
+        </span>
+      )}
+    </div>
+  );
 }
 
-function truncate(s: string, n: number): string {
-  return s.length <= n ? s : s.slice(0, n - 1) + "…";
+function DayBadge({ date }: { date: string }) {
+  const days = daysUntilEarnings(date);
+  if (days == null || days < 0) return null;
+  if (days === 0) return <Badge tone="down">today</Badge>;
+  if (days <= 2) return <Badge tone="down">T-{days}</Badge>;
+  if (days <= 5) return <Badge tone="warn">T-{days}</Badge>;
+  return <Badge tone="neutral">T-{days}</Badge>;
+}
+
+// ─────────────────────────── Economic table ───────────────────────────
+
+function EconomicTable({ events }: { events: CalendarEvent[] }) {
+  return (
+    <div>
+      <h4 className="text-[11px] uppercase tracking-wider text-[var(--color-muted)] mb-1.5">
+        Economic events
+      </h4>
+      <ul className="divide-y divide-[var(--color-border)]">
+        {events.map((e, i) => {
+          if (e.kind !== "economic") return null;
+          const high = isHighImpact(e);
+          return (
+            <li
+              key={`${e.entry.event}-${i}`}
+              className="py-2 grid grid-cols-[60px_1fr_auto] sm:grid-cols-[80px_1fr_auto_auto_auto] gap-x-3 items-baseline text-sm"
+            >
+              <span className="text-xs tabular text-[var(--color-muted)]">
+                {e.entry.time
+                  ? `${etTimeStringToCT(e.entry.time, e.entry.date)} CT`
+                  : "—"}
+              </span>
+              <span className="text-[var(--color-text)] truncate flex items-center gap-2">
+                {high && (
+                  <span
+                    className="size-1.5 rounded-full bg-[var(--color-warn)] shrink-0"
+                    aria-label="high impact"
+                    title="high impact"
+                  />
+                )}
+                {e.entry.event}
+              </span>
+              <span className="text-xs text-[var(--color-muted)] hidden sm:block">
+                {e.entry.importance || ""}
+              </span>
+              <span className="text-xs tabular text-[var(--color-muted)] hidden sm:block">
+                {e.entry.forecast ? `fcst ${e.entry.forecast}` : ""}
+              </span>
+              <span className="text-xs tabular text-[var(--color-muted)]">
+                {e.entry.previous ? `prev ${e.entry.previous}` : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ─────────────────────────── Helpers ───────────────────────────
+
+function monthName(monthIdx1Based: number): string {
+  return [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ][monthIdx1Based - 1] ?? `M${monthIdx1Based}`;
+}
+
+function todayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function csvEscape(s: string): string {
+  if (s == null) return "";
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function csvRow(e: CalendarEvent): string {
+  if (e.kind === "earnings") {
+    return [
+      e.date,
+      "earnings",
+      e.entry.symbol,
+      e.entry.company ?? "",
+      e.entry.type,
+      e.entry.epsEstimate ?? "",
+      e.entry.actualEps ?? "",
+      e.entry.isHeld ? "held" : "",
+    ]
+      .map((s) => csvEscape(String(s)))
+      .join(",");
+  }
+  return [
+    e.date,
+    "economic",
+    e.entry.event,
+    "",
+    e.entry.time,
+    e.entry.forecast ?? "",
+    e.entry.previous ?? "",
+    e.entry.importance ?? "",
+  ]
+    .map((s) => csvEscape(String(s)))
+    .join(",");
 }

@@ -16,6 +16,11 @@ const PARSERS_ALLOWED_TO_TOUCH_FS_DIRECTLY = new Set<string>([
   // route through resolveMemoryFile.
   "economicCalendarWriter.ts",
   "marketEarningsWriter.ts",
+  // watchlist.ts bundles a parser AND a writer because the file is small
+  // and only one /api route + one routine touches it. The reader path uses
+  // readMemory(); the writer (addToWatchlist / removeFromWatchlist) uses
+  // resolveMemoryFile + fs.writeFile in the same module.
+  "watchlist.ts",
 ]);
 
 async function listParserFiles(): Promise<string[]> {

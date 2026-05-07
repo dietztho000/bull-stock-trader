@@ -22,6 +22,11 @@ export async function loadMarketEarnings(): Promise<EarningsEntry[]> {
       refreshed: r["Date refreshed"] ?? "",
       company: r["Company"] || undefined,
       epsEstimate: r["EPS Estimate"] || undefined,
+      // Optional trailing cols — present only after the refresh-earnings-results
+      // routine has back-filled this row. parseMdTable returns "" for missing
+      // headers, which we coerce to undefined so the UI can branch on truthy.
+      actualEps: r["Actual EPS"] || undefined,
+      postPrintMovePct: r["1-day move %"] || undefined,
     });
   }
   out.sort((a, b) => {
