@@ -8,6 +8,7 @@ import { todayInCT } from "@/lib/time";
 import { useTradingAccountOptional } from "@/lib/tradingAccountContext";
 import { accountScope } from "@/lib/alpacaMode";
 import { useSettingsOptional } from "@/components/providers/SettingsProvider";
+import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { BullCharacter, type Mood } from "./BullCharacter";
 import { Confetti } from "./Confetti";
 import { BullMascotModal } from "./BullMascotModal";
@@ -154,59 +155,66 @@ function BullMascotNavCardInner({ className }: { className?: string }) {
   return (
     <div className={clsx("relative", className)}>
       <Confetti active={confettiActive} onDone={() => setConfettiActive(false)} />
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={`${mascotName} — open performance recap`}
-        aria-label={`Open ${mascotName} performance recap`}
-        className="w-full frost glass-interactive rounded-2xl p-2.5 flex items-center gap-2.5 text-left"
+      <HoverTooltip
+        content={
+          <span>
+            {mascotName} — open performance recap
+          </span>
+        }
       >
-        <div className="shrink-0">
-          <BullCharacter
-            mood={mood}
-            size="sm"
-            seasonal={seasonal}
-            idleGesture={idleGesture}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[9px] uppercase tracking-[0.16em] text-[var(--color-muted)] font-semibold truncate">
-            {mascotName}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={`Open ${mascotName} performance recap`}
+          className="w-full frost glass-interactive rounded-2xl p-2.5 flex items-center gap-2.5 text-left"
+        >
+          <div className="shrink-0">
+            <BullCharacter
+              mood={mood}
+              size="sm"
+              seasonal={seasonal}
+              idleGesture={idleGesture}
+            />
           </div>
-          <div
-            className={clsx(
-              "text-xs font-semibold tabular leading-tight",
-              dayPct == null
-                ? "text-[var(--color-muted)]"
-                : dayPct > 0
-                ? "text-[var(--color-up)]"
-                : dayPct < 0
-                ? "text-[var(--color-down)]"
-                : "text-[var(--color-text)]"
-            )}
-          >
-            {dayPct == null ? "—" : fmtPct(dayPct)}
-          </div>
-          {level && (
-            <div className="mt-1.5">
-              <div className="flex items-baseline justify-between text-[9px] tabular text-[var(--color-muted)]">
-                <span>
-                  Lvl {level.current.level} · {level.current.title}
-                </span>
-                {level.next && <span>{Math.round(level.progressPct)}%</span>}
-              </div>
-              <div className="mt-0.5 h-1 rounded-full overflow-hidden bg-[rgba(255,255,255,0.08)]">
-                <motion.div
-                  className="h-full rounded-full bg-[var(--color-accent)]"
-                  initial={false}
-                  animate={{ width: `${level.next ? level.progressPct : 100}%` }}
-                  transition={{ type: "spring", stiffness: 180, damping: 24 }}
-                />
-              </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] uppercase tracking-[0.16em] text-[var(--color-muted)] font-semibold truncate">
+              {mascotName}
             </div>
-          )}
-        </div>
-      </button>
+            <div
+              className={clsx(
+                "text-xs font-semibold tabular leading-tight",
+                dayPct == null
+                  ? "text-[var(--color-muted)]"
+                  : dayPct > 0
+                  ? "text-[var(--color-up)]"
+                  : dayPct < 0
+                  ? "text-[var(--color-down)]"
+                  : "text-[var(--color-text)]"
+              )}
+            >
+              {dayPct == null ? "—" : fmtPct(dayPct)}
+            </div>
+            {level && (
+              <div className="mt-1.5">
+                <div className="flex items-baseline justify-between text-[9px] tabular text-[var(--color-muted)]">
+                  <span>
+                    Lvl {level.current.level} · {level.current.title}
+                  </span>
+                  {level.next && <span>{Math.round(level.progressPct)}%</span>}
+                </div>
+                <div className="mt-0.5 h-1 rounded-full overflow-hidden bg-[rgba(255,255,255,0.08)]">
+                  <motion.div
+                    className="h-full rounded-full bg-[var(--color-accent)]"
+                    initial={false}
+                    animate={{ width: `${level.next ? level.progressPct : 100}%` }}
+                    transition={{ type: "spring", stiffness: 180, damping: 24 }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </button>
+      </HoverTooltip>
 
       <BullMascotModal
         open={open}

@@ -4,6 +4,7 @@
 import Link from "next/link";
 import clsx from "clsx";
 import { Card } from "@/components/ui/Card";
+import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import {
   type CalendarEvent,
   mergeEvents,
@@ -134,39 +135,118 @@ function EventRow({ event }: { event: CalendarEvent }) {
   const isEarn = event.kind === "earnings";
   const isHeld = isEarn && event.entry.isHeld;
   const high = isHighImpact(event);
-  let label: string;
-  let title: string;
+  const label =
+    event.kind === "earnings"
+      ? `${event.entry.symbol}${event.entry.type ? ` ${event.entry.type}` : ""}`
+      : event.entry.event;
+
+  return (
+    <HoverTooltip content={<EventTooltipContent event={event} />}>
+      <div
+        tabIndex={0}
+        className="flex items-center gap-1.5 text-[10px] tabular truncate outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded"
+      >
+        {isHeld && (
+          <span
+            className="size-1 rounded-full bg-[var(--color-up)] shrink-0"
+            aria-label="held position"
+          />
+        )}
+        {high && (
+          <span
+            className="size-1 rounded-full bg-[var(--color-warn)] shrink-0"
+            aria-label="high impact"
+          />
+        )}
+        <span className="text-[var(--color-text)] truncate">{label}</span>
+      </div>
+    </HoverTooltip>
+  );
+}
+
+function EventTooltipContent({ event }: { event: CalendarEvent }) {
   if (event.kind === "earnings") {
     const e = event.entry;
-    label = `${e.symbol}${e.type ? ` ${e.type}` : ""}`;
-    title = [
-      e.symbol,
-      e.company ? `(${e.company})` : "",
-      e.type,
-      e.epsEstimate ? `est ${e.epsEstimate}` : "",
-      isHeld ? "[held]" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-  } else {
-    label = event.entry.event;
-    title = `${event.entry.time ? `${etTimeStringToCT(event.entry.time, event.date)} CT — ` : ""}${event.entry.event}`;
+    return (
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-semibold text-[var(--color-text)]">{e.symbol}</span>
+          {e.type && (
+            <span className="text-[var(--color-muted)] text-[10px]">{e.type}</span>
+          )}
+          {e.isHeld && (
+            <span className="ml-auto text-[9px] uppercase tracking-wider text-[var(--color-up)]">
+              held
+            </span>
+          )}
+        </div>
+        {e.company && (
+          <div className="text-[var(--color-muted)] truncate">{e.company}</div>
+        )}
+        <dl className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-0.5">
+          {e.epsEstimate && (
+            <>
+              <dt className="text-[var(--color-muted)]">EPS est</dt>
+              <dd className="tabular text-[var(--color-text)]">{e.epsEstimate}</dd>
+            </>
+          )}
+          {e.actualEps && (
+            <>
+              <dt className="text-[var(--color-muted)]">EPS actual</dt>
+              <dd className="tabular text-[var(--color-text)]">{e.actualEps}</dd>
+            </>
+          )}
+          {e.postPrintMovePct && (
+            <>
+              <dt className="text-[var(--color-muted)]">Post-print move</dt>
+              <dd className="tabular text-[var(--color-text)]">{e.postPrintMovePct}</dd>
+            </>
+          )}
+        </dl>
+      </div>
+    );
   }
+  const e = event.entry;
   return (
-    <div className="flex items-center gap-1.5 text-[10px] tabular truncate" title={title}>
-      {isHeld && (
-        <span
-          className="size-1 rounded-full bg-[var(--color-up)] shrink-0"
-          aria-label="held position"
-        />
-      )}
-      {high && (
-        <span
-          className="size-1 rounded-full bg-[var(--color-warn)] shrink-0"
-          aria-label="high impact"
-        />
-      )}
-      <span className="text-[var(--color-text)] truncate">{label}</span>
+    <div className="space-y-1">
+      <div className="font-semibold text-[var(--color-text)]">{e.event}</div>
+      <dl className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-0.5">
+        {e.time && (
+          <>
+            <dt className="text-[var(--color-muted)]">Time</dt>
+            <dd className="tabular text-[var(--color-text)]">
+              {etTimeStringToCT(e.time, event.date)} CT
+            </dd>
+          </>
+        )}
+        {e.importance && (
+          <>
+            <dt className="text-[var(--color-muted)]">Importance</dt>
+            <dd
+              className={clsx(
+                "tabular",
+                e.importance === "high"
+                  ? "text-[var(--color-warn)]"
+                  : "text-[var(--color-text)]"
+              )}
+            >
+              {e.importance}
+            </dd>
+          </>
+        )}
+        {e.forecast && (
+          <>
+            <dt className="text-[var(--color-muted)]">Forecast</dt>
+            <dd className="tabular text-[var(--color-text)]">{e.forecast}</dd>
+          </>
+        )}
+        {e.previous && (
+          <>
+            <dt className="text-[var(--color-muted)]">Previous</dt>
+            <dd className="tabular text-[var(--color-text)]">{e.previous}</dd>
+          </>
+        )}
+      </dl>
     </div>
   );
 }

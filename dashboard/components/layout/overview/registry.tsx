@@ -7,6 +7,7 @@ import type {
 } from "react-grid-layout/legacy";
 
 import { Card } from "@/components/ui/Card";
+import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { PnlHero } from "@/components/live/PnlHero";
 import { DrawdownNarrator } from "@/components/ai/DrawdownNarrator";
 import { EquityCurve } from "@/components/charts/EquityCurve";
@@ -303,13 +304,18 @@ function LatestBriefSection({ latest }: { latest: ResearchEntry | null }) {
       {latest.ideas.length > 0 ? (
         <ul className="text-sm space-y-1.5">
           {latest.ideas.slice(0, 4).map((idea, i) => (
-            <li
-              key={i}
-              className="text-[var(--color-text)] truncate"
-              title={idea}
-            >
-              <span className="text-[var(--color-muted)] mr-2">·</span>
-              {idea}
+            <li key={i} className="text-[var(--color-text)]">
+              <HoverTooltip
+                content={<p className="whitespace-pre-wrap">{idea}</p>}
+              >
+                <span
+                  tabIndex={0}
+                  className="block truncate outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded"
+                >
+                  <span className="text-[var(--color-muted)] mr-2">·</span>
+                  {idea}
+                </span>
+              </HoverTooltip>
             </li>
           ))}
           {latest.ideas.length > 4 && (

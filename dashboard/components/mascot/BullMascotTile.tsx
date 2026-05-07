@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { Card } from "@/components/ui/Card";
+import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { fmtPct } from "@/lib/format";
 import { todayInCT } from "@/lib/time";
 import type { AlpacaScope } from "@/lib/alpacaMode";
@@ -139,10 +140,19 @@ function BullMascotTileInner({ scope, ctxOverride }: BullMascotTileProps) {
           celebrating: "Crushing it",
         } as const)[snapshot.mood];
 
-  const tooltip =
-    snapshot.loading || "error" in snapshot
-      ? mascotName
-      : `${mascotName} — ${moodLabel}\nDay ${fmtPct(snapshot.detail.dayPct)} · Risk ${snapshot.riskHealth}/100`;
+  const tooltipContent =
+    snapshot.loading || "error" in snapshot ? (
+      <span className="font-semibold">{mascotName}</span>
+    ) : (
+      <div className="space-y-0.5">
+        <div className="font-semibold text-[var(--color-text)]">
+          {mascotName} <span className="text-[var(--color-muted)]">— {moodLabel}</span>
+        </div>
+        <div className="tabular text-[var(--color-muted)]">
+          Day {fmtPct(snapshot.detail.dayPct)} · Risk {snapshot.riskHealth}/100
+        </div>
+      </div>
+    );
 
   return (
     <Card
@@ -161,27 +171,28 @@ function BullMascotTileInner({ scope, ctxOverride }: BullMascotTileProps) {
     >
       <div className="relative">
         <Confetti active={confettiActive} onDone={() => setConfettiActive(false)} />
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          onDoubleClick={triggerPet}
-          title={tooltip}
-          aria-label={`${mascotName} — open performance recap`}
-          className="no-drag w-full flex items-center justify-center py-1 cursor-pointer"
-        >
-          <motion.div
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        <HoverTooltip content={tooltipContent}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            onDoubleClick={triggerPet}
+            aria-label={`${mascotName} — open performance recap`}
+            className="no-drag w-full flex items-center justify-center py-1 cursor-pointer"
           >
-            <BullCharacter
-              mood={!snapshot.loading && !("error" in snapshot) ? snapshot.mood : "neutral"}
-              size="md"
-              seasonal={seasonal}
-              idleGesture={activeGesture}
-            />
-          </motion.div>
-        </button>
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            >
+              <BullCharacter
+                mood={!snapshot.loading && !("error" in snapshot) ? snapshot.mood : "neutral"}
+                size="md"
+                seasonal={seasonal}
+                idleGesture={activeGesture}
+              />
+            </motion.div>
+          </button>
+        </HoverTooltip>
 
         {!snapshot.loading && !("error" in snapshot) && (
           <div
