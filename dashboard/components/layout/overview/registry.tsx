@@ -21,6 +21,7 @@ import { DayTradesKpiTile } from "@/components/live/tiles/DayTradesKpiTile";
 import { PositionsTile } from "@/components/live/tiles/PositionsTile";
 import { OrdersTile } from "@/components/live/tiles/OrdersTile";
 import { BullMascotTile } from "@/components/mascot/BullMascotTile";
+import { PerplexityCostTile } from "@/components/live/tiles/PerplexityCostTile";
 import { EarningsGateBanner } from "@/components/live/EarningsGateBanner";
 import { OrderEntryTile } from "@/components/live/OrderEntryTile";
 import { PositionManagementTile } from "@/components/live/PositionManagementTile";
@@ -34,6 +35,7 @@ import type { EarningsEntry } from "@/lib/parsers/earningsCalendar";
 import type { LadderState } from "@/lib/parsers/ladderProgress";
 import type { ResearchEntry } from "@/lib/parsers/researchLog";
 import type { EconomicEvent } from "@/lib/parsers/economicCalendar";
+import type { PerplexitySummary } from "@/lib/parsers/perplexityLog";
 
 export type OverviewCtx = {
   accountMode: AlpacaMode;
@@ -65,6 +67,7 @@ export type OverviewCtx = {
   upcomingEarnings: EarningsEntry[];
   economic: EconomicEvent[];
   latestBrief: ResearchEntry | null;
+  perplexity: PerplexitySummary;
 };
 
 export type OverviewTileDef = {
@@ -152,6 +155,12 @@ export const OVERVIEW_TILES: OverviewTileDef[] = [
     title: "Day trades",
     defaultLayout: { x: 0, y: 10, w: 3, h: 3, minW: 2, minH: 2 },
     render: (ctx) => <DayTradesKpiTile scope={ctx.scope} />,
+  },
+  {
+    id: "perplexity-cost",
+    title: "Research API spend",
+    defaultLayout: { x: 3, y: 10, w: 3, h: 3, minW: 2, minH: 2 },
+    render: (ctx) => <PerplexityCostTile summary={ctx.perplexity} />,
   },
   {
     id: "risk-gate",

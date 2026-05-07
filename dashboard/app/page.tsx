@@ -19,6 +19,11 @@ import {
   type EconomicEvent,
 } from "@/lib/parsers/economicCalendar";
 import { loadLadderProgress, type LadderState } from "@/lib/parsers/ladderProgress";
+import {
+  loadPerplexitySummary,
+  summarizePerplexity,
+  type PerplexitySummary,
+} from "@/lib/parsers/perplexityLog";
 import { runAlpaca, type RunAlpacaOpts } from "@/lib/alpaca";
 import { loadOvernightGaps } from "@/lib/live/overnightGap";
 import { mergeEarnings } from "@/lib/calendar/events";
@@ -91,12 +96,16 @@ export default async function OverviewPage({
     economic,
     research,
     ladderMap,
+    perplexity,
   ] = await Promise.all([
     loadEarningsCalendar(memCtx).catch(() => new Map<string, EarningsEntry>()),
     loadMarketEarnings().catch((): EarningsEntry[] => []),
     loadEconomicCalendar().catch((): EconomicEvent[] => []),
     loadResearchLog(memCtx).catch(() => []),
     loadLadderProgress(memCtx).catch(() => new Map<string, LadderState>()),
+    loadPerplexitySummary().catch(
+      (): PerplexitySummary => summarizePerplexity([])
+    ),
   ]);
 
   let earnings: Record<string, EarningsEntry> | undefined;
@@ -144,6 +153,7 @@ export default async function OverviewPage({
     upcomingEarnings,
     economic,
     latestBrief: research[0] ?? null,
+    perplexity,
   };
 
   const tiles: Record<string, React.ReactNode> = Object.fromEntries(
