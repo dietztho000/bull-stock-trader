@@ -24,16 +24,29 @@ preserved across refreshes.
 close. `EPS Estimate` is a string ("$5.42", "$1.87", "—" when unknown).
 
 ## Calendar
-| Symbol | Company | Earnings Date | BMO/AMC | EPS Estimate | Source | Date refreshed |
-|--------|---------|---------------|---------|--------------|--------|----------------|
-| BRK.B | Berkshire Hathaway | 2026-05-02 |  | $4.82 | Perplexity | 2026-05-01 |
-| AMD | Advanced Micro Devices | 2026-05-05 | AMC |  | Perplexity | 2026-05-01 |
-| PFE | Pfizer | 2026-05-05 | BMO | $0.71 | Perplexity | 2026-05-01 |
-| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-01 |
-| MCD | McDonald's | 2026-05-07 | BMO | $2.75 | Perplexity | 2026-05-01 |
-| HD | Home Depot | 2026-05-19 | BMO | $3.42 | Perplexity | 2026-05-01 |
-| NVDA | NVIDIA | 2026-05-20 | AMC | $1.77 | Perplexity | 2026-05-01 |
-| TGT | Target | 2026-05-20 | BMO | $1.34 | Perplexity | 2026-05-01 |
-| WMT | Walmart | 2026-05-21 | BMO | $0.65 | Perplexity | 2026-05-01 |
-| CRM | Salesforce | 2026-05-27 |  | $3.12 | Perplexity | 2026-05-01 |
-| COST | Costco | 2026-05-28 | AMC |  | Perplexity | 2026-05-01 |
+| Symbol | Company | Earnings Date | BMO/AMC | EPS Estimate | Source | Date refreshed | Actual EPS | 1-day move % |
+|--------|---------|---------------|---------|--------------|--------|----------------|------------|--------------|
+| ARM | Arm Holdings | 2026-05-06 | AMC |  | Perplexity | 2026-05-06 |  |  |
+| CVS | CVS Health | 2026-05-06 | BMO | $2.21 | Perplexity | 2026-05-06 |  |  |
+| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-06 |  |  |
+| ABNB | Airbnb | 2026-05-07 | AMC | $0.30 | Perplexity | 2026-05-06 |  |  |
+| COIN | Coinbase | 2026-05-07 | AMC | $0.26 | Perplexity | 2026-05-06 |  |  |
+| DDOG | Datadog | 2026-05-07 | BMO | $0.50 | Perplexity | 2026-05-06 |  |  |
+| GILD | Gilead Sciences | 2026-05-07 | AMC | $1.89 | Perplexity | 2026-05-06 |  |  |
+| NET | Cloudflare | 2026-05-07 | AMC | $0.23 | Perplexity | 2026-05-06 |  |  |
+| CSCO | Cisco Systems | 2026-05-13 | BMO | $1.02 | Perplexity | 2026-05-06 |  |  |
+| AMAT | Applied Materials | 2026-05-14 | AMC | $2.67 | Perplexity | 2026-05-06 |  |  |
+| HD | Home Depot | 2026-05-19 | BMO | $3.42 | Perplexity | 2026-05-06 |  |  |
+| INTU | Intuit | 2026-05-20 | AMC | $12.24 | Perplexity | 2026-05-06 |  |  |
+| LOW | Lowe's | 2026-05-20 | BMO |  | Perplexity | 2026-05-06 |  |  |
+| NVDA | NVIDIA | 2026-05-20 | AMC | $1.77 | Perplexity | 2026-05-06 |  |  |
+| TGT | Target | 2026-05-20 | BMO | $1.34 | Perplexity | 2026-05-06 |  |  |
+| WMT | Walmart | 2026-05-21 | BMO | $0.65 | Perplexity | 2026-05-06 |  |  |
+| CRM | Salesforce | 2026-05-27 | AMC | $3.12 | Perplexity | 2026-05-06 |  |  |
+| MRVL | Marvell Technology | 2026-05-27 | AMC | $0.80 | Perplexity | 2026-05-06 |  |  |
+| SNOW | Snowflake | 2026-05-27 | AMC | $0.32 | Perplexity | 2026-05-06 |  |  |
+| COST | Costco | 2026-05-28 | AMC | $4.88 | Perplexity | 2026-05-06 |  |  |
+| DELL | Dell Technologies | 2026-05-28 | AMC | $3.18 | Perplexity | 2026-05-06 |  |  |
+| ZS | Zscaler | 2026-05-28 | AMC | $0.89 | Perplexity | 2026-05-06 |  |  |
+| PANW | Palo Alto Networks | 2026-06-02 | AMC | $0.72 | Perplexity | 2026-05-06 |  |  |
+| AVGO | Broadcom | 2026-06-03 | AMC | $2.40 | Perplexity | 2026-05-06 |  |  |

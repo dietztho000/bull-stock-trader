@@ -21,30 +21,12 @@ but may be `WebSearch` (fallback) or `manual` if the user hand-edits a row.
 ## Calendar
 | Date | Time (ET) | Event | Importance | Forecast | Previous | Source | Date refreshed |
 |------|-----------|-------|------------|----------|----------|--------|----------------|
-| 2026-05-06 | 08:30 | Q1 2026 GDP (Advance) | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-06 | 10:00 | State Employment and Unemployment (March 2026) | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-06 | 12:30 | Fed Barr Speech | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-07 | 08:30 | Productivity and Costs Q1 2026 | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-07 | 09:15 | Industrial Production and Capacity Utilization | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-07 | 11:30 | Challenger Job Cuts | low |  | 60.62K | Perplexity | 2026-05-06 |
-| 2026-05-07 | 15:00 | Consumer Credit | low |  |  | Perplexity | 2026-05-06 |
-| 2026-05-07 | 17:00 | WASDE Report | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-07 | 17:00 | 10-Year Note Auction | medium |  | 4.282% | Perplexity | 2026-05-06 |
-| 2026-05-07 | 18:00 | Monthly Budget Statement | medium |  | -$164.1B | Perplexity | 2026-05-06 |
-| 2026-05-08 | 08:30 | Employment Situation April 2026 (Nonfarm Payrolls) | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-12 | 08:30 | Consumer Price Index April 2026 | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-12 | 08:30 | Real Earnings April 2026 | low |  |  | Perplexity | 2026-05-06 |
-| 2026-05-13 | 08:30 | Producer Price Index April 2026 | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-13 | 15:30 | 17-Week Bill Auction | low |  |  | Perplexity | 2026-05-06 |
-| 2026-05-13 | 17:00 | 30-Year Bond Auction | high |  |  | Perplexity | 2026-05-06 |
+| 2026-05-07 | 08:30 | Productivity and Costs (P) | medium |  |  | Perplexity | 2026-05-06 |
+| 2026-05-07 | 11:30 | Challenger Job Cuts | low |  | 56.0K | Perplexity | 2026-05-06 |
+| 2026-05-08 | 08:30 | Employment Situation | high |  |  | Perplexity | 2026-05-06 |
+| 2026-05-08 | 12:30 | Non Farm Payrolls | high | 178K | 60K | Perplexity | 2026-05-06 |
+| 2026-05-12 | 08:30 | Consumer Price Index | high |  |  | Perplexity | 2026-05-06 |
+| 2026-05-12 | 08:30 | Real Earnings | low |  |  | Perplexity | 2026-05-06 |
+| 2026-05-13 | 08:30 | Producer Price Index | high |  |  | Perplexity | 2026-05-06 |
 | 2026-05-14 | 08:30 | U.S. Import and Export Price Indexes | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-14 | 12:30 | Retail Sales MoM | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-14 | 13:15 | Manufacturing Production YoY | medium | 0.5% |  | Perplexity | 2026-05-06 |
-| 2026-05-14 | 17:00 | Baker Hughes Oil Rig Count | low |  |  | Perplexity | 2026-05-06 |
-| 2026-05-15 | 10:00 | Occupational Employment and Wages | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-18 | 10:00 | CB Consumer Confidence | high |  | 92.8 | Perplexity | 2026-05-06 |
-| 2026-05-18 | 14:30 | Dallas Fed Manufacturing Index | medium |  | -2.3 | Perplexity | 2026-05-06 |
-| 2026-05-18 | 17:00 | 2-Year Note Auction | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-20 | 14:00 | FOMC Minutes | high |  |  | Perplexity | 2026-05-06 |
-| 2026-05-20 | 14:00 | Senior Loan Officer Opinion Survey (SLOOS) | medium |  |  | Perplexity | 2026-05-06 |
-| 2026-05-20 | 17:00 | 20-Year Bond Auction | medium |  |  | Perplexity | 2026-05-06 |
+| 2026-05-14 | 12:30 | Retail Sales MoM | high | 1.7% | 0.1% | Perplexity | 2026-05-06 |

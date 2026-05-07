@@ -1,0 +1,106 @@
+{
+  "discord": {},
+  "display": {
+    "theme": "dark",
+    "defaultLandingPage": "overview",
+    "numberFormat": "full",
+    "currency": "USD",
+    "hideTinyPositionsBelow": 0
+  },
+  "live": {
+    "autoRefreshEnabled": true,
+    "pollIntervalMs": 5000,
+    "refreshOnFocus": true,
+    "maxPositionsShown": 0
+  },
+  "defaults": {
+    "defaultAccountMode": "live",
+    "chartDateRangeDefault": "ytd",
+    "tradesPageDefaultFilter": "all"
+  },
+  "notifications": {
+    "webhookCategoryFilters": {
+      "research": true,
+      "fill": true,
+      "midday": true,
+      "stops": true,
+      "eod": true,
+      "weekly": true,
+      "error": true,
+      "auth-canary": true,
+      "alert": true
+    },
+    "quietHours": {
+      "enabled": false,
+      "startCT": "22:00",
+      "endCT": "07:00"
+    },
+    "desktopNotificationsEnabled": false
+  },
+  "mascot": {
+    "name": "Trader Max",
+    "confettiOnWin": true,
+    "showInNav": true,
+    "soundsEnabled": true,
+    "seasonalOutfits": true,
+    "idleAnimations": true
+  },
+  "strategy": {
+    "sectorCap": 3,
+    "maxOpenPositions": 6,
+    "dayBreakerPct": -2,
+    "weekBreakerPct": -4,
+    "celebrateThresholdPct": 1.5,
+    "bullishThresholdPct": 0.3,
+    "bearishThresholdPct": -1.5,
+    "targetDeployedLowPct": 75,
+    "targetDeployedHighPct": 85,
+    "earningsGateDays": 2,
+    "holdMaxDays": 30,
+    "entryScoreMin": 7
+  },
+  "alerts": {
+    "enabled": true,
+    "rules": []
+  },
+  "accounts": [
+    {
+      "id": "live-main",
+      "label": "Live (env)",
+      "mode": "live",
+      "endpoint": "https://api.alpaca.markets/v2",
+      "apiKeyEnc": "v1.l3zUFAsCK+NQ25Jx.li1HbTCpA6HM4AuKMU2vaw==.jHE5QtGFY3AHlJdZcfhNQoIMcOiyb+NuCKs=",
+      "secretKeyEnc": "v1.OgZGltfnx0+9ZkST.SL+s8oOEYkdKLpuUsoz7Pw==.Vputotj87ossJuYb1P0rDDFttnHBFAEFfAW9xu7UgAHiCc5AyzXWSKn0qDY=",
+      "createdAt": "2026-05-02T23:59:38.506Z"
+    },
+    {
+      "id": "paper-main",
+      "label": "Paper (env)",
+      "mode": "paper",
+      "endpoint": "https://paper-api.alpaca.markets/v2",
+      "apiKeyEnc": "v1.F3uBufbidf1vy7tF.drEqWmnwhHtBZfLuFy7wTw==.OlG3OqYhUAsxzNSTyxi5wbBteS09klip3uQ=",
+      "secretKeyEnc": "v1.rTt2zk+7dsJKWs7+.EfHf+13idqxrfOzikbcvYQ==.uHK4FtIQTBvG6kKLqsGXaNHM4sjUW7iQMef2obfAMWBbFyIRcOBTzPtS61g=",
+      "createdAt": "2026-05-02T23:59:38.556Z"
+    }
+  ],
+  "bots": [
+    {
+      "id": "live",
+      "name": "Live",
+      "accountId": "live-main",
+      "allocation": null,
+      "strategySlug": "default",
+      "enabled": false,
+      "createdAt": "2026-05-02T23:59:38.549Z"
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "accountId": "paper-main",
+      "allocation": null,
+      "strategySlug": "default",
+      "enabled": true,
+      "createdAt": "2026-05-02T23:59:38.569Z"
+    }
+  ]
+}
