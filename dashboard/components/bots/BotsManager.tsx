@@ -27,6 +27,11 @@ const ACCOUNTS_URL = "/api/accounts";
 // includeDisabled=true so the admin page can still see disabled bots and
 // re-enable them. The unscoped /api/bots default filters to enabled-only.
 const BOTS_URL = "/api/bots?includeDisabled=true";
+// Per-id paths must NOT carry the query string — the browser would
+// concatenate it into a malformed URL ("/api/bots?includeDisabled=true/x"
+// gets parsed as path "/api/bots" + query "includeDisabled=true/x" and
+// hits the list route instead of [id]/route.ts → 405 on PATCH/DELETE).
+const BOT_BASE_URL = "/api/bots";
 const STRATEGIES_URL = "/api/strategies";
 
 type SentinelTripRecord = NonNullable<Bot["sentinelTrips"]>[number];
@@ -373,7 +378,7 @@ function BotCard({
   onRotateCreds?: () => void;
 }) {
   const equity = useSWR<BotEquityResp>(
-    `${BOTS_URL}/${encodeURIComponent(bot.id)}/equity`,
+    `${BOT_BASE_URL}/${encodeURIComponent(bot.id)}/equity`,
     fetcher,
     { refreshInterval: 30_000 }
   );
@@ -388,7 +393,7 @@ function BotCard({
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`${BOTS_URL}/${encodeURIComponent(bot.id)}`, { method: "DELETE" });
+      const res = await fetch(`${BOT_BASE_URL}/${encodeURIComponent(bot.id)}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setDeleteError(body.error ?? `Delete failed: HTTP ${res.status}`);
@@ -405,7 +410,7 @@ function BotCard({
 
   async function onToggle() {
     setToggleError(null);
-    const res = await fetch(`${BOTS_URL}/${encodeURIComponent(bot.id)}`, {
+    const res = await fetch(`${BOT_BASE_URL}/${encodeURIComponent(bot.id)}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled: !bot.enabled }),

@@ -135,6 +135,10 @@ function formatPreviewValue(p: StrategyDefinition["params"][number]): string {
 
 const ACCOUNTS_URL = "/api/accounts";
 const BOTS_URL = "/api/bots?includeDisabled=true";
+// Per-id paths can't carry the query string or the browser parses it
+// as part of the query and the request hits the list route (405 on
+// PATCH/DELETE). Keep BOTS_URL for the list / mutate cache key only.
+const BOT_BASE_URL = "/api/bots";
 
 const ENDPOINT_DEFAULTS: Record<"live" | "paper", string> = {
   live: "https://api.alpaca.markets/v2",
@@ -814,7 +818,7 @@ export function EditBotForm({
             ),
           }
         : null;
-      const res = await fetch(`${BOTS_URL}/${encodeURIComponent(bot.id)}`, {
+      const res = await fetch(`${BOT_BASE_URL}/${encodeURIComponent(bot.id)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
