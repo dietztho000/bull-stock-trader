@@ -78,3 +78,5 @@
 {"ts":"2026-05-08T04:38:41Z","routine":"refresh-market-earnings","action":"end","status":"ok","git_sha":"f58b452"}
 {"ts":"2026-05-08T04:45:26Z","routine":"refresh-economic-events","action":"start","status":"ok","git_sha":"f58b452"}
 {"ts":"2026-05-08T04:46:33Z","routine":"refresh-economic-events","action":"end","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T05:09:25Z","routine":"refresh-earnings-results","action":"start","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T05:10:15Z","routine":"refresh-earnings-results","action":"end","status":"ok","git_sha":"f58b452"}
