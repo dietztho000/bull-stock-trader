@@ -162,3 +162,13 @@
 | XOM | 120 | $152.51 | $146.45 | -1.51% | -$727.14 (-3.97%) | $139.76 |
 
 **Notes:** Portfolio -0.90% vs SPY -2.85%, +1.95% daily alpha — significant outperformance on a broad market selloff. AMKR took the hardest hit at -6.20% to $72.43, now only $1.37 above its trailing stop ($71.06, HWM $78.96); close monitoring required Friday. GOOGL essentially flat (-0.05%), trailing stop $360.09 (HWM $400.10). NVDA recovered +1.86% (HWM $214.20, stop $192.78); earnings exit required by May 19 (rule #13). XOM -1.51%, above stop ($139.76) but energy sector headwinds persist. No trades today; week at 1/3 cap. All four trailing stops active.
+
+---
+
+### May 08 10:00 CT — Mid-morning scan
+
+- AMKR: +8.36% (price $73.84) — trailing 10%, HWM $78.96, stop $71.06. Below +15% tighten threshold. No action.
+- GOOGL: +4.29% (price $399.22) — trailing 10%, HWM $401.34, stop $361.21. No action.
+- NVDA: +3.29% (price $216.13) — trailing 10%, HWM $217.80, stop $196.02. Earnings exit required by May 19 (rule #13). No action.
+- XOM: -5.07% (price $144.78) — trailing 10%, HWM $155.29, stop $139.76. Above -7% cut floor ($141.83). No action.
+- No earnings exits today. No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No unfilled limit buys.
