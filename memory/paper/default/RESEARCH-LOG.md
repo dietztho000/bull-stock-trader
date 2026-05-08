@@ -108,29 +108,50 @@ HOLD — VIX elevated at 18.51 (+9% prior day), ISM Services/JOLTS this morning 
 ### Decision
 HOLD — No fresh catalysts for COP or FCX; FOMC minutes create afternoon uncertainty; Energy sector showing intraday weakness (XOM -3.5%). VIX at 17 not convincingly below threshold. Week trades 1/3 remain available for Thursday/Friday if cleaner setups emerge post-Jobs Report (May 8). All four stops active; no gap exits required.
 
-## YYYY-MM-DD — Pre-market Research
+## 2026-05-07 — Pre-market Research
 
 ### Account
-- Equity: $X
-- Cash: $X
-- Buying power: $X
-- Daytrade count: N
+- Equity: $101,144.93
+- Cash: $34,963.49 (34.6% — below 75-85% target; 4/6 positions open)
+- Buying power: $136,108.42
+- Daytrade count: 0
 
 ### Market Context
-- WTI / Brent:
-- S&P 500 futures:
-- VIX:
-- Today's catalysts:
-- Earnings before open:
-- Economic calendar:
-- Sector momentum:
+- S&P 500 futures: Positive — June E-mini +1.45%; Nasdaq futures +2.09% (US-Iran peace talks catalyst)
+- VIX: 17.44 (down from 18.51 Mon, slightly elevated)
+- Today's catalysts: US-Iran peace negotiations advancing (geopolitical risk-off); Productivity & Costs 08:30 ET (medium)
+- Earnings before open: DDOG (BMO — Q1 beat, +27-38% gap up to ~$182-199 range); MCD (BMO — no confirmed results)
+- Economic calendar: Challenger Job Cuts 11:30 ET (low); **Employment Situation + NFP tomorrow May 8 (HIGH)**
+- Sector momentum: Tech/AI strong (QQQ at all-time highs); Energy mixed (US-Iran peace = oil premium reduction bearish for XOM); Materials/Metals moderate
+
+### Open Position Status
+- AMKR: $75.89 (-1.76% today), +11.37% unrealized — trailing 10% stop $71.06, HWM $78.96
+- GOOGL: $397.37 (-0.17% today), +3.81% unrealized — trailing 10% stop $360.09, HWM $400.10
+- NVDA: $207.61 (-0.11% today), -0.78% unrealized — trailing 10% stop $187.55, HWM $208.39; earnings exit by May 19
+- XOM: $145.36 (-2.24% today), -4.69% unrealized — trailing 10% stop $139.76, HWM $155.29; only 3.9% above stop
+
+### Pre-market Gap Check (rule #15)
+- AMKR: open $76.99 vs prev close $77.22 → -0.30% — no action
+- GOOGL: open $399.92 vs prev close $398.04 → +0.47% — no action
+- NVDA: open $208.34 vs prev close $207.83 → +0.25% — no action
+- XOM: open $146.80 vs prev close $148.69 → -1.27% — above -7% threshold, no force exit
+
+### Drawdown Check (rule #14)
+- Day P&L: ($101,144.93 - $101,830.02) / $101,830.02 = -0.67% → OK (threshold -2%)
+- Week P&L: ($101,144.93 - $99,676.86) / $99,676.86 = +1.47% → OK (threshold -4%)
+- Circuit breaker: NOT tripped
 
 ### Trade Ideas
-1. TICKER — catalyst, entry $X, stop $X, target $X, R:R X:1
-2. ...
+1. DDOG — Q1 2026 earnings beat (fresh today, +27-38% gap to ~$190-199); IT sector, 3 positions with AMKR+NVDA (at sector cap 3/3). Entry ~$195, stop -7% $181.35, target $223+ (needed for 2:1 R:R). Entry scorer: catalyst 10, momentum 7 (chasing extended gap), risk_reward 4 (2:1 requires +14% additional from +36% gap), stop_distance 5 (no support at $181 after gap); total ~6.5 — FAILS <7 threshold.
+2. FCX — Copper/Materials proxy, no current Materials positions, copper demand AI/EV thesis. Entry ~$61.90, no fresh <48h catalyst. Entry scorer: catalyst 3 (thesis stale >3 days), total would fail <7.
 
 ### Risk Factors
-- ...
+- Jobs Report tomorrow May 8 (NFP, Employment Situation) — HIGH risk macro event; new positions carry full overnight exposure
+- VIX 17.44 — still elevated, not convincingly below 17 threshold
+- DDOG R:R too poor on extended +27-36% gap; momentum play at extreme extension
+- FCX lacks fresh dated catalyst — entry scorer would fail catalyst dimension
+- XOM only 3.9% above trailing stop ($145.36 vs stop $139.76); Energy sector weak; Iran peace talks reduce oil risk premium
+- NVDA earnings exit required by May 19 (rule #13); 9 trading days remaining
 
 ### Decision
 TRADE or HOLD (default HOLD if no edge)
