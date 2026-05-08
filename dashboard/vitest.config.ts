@@ -23,6 +23,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      // The real `server-only` package throws on import outside an RSC
+      // context. Tests run on plain Node, so we route the import to a
+      // no-op stub. Lets us unit-test settings.ts, etc., without booting
+      // Next.js.
+      "server-only": path.resolve(__dirname, "lib/__tests__/server-only-stub.ts"),
     },
   },
 });

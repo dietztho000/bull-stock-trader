@@ -27,6 +27,7 @@ const baseLinks: Omit<NavLink, "attention">[] = [
   { href: "/journal", label: "Journal", icon: JournalIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/strategy", label: "Strategy", icon: StrategyIcon },
+  { href: "/strategies", label: "Strategies", icon: StrategiesIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -259,6 +260,18 @@ function StrategyIcon({ className }: { className?: string }) {
       <circle cx="8" cy="8" r="6" />
       <circle cx="8" cy="8" r="3" />
       <circle cx="8" cy="8" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+function StrategiesIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="3" width="11" height="2.5" rx="0.5" />
+      <rect x="2.5" y="6.75" width="11" height="2.5" rx="0.5" />
+      <rect x="2.5" y="10.5" width="11" height="2.5" rx="0.5" />
+      <line x1="5" y1="4.25" x2="6" y2="4.25" />
+      <line x1="5" y1="8" x2="6" y2="8" />
+      <line x1="5" y1="11.75" x2="6" y2="11.75" />
     </svg>
   );
 }

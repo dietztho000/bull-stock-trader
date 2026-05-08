@@ -180,10 +180,15 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
   return next;
 }
 
-/** Throws if a bot references a missing account, or if account/bot ids are
- *  duplicated. Allocation overruns are allowed by default (warned in UI),
- *  but accounts with `hardCapAllocation = true` (audit F12) refuse the
- *  save when sum(bot.allocation) on this account exceeds totalCapital. */
+/** Throws if a bot references a missing account, or if account/bot/strategy
+ *  ids are duplicated. Allocation overruns are allowed by default (warned
+ *  in UI), but accounts with `hardCapAllocation = true` (audit F12) refuse
+ *  the save when sum(bot.allocation) on this account exceeds totalCapital.
+ *
+ *  Bot.strategySlug is intentionally NOT FK-checked here — Phase 2 adds
+ *  the registry but the bot form still accepts free-text slugs (Phase 3
+ *  swaps the input for a dropdown; Phase 5 adds the runtime FK guard once
+ *  every existing bot has been migrated to a registry slug). */
 function assertReferentialIntegrity(s: DashboardSettings): void {
   const accountIds = new Set<string>();
   for (const a of s.accounts) {
@@ -197,6 +202,13 @@ function assertReferentialIntegrity(s: DashboardSettings): void {
     if (!accountIds.has(b.accountId)) {
       throw new Error(`Bot "${b.id}" references missing account "${b.accountId}"`);
     }
+  }
+  const strategySlugs = new Set<string>();
+  for (const st of s.strategies) {
+    if (strategySlugs.has(st.slug)) {
+      throw new Error(`Duplicate strategy slug: ${st.slug}`);
+    }
+    strategySlugs.add(st.slug);
   }
   for (const a of s.accounts) {
     if (!a.hardCapAllocation) continue;
@@ -246,6 +258,36 @@ export async function listStrategies(): Promise<StrategyDefinition[]> {
 export async function getStrategy(slug: string): Promise<StrategyDefinition | null> {
   const all = await listStrategies();
   return all.find((s) => s.slug === slug) ?? null;
+}
+
+/** Creates a new strategy. Throws on duplicate slug. Phase 2 of the multi-
+ *  strategy upgrade — edit/disable/delete land in Phase 5. New entries
+ *  always start at `version: 1`; the `version` field is later bumped on
+ *  every `updateStrategy` call so the bot card can flag drift. */
+export async function addStrategy(
+  input: Omit<StrategyDefinition, "createdAt" | "updatedAt" | "version"> & {
+    createdAt?: string;
+    updatedAt?: string;
+    version?: number;
+  }
+): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  if (current.strategies.some((s) => s.slug === input.slug)) {
+    throw new Error(`Strategy slug "${input.slug}" already exists`);
+  }
+  const now = new Date().toISOString();
+  const next: StrategyDefinition = {
+    slug: input.slug,
+    name: input.name,
+    description: input.description ?? "",
+    enabled: input.enabled ?? true,
+    ruleBookTemplate: input.ruleBookTemplate ?? "",
+    params: input.params.map((p) => cloneStrategyParam(p)),
+    createdAt: input.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
+    version: input.version ?? 1,
+  };
+  return saveSettings({ strategies: [...current.strategies, next] });
 }
 
 export async function addAccount(account: Account): Promise<DashboardSettings> {
