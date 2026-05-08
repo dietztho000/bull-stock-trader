@@ -259,7 +259,9 @@ _pick_one_3way_merge() {
   # 3-way base — that's the correct base for "what did this writer add
   # vs the snapshot it branched from."
   local current_tree merged_tree merge_status
-  current_tree="$(git rev-parse HEAD^{tree})"
+  # Quoting silences SC1083 — the {tree} suffix is git's peel-to-tree
+  # gitrevisions syntax, not bash brace expansion.
+  current_tree="$(git rev-parse 'HEAD^{tree}')"
 
   for ref in "${writers[@]}"; do
     base="$(git merge-base "$ref" origin/main 2>/dev/null || true)"
