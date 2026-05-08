@@ -84,3 +84,6 @@
 {"ts":"2026-05-08T08:39:13Z","routine":"auth-canary","action":"end","status":"ok","git_sha":"f58b452"}
 {"ts":"2026-05-08T11:06:28Z","routine":"pre-market","action":"start","status":"ok","git_sha":"f58b452"}
 {"ts":"2026-05-08T11:11:23Z","routine":"pre-market","action":"end","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T13:31:25Z","routine":"market-open","action":"start","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T13:31:29Z","routine":"market-open","action":"start","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T13:36:40Z","routine":"market-open","action":"end","status":"ok","git_sha":"f58b452"}

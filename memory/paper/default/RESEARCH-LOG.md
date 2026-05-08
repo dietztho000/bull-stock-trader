@@ -165,52 +165,48 @@ TRADE or HOLD (default HOLD if no edge)
 - Pullback is technical; stock had run +79% YTD near 52-week high
 - Action: none — trailing stop $71.065 (HWM $78.96) is exchange authority
 
----
-
-## 2026-05-08 — Pre-market Research
+## 2026-05-08 — Pre-market Research (inline fallback)
 
 ### Account
-- Equity: $101,352.41
-- Cash: $34,963.49 (34.5% — below 75-85% target; 4/6 positions open)
-- Buying power: $136,315.90
+- Equity: $101,218.43
+- Cash: $34,963.49 (34.6% — below 75-85% target; 4/6 positions open)
+- Buying power: $136,181.92
 - Daytrade count: 0
-- Week trades: 1/3 used (2 remaining)
 
 ### Market Context
-- WTI: ~$94.87–96/barrel | Brent: ~$98–101/barrel (est.)
-- S&P 500 futures: +0.41–0.46% (ESM26 ~7,385); Nasdaq futures +0.6%
-- VIX: ~17.08 (May 7 close) — slightly elevated, pre-market data unavailable
-- **Today's big release: NFP / Employment Situation (April 2026) 08:30 ET** — forecast 65K vs prior 178K (sharp slowdown expected). Report already released. Futures holding gains (+0.41-0.46%) suggests data not catastrophic.
-- US-Iran tensions (Strait of Hormuz exchange of fire) — supporting oil; geopolitical risk present
-- Fed Cook Speech 09:45 ET; Consumer Sentiment + Factory Orders 10:00 ET
-- Next big: CPI May 12, PPI May 13, Retail Sales May 14, FOMC Minutes May 20
+- S&P 500 context: May 7 futures closed ~7,362.75; pulled back from recent highs amid geopolitical uncertainty and rising inflation expectations (NY Fed consumer inflation 3.6%)
+- VIX: Not confirmed intraday — options activity elevated heading into NFP (context: large E-mini put volume May 7)
+- **Today's catalysts: NFP Employment Situation 08:30 ET (HIGH risk macro event — April consensus ~62-70K; prior March +178K)**
+- NVDA: Goldman Sachs reiterated Buy; AI infrastructure partnership announcement (per Perplexity — fresh today); semiconductor sector confidence returning after AMD beat
+- Sector momentum: IT/Tech positive (AI tailwinds); Energy mixed (US-Iran geopolitics reducing oil risk premium)
 
-### Open Position Status & Pre-market Gap Check (rule #15)
-- AMKR: $73.60 (+1.84% vs prev $72.27) — trailing stop $71.065 (HWM $78.96); +8.01% unrealized. **Only 3.5% above stop — close watch required**. Investor Day May 21 upcoming. Form 144 filings May 5 (insider sales). Analyst consensus $62.75 Hold (below current).
-- GOOGL: $398.35 (+0.09% vs prev $397.99) — trailing stop $360.09 (HWM $400.10); +4.07% unrealized. Thesis intact; potential $200B Anthropic deal.
-- NVDA: $213.55 (+0.97% vs prev $211.50) — trailing stop $192.78 (HWM $214.20); +2.06% unrealized. **Earnings exit required by May 19 (8 trading days)**. Q4 FY26 beat: Rev $68.13B vs $65.56B est.
-- XOM: $146.31 (-0.18% vs prev $146.58) — trailing stop $139.761 (HWM $155.29); -4.07% unrealized. **Only 4.5% above stop**. Q1 beat: Rev $85.1B, EPS $2.09 vs $1.07 est. Analyst target $159.80 (+9.2%). US-Iran tensions support oil.
-- No force exits required (no gap ≤ -7%).
+### Open Position Status
+- AMKR: $73.10 (+1.15% today), +7.28% unrealized — trailing 10% stop $71.06 (HWM $78.96); only 2.8% above stop — HIGH WATCH on NFP volatility
+- GOOGL: $397.19 (-0.20% today), +3.76% unrealized — trailing 10% stop $360.09 (HWM $400.10)
+- NVDA: $214.05 (+1.21% today), +2.30% unrealized — trailing 10% stop $193.37 (HWM $214.85); earnings exit required by May 19
+- XOM: $145.075 (-1.03% today), -4.88% unrealized — trailing 10% stop $139.76 (HWM $155.29); 3.8% above stop — watch
+
+### Pre-market Gap Check (rule #15)
+- AMKR: open $74.38 vs prev close $72.27 → +2.92% gap UP — no force exit
+- GOOGL: open $397.00 vs prev close $397.99 → -0.25% — no action
+- NVDA: open $213.03 vs prev close $211.50 → +0.72% — no action
+- XOM: open $145.85 vs prev close $146.58 → -0.50% — no action
 
 ### Drawdown Check (rule #14)
-- Day P&L: ($101,352.41 - $100,910.31) / $100,910.31 = +0.44% → OK
-- Week P&L: ($101,352.41 - $99,676.86) / $99,676.86 = +1.68% → OK
+- Day P&L: ($101,218.43 - $100,910.31) / $100,910.31 = +0.30% → OK (threshold -2%)
+- Week P&L: ($101,218.43 - $99,676.86) / $99,676.86 = +1.55% → OK (threshold -4%)
 - Circuit breaker: NOT tripped
 
 ### Trade Ideas
-1. **No entry today (default HOLD)** — NFP release day creates elevated volatility regardless of print direction. VIX 17+ still elevated. AMKR and XOM both within 3.5-4.5% of stops. No fresh (<48h) catalyst identified for any non-held ticker that would score ≥7.
-
-### Sector Check (SECTOR-LEDGER.md)
-- Ledger empty — no sectors on 2-loss streak. No idea flagged.
-- Current exposure: IT (AMKR + NVDA = 2/3 cap), Energy (XOM = 1/3 cap), Communications (GOOGL = 1/3 cap)
+1. NVDA — Goldman Buy reiteration + AI infrastructure partnership (fresh today per Perplexity). BUT: IT sector already at 2/3 cap (AMKR + NVDA); adding would hit 3/3. Entry scorer: catalyst 8, momentum 8, R/R challenged on extended position already held, stop_distance neutral. Entry BLOCKED: sector concentration — IT already 2/3 (AMKR, NVDA); any new IT name would hit 3/3 cap if another idea comes up. Also re-entry guard N/A (not a stop-out). NFP day risk. Decision: HOLD existing position.
+2. No other fresh (<48h) high-conviction setups with named catalysts found via Perplexity.
 
 ### Risk Factors
-- NFP data (already released) — actual unknown; futures +0.41% suggests benign but data could be revised
-- VIX 17+ — elevated uncertainty; market at all-time highs priced for perfection
-- AMKR $73.60 vs stop $71.065 — 3.5% cushion; any continued weakness triggers stop
-- XOM $146.31 vs stop $139.761 — 4.5% cushion; Energy sector headwinds persist (Iran oil = mixed)
-- NVDA earnings exit deadline May 19 — must act by market-open May 19 at latest
-- US-Iran Strait of Hormuz exchange of fire — geopolitical tail risk, oil spike possible
+- **NFP Employment Situation (May 8 08:30 ET)** — HIGH macro risk; a significant beat (>158K) pressures equities via rate expectations; a miss rallies equities but signals weakness. Entering any new position today carries full NFP event risk.
+- AMKR only 2.8% above trailing stop — could shake out on NFP volatility spike
+- XOM only 3.8% above trailing stop — Energy sector weakness persists
+- VIX elevated context; week-end liquidity thinner
+- Week trades: 1/3 used (GOOGL, May 5); 2 remaining — reserve for post-NFP clarity next week
 
 ### Decision
-HOLD — NFP day volatility, VIX elevated, two positions dangerously close to stops. No fresh catalysts for new ideas. Preserve capital for next week's CPI/PPI window if cleaner setups emerge.
+HOLD — NFP day macro risk; no fresh catalysts for new positions passing entry-scorer >=7 that also clear all hard rules (sector concentration, NFP event risk). All four trailing stops active and exchange-enforced. 2/3 weekly trades preserved for next week.

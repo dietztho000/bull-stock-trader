@@ -319,15 +319,6 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for RTX (RTX Corporation)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for ZS (Zscaler)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 17:02 UTC | sonar | AMKR Amkor Technology stock move today May 7 2026 why is it falling news catalyst |
-| 2026-05-08 06:07 CT | sonar | WTI and Brent oil price right now May 8 2026 |
-| 2026-05-08 06:07 CT | sonar | S&P 500 futures premarket today May 8 2026 |
-| 2026-05-08 06:07 CT | sonar | VIX level today May 8 2026 |
-| 2026-05-08 06:07 CT | sonar | Top stock market catalysts today May 8 2026 |
-| 2026-05-08 06:07 CT | sonar | Earnings reports today May 8 2026 before market open |
-| 2026-05-08 06:08 CT | sonar | Economic calendar today May 8 2026 NFP jobs report CPI FOMC data |
-| 2026-05-08 06:08 CT | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors |
-| 2026-05-08 06:08 CT | sonar | AMKR Amkor Technology stock news May 2026 |
-| 2026-05-08 06:08 CT | sonar | GOOGL Google stock news May 2026 |
-| 2026-05-08 06:08 CT | sonar | NVDA Nvidia stock news May 2026 earnings |
-| 2026-05-08 06:08 CT | sonar | XOM ExxonMobil stock news May 2026 oil energy |
-| 2026-05-08 06:09 CT | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-08. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
+| 2026-05-08 08:32 CT | sonar | Today is Friday May 8, 2026. NFP Jobs Report day. Give me: 1) S&P 500 futures direction pre-market 2) VIX level 3) NFP jobs report result if released and market reaction 4) Top sector momentum leaders |
+| 2026-05-08 08:33 CT | sonar | May 8 2026 NFP jobs report result market reaction S&P 500 opening VIX semiconductor stocks NVDA AMKR technology sector momentum |
+| 2026-05-08 08:34 CT | sonar | What happened to S&P 500, NVDA, AMKR, GOOGL, XOM stocks on May 8 2026? What was the NFP report number? What are the biggest stock movers today May 8 2026? Any high conviction stock setups with fresh c |
