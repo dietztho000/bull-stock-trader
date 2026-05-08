@@ -98,3 +98,5 @@
 {"ts":"2026-05-08T19:07:17Z","routine":"afternoon","action":"start","status":"ok","git_sha":"d043538"}
 {"ts":"2026-05-08T19:07:20Z","routine":"afternoon","action":"start","status":"ok","git_sha":"d043538"}
 {"ts":"2026-05-08T19:08:41Z","routine":"afternoon","action":"end","status":"ok","git_sha":"d043538"}
+{"ts":"2026-05-08T20:07:12Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"a7a0a49"}
+{"ts":"2026-05-08T20:15:46Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"a7a0a49"}
