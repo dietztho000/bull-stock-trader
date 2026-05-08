@@ -319,5 +319,4 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for RTX (RTX Corporation)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for ZS (Zscaler)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 17:02 UTC | sonar | AMKR Amkor Technology stock move today May 7 2026 why is it falling news catalyst |
-| 2026-05-08 00:09 CT | sonar | For CVS Health (CVS) earnings reported on 2026-05-06 (BMO), return ONLY a JSON object: {"actualEps":"$X.XX or empty","postPrintMovePct":"+X.X% with sign or empty"}. The postPrintMovePct is the stock p |
-| 2026-05-08 00:10 CT | sonar | For Disney (DIS) earnings reported on 2026-05-06 BMO, return ONLY a JSON object: {"actualEps":"$X.XX or empty","postPrintMovePct":"+X.X% with sign or empty"}. postPrintMovePct is DIS stock price chang |
+| 2026-05-08 03:38 CT | sonar | current S&P 500 level (one number) |
