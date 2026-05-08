@@ -52,14 +52,27 @@ _routine_emit_start market-open
 
 The numbered STEP blocks below execute **once per enabled bot**. Source
 the bot list from `bash scripts/bots.sh list --routine=market-open`
-(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode`)
+(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode  strategy_params_json`)
 and iterate. The auth preflight inside the loop posts Discord + emits a
 discriminated RUN-LOG entry on failure, so a bad-creds bot is logged
 loudly and skipped without aborting the others.
 
+The 6th column is a compact JSON array of typed param objects from the
+strategies registry — `_routine_export_strategy_params` unpacks it into
+per-key `STRATEGY_<KEY>` env vars (scalars: number/percent/enum) plus
+`STRATEGY_<KEY>_JSON` for table params. Routines reference the resolved
+values with `${STRATEGY_<KEY>:-<safe-default>}` so default-strategy bots
+stay byte-identical to the pre-Phase-4 behavior.
+
 ```bash
-while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+  # bots.sh emits the literal string "null" for empty allocation so
+  # consecutive tabs never appear (bash IFS-tab collapses them otherwise
+  # and shifts later fields left). Translate back to empty for the
+  # downstream "[[ -z "$BOT_ALLOCATION" ]]" tests in STEPS.
+  [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+  _routine_export_strategy_params
   _routine_preflight_or_skip market-open || continue
   # ── STEPS 1..N from below run here for this bot ──
   # All memory paths use $BOT_ID/$STRATEGY.
@@ -71,6 +84,44 @@ After the loop completes, run the FINAL STEP from the footer (also
 mandatory — it emits the routine-completed heartbeat and commits + pushes
 all per-bot writes in a single batch).
 
+
+STEP 0 — **Active strategy parameters** (multi-strategy upgrade, Phase 4).
+Resolve the per-bot strategy values from env vars exported by the
+fan-out loop. Defaults are byte-for-byte the legacy literals — a `default`-
+strategy bot with no registry edits behaves exactly as before. Reference
+these resolved variables in the gating logic below; the rule numbers in
+prose still match TRADING-STRATEGY.md.
+
+```bash
+SECTOR_CAP=${STRATEGY_SECTOR_CAP:-3}
+MAX_OPEN_POSITIONS=${STRATEGY_MAX_OPEN_POSITIONS:-6}
+ENTRY_SCORE_MIN=${STRATEGY_ENTRY_SCORE_MIN:-7}
+EARNINGS_GATE_DAYS=${STRATEGY_EARNINGS_GATE_DAYS:-2}
+DAY_BREAKER_DEC=$(awk -v p="${STRATEGY_DAY_BREAKER_PCT:--2}" 'BEGIN{printf "%.4f", p/100}')
+WEEK_BREAKER_DEC=$(awk -v p="${STRATEGY_WEEK_BREAKER_PCT:--4}" 'BEGIN{printf "%.4f", p/100}')
+echo "[$BOT_ID] strategy=$STRATEGY sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC"
+# Conviction-table lookup helper. Use as: pct=$(conviction_pct $score)
+# Returns the position-size FRACTION (0.12, 0.15, 0.18, 0.20) keyed by
+# entry-scorer total. Defaults match rule #19 exactly.
+conviction_pct() {
+  local score="$1"
+  if [[ -n "${STRATEGY_CONVICTION_TABLE_JSON:-}" ]]; then
+    local v
+    v=$(printf '%s' "$STRATEGY_CONVICTION_TABLE_JSON" | jq -r ".[] | select(.k == $score) | .v" 2>/dev/null)
+    if [[ -n "$v" && "$v" != "null" ]]; then
+      awk -v v="$v" 'BEGIN{printf "%.4f", v/100}'
+      return
+    fi
+  fi
+  case "$score" in
+    7)  echo 0.12 ;;
+    8)  echo 0.15 ;;
+    9)  echo 0.18 ;;
+    10) echo 0.20 ;;
+    *)  echo 0.00 ;;
+  esac
+}
+```
 
 STEP 1 — Read memory for today's plan:
 - memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
@@ -129,22 +180,26 @@ STEP 3a — Drawdown circuit breaker (rule #14). Compute:
                       row if Monday is missing)
   day_pl = (current_equity - yesterday_equity) / yesterday_equity
   week_pl = (current_equity - week_start_equity) / week_start_equity
-If day_pl < -0.02 OR week_pl < -0.04, REFUSE all entries today. Post
-Discord error and skip to FINAL STEP:
+If day_pl < $DAY_BREAKER_DEC OR week_pl < $WEEK_BREAKER_DEC (resolved in
+STEP 0; defaults -0.02 / -0.04), REFUSE all entries today. Post Discord
+error and skip to FINAL STEP:
   bash scripts/discord.sh --type=fill "🛑 Drawdown circuit breaker tripped — day $(printf '%.2f' day_pl_pct)%, week $(printf '%.2f' week_pl_pct)%. No new entries today (rule #14)."
 Then jump to STEP 7's NO-TRADES branch with reason 'drawdown circuit breaker
 tripped'.
 
 STEP 3 — Hard-check rules BEFORE every order. Skip any trade that fails
 and log the reason:
-- Total positions after trade <= 6
+- Total positions after trade <= $MAX_OPEN_POSITIONS (default 6, resolved in STEP 0)
 - Trades this week <= 3
 - Position cost <= conviction-weighted target (rule #19): compute
-  target_pct from entry_scorer.total:
+  target_pct via the `conviction_pct $score` helper from STEP 0.
+  Defaults match the legacy table:
     score 7  -> target_pct = 0.12 (12% of effective_equity)
     score 8  -> target_pct = 0.15
     score 9  -> target_pct = 0.18
     score 10 -> target_pct = 0.20
+  Custom strategies override these via STRATEGY_CONVICTION_TABLE_JSON
+  (a registry `table` param keyed by entry-score total → percent value).
   Cap qty so `qty * ask <= effective_equity * target_pct` (where
   effective_equity is the slice value from STEP 2c — bot allocation when
   soft-sliced, else raw account equity). The position MUST also fit under
@@ -160,8 +215,9 @@ and log the reason:
   in memory/shared/SECTOR-MAP.md, then re-check.
 - Sector concentration (rule #17): count current open positions by GICS
   sector via memory/shared/SECTOR-MAP.md. REFUSE this entry if the new trade
-  would push that sector to > 3 positions. Log "BLOCKED: sector
-  concentration cap reached (3/3 in $sector)".
+  would push that sector to > $SECTOR_CAP positions (default 3, resolved
+  in STEP 0). Log "BLOCKED: sector concentration cap reached
+  ($SECTOR_CAP/$SECTOR_CAP in $sector)".
 - Re-entry guard (rule #20): grep memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md for closed-
   trade rows of $TICKER with outcome `L` in the last 3 trading days.
   If found AND no fresh dated catalyst for $TICKER appears in today's
@@ -169,15 +225,17 @@ and log the reason:
   with a date >= prior stop-out), REFUSE this entry. Log "BLOCKED:
   re-entry cooldown (stopped out YYYY-MM-DD, no new catalyst)".
 - Earnings gate (rule #13): read memory/$BOT_ID/$STRATEGY/EARNINGS-CALENDAR.md row for
-  $TICKER. If `Next Earnings Date` is within 2 trading days of today
-  (i.e., today, tomorrow, or day-after when day-after is a trading day),
-  REFUSE this entry. Log "BLOCKED: earnings within 2 trading days
-  ($earnings_date $bmo_amc)". If the row is missing, fall back to a fresh
-  perplexity.sh query and append to EARNINGS-CALENDAR.md (idempotent
-  grep-and-replace by Symbol).
+  $TICKER. If `Next Earnings Date` is within $EARNINGS_GATE_DAYS trading
+  days of today (default 2, resolved in STEP 0 — i.e., today, tomorrow,
+  or day-after when day-after is a trading day for the default), REFUSE
+  this entry. Log "BLOCKED: earnings within $EARNINGS_GATE_DAYS trading
+  days ($earnings_date $bmo_amc)". If the row is missing, fall back to a
+  fresh perplexity.sh query and append to EARNINGS-CALENDAR.md
+  (idempotent grep-and-replace by Symbol).
 - Entry scorer (see TRADING-STRATEGY.md "Entry Scorer"): each trade must
-  score >= 7/10 across catalyst, momentum, R:R, stop-distance. Record
-  the score block in TRADE-LOG before STEP 4.
+  score >= $ENTRY_SCORE_MIN/10 across catalyst, momentum, R:R,
+  stop-distance (default 7, resolved in STEP 0). Record the score block
+  in TRADE-LOG before STEP 4.
 
 STEP 4 — Execute the buys. Default to a marketable LIMIT at midpoint
 + 10 bps to reduce slippage on small-cap names; fall back to MARKET if
@@ -223,7 +281,7 @@ Trades placed: N
   Catalyst: <one-liner>
   Entry score: X/10 (cat:X mom:X r/r:X stop:X)
 
-💰 Cash: \$X | Positions: N/6 | Trades this week: X/3"
+💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS | Trades this week: X/3"
 
 If NO trades fired, post a short reason-coded confirmation:
   bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(TZ=America/Chicago date +%H:%M) CT
@@ -231,7 +289,7 @@ If NO trades fired, post a short reason-coded confirmation:
 No trades fired.
 Reason: <pick the most specific match: 'drawdown circuit breaker tripped' | 'no actionable plan in RESEARCH-LOG' | 'VIX XX.X (>=25 regime gate)' | 'sector rotation block on SYM' | 'sector concentration cap (3/3 in SECTOR)' | 'earnings within 2 trading days on all ideas' | 'all ideas failed entry-scorer (<7)' | 'position cap reached (6/6)' | 'weekly trade cap reached (3/3)' | 'PDT block'>
 
-💰 Cash: \$X | Positions: N/6"
+💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS"
 
 The post is mandatory either way — no silent runs.
 

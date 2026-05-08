@@ -50,14 +50,27 @@ _routine_emit_start {{ROUTINE}}
 
 The numbered STEP blocks below execute **once per enabled bot**. Source
 the bot list from `bash scripts/bots.sh list --routine={{ROUTINE}}`
-(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode`)
+(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode  strategy_params_json`)
 and iterate. The auth preflight inside the loop posts Discord + emits a
 discriminated RUN-LOG entry on failure, so a bad-creds bot is logged
 loudly and skipped without aborting the others.
 
+The 6th column is a compact JSON array of typed param objects from the
+strategies registry — `_routine_export_strategy_params` unpacks it into
+per-key `STRATEGY_<KEY>` env vars (scalars: number/percent/enum) plus
+`STRATEGY_<KEY>_JSON` for table params. Routines reference the resolved
+values with `${STRATEGY_<KEY>:-<safe-default>}` so default-strategy bots
+stay byte-identical to the pre-Phase-4 behavior.
+
 ```bash
-while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+  # bots.sh emits the literal string "null" for empty allocation so
+  # consecutive tabs never appear (bash IFS-tab collapses them otherwise
+  # and shifts later fields left). Translate back to empty for the
+  # downstream "[[ -z "$BOT_ALLOCATION" ]]" tests in STEPS.
+  [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+  _routine_export_strategy_params
   _routine_preflight_or_skip {{ROUTINE}} || continue
   # ── STEPS 1..N from below run here for this bot ──
   # All memory paths use $BOT_ID/$STRATEGY.

@@ -18,15 +18,30 @@
 #                                                e.g. "PAPER_100K" for slug
 #                                                "paper-100k"
 #
-# `list` row format (TAB-separated):
-#   bot_id  account_id  strategy  allocation  mode
-# Where `allocation` is "" if null (use full account) and `mode` is the
-# account's mode ("live" | "paper").
+# `list` row format (TAB-separated, six columns):
+#   bot_id  account_id  strategy  allocation  mode  strategy_params_json
+# Where `allocation` is the literal string "null" if the bot uses the full
+# account (no soft slice), `mode` is the account's mode ("live" | "paper"),
+# and `strategy_params_json` is the compact-JSON params array from the
+# registry's matching strategy entry (`[]` when the registry has no entry
+# for the slug — routines fall back to documented defaults). Phase 4 of
+# the multi-strategy upgrade.
+#
+# Why "null" rather than empty for the allocation field: bash's `read`
+# with IFS=$'\t' treats consecutive tabs as a SINGLE delimiter when IFS
+# only contains whitespace. Emitting "null" avoids the consecutive-tab
+# collapse that would otherwise shift downstream fields left and clobber
+# strategy_params_json.
 #
 # Example loop in a routine:
-#   while IFS=$'\t' read -r bot_id account_id strategy allocation mode; do
+#   while IFS=$'\t' read -r bot_id account_id strategy allocation mode params_json; do
 #     export BOT_ID="$bot_id" ACCOUNT_ID="$account_id" STRATEGY="$strategy"
-#     export BOT_ALLOCATION="$allocation"
+#     # Translate the registry's "no allocation" sentinel back to empty
+#     # so per-bot routines see a clean test ([[ -z "$BOT_ALLOCATION" ]]).
+#     [[ "$allocation" == "null" ]] && allocation=""
+#     export BOT_ALLOCATION="$allocation" BOT_MODE="$mode"
+#     export STRATEGY_PARAMS_JSON="$params_json"
+#     # _cloud-header.md unpacks the JSON into per-key STRATEGY_<KEY> vars.
 #     # ... run steps ...
 #   done < <(bash scripts/bots.sh list)
 #
@@ -81,13 +96,16 @@ case "$cmd" in
     fi
     jq -r --argjson enabled "{}" '
       (.accounts // [] | map({key: .id, value: .mode}) | from_entries) as $modes
+      | (.strategies // [] | map({key: .slug, value: (.params // [])}) | from_entries) as $params
       | (.bots // [])
       | map('"$enabled_filter"')
       | map('"$routine_filter"')
       | .[]
-      | [.id, .accountId, (.strategySlug // "default"),
-         (.allocation // "" | tostring | sub("^null$"; "")),
-         ($modes[.accountId] // "unknown")]
+      | (.strategySlug // "default") as $slug
+      | [.id, .accountId, $slug,
+         (if (.allocation // null) == null then "null" else (.allocation | tostring) end),
+         ($modes[.accountId] // "unknown"),
+         (($params[$slug] // []) | tojson)]
       | @tsv
     ' "$SETTINGS_FILE"
     ;;

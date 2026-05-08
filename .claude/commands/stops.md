@@ -21,13 +21,21 @@ DATE=$(date +%Y-%m-%d)
 source scripts/_routine-header.sh
 _routine_assert_bots_present stops
 _routine_emit_start stops
-while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+  [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+  _routine_export_strategy_params
   _routine_preflight_or_skip stops || continue
   # — STEPS 1..N below execute per bot —
 done < <(bash scripts/bots.sh list --routine=stops)
 _routine_emit_end stops ok
 ```
+
+The stop-mechanics literals (-7% trigger, -8% slippage floor, +1%
+promotion threshold, 10% trail, 7%/5% ratchet) are NOT yet in the
+strategies registry — they're stop-management parameters, not entry-rule
+parameters. A future phase can promote them to typed knobs the same way
+sector_cap / day_breaker were promoted in Phase 4.
 
 <!-- STEPS-BEGIN -->
 

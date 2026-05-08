@@ -6,22 +6,49 @@ Execute a manual trade with full rule validation. Refuse if any rule fails.
 
 Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
 
+0. **Active strategy parameters** — resolve from env vars exported by the
+   per-bot loop (or use safe defaults matching rule #14, #17, #19, #12).
+   Source `scripts/_routine-header.sh` and call
+   `_routine_export_strategy_params` if you want to trade against a non-
+   `default` strategy locally; otherwise the defaults below kick in.
+
+   ```bash
+   SECTOR_CAP=${STRATEGY_SECTOR_CAP:-3}
+   MAX_OPEN_POSITIONS=${STRATEGY_MAX_OPEN_POSITIONS:-6}
+   ENTRY_SCORE_MIN=${STRATEGY_ENTRY_SCORE_MIN:-7}
+   EARNINGS_GATE_DAYS=${STRATEGY_EARNINGS_GATE_DAYS:-2}
+   DAY_BREAKER_DEC=$(awk -v p="${STRATEGY_DAY_BREAKER_PCT:--2}" 'BEGIN{printf "%.4f", p/100}')
+   WEEK_BREAKER_DEC=$(awk -v p="${STRATEGY_WEEK_BREAKER_PCT:--4}" 'BEGIN{printf "%.4f", p/100}')
+   conviction_pct() {
+     local score="$1"
+     if [[ -n "${STRATEGY_CONVICTION_TABLE_JSON:-}" ]]; then
+       local v
+       v=$(printf '%s' "$STRATEGY_CONVICTION_TABLE_JSON" | jq -r ".[] | select(.k == $score) | .v" 2>/dev/null)
+       if [[ -n "$v" && "$v" != "null" ]]; then awk -v v="$v" 'BEGIN{printf "%.4f", v/100}'; return; fi
+     fi
+     case "$score" in 7) echo 0.12 ;; 8) echo 0.15 ;; 9) echo 0.18 ;; 10) echo 0.20 ;; *) echo 0.00 ;; esac
+   }
+   echo "strategy=${STRATEGY:-default} sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC"
+   ```
+
 1. Pull state: account, positions, quote SYMBOL (capture bid bp, ask ap).
 2. For BUY, validate (in this order — STOP and print failed checks if any fail):
    - Drawdown circuit breaker (rule #14): compute day_pl and week_pl from
      account.equity (live) minus the most recent EOD-snapshot equity in
-     memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md. REFUSE if day_pl < -0.02 OR week_pl < -0.04.
+     memory/${BOT_MODE:-live}/${STRATEGY:-default}/BENCHMARK.md. REFUSE if day_pl < $DAY_BREAKER_DEC OR week_pl < $WEEK_BREAKER_DEC (default -0.02 / -0.04 from STEP 0).
      Print "BLOCKED: drawdown circuit breaker tripped (day X.X%, week Y.Y%)".
    - Earnings gate (rule #13): read memory/${BOT_MODE:-live}/${STRATEGY:-default}/EARNINGS-CALENDAR.md row for
-     SYMBOL. If `Next Earnings Date` is within 2 trading days of today,
-     REFUSE. Print "BLOCKED: earnings within 2 trading days
+     SYMBOL. If `Next Earnings Date` is within $EARNINGS_GATE_DAYS
+     trading days of today (default 2 from STEP 0), REFUSE. Print
+     "BLOCKED: earnings within $EARNINGS_GATE_DAYS trading days
      ($earnings_date $bmo_amc)". If row missing, query perplexity.sh and
      append to EARNINGS-CALENDAR.md before re-checking.
-   - Total positions after fill <= 6
+   - Total positions after fill <= $MAX_OPEN_POSITIONS (default 6 from STEP 0)
    - Trades this week + 1 <= 3
    - SHARES * ask <= conviction-weighted target (rule #19): compute
-     target_pct from the entry score you score in the validator below
-     (7→12%, 8→15%, 9→18%, 10→20%). REFUSE if SHARES * ask >
+     target_pct via `conviction_pct $score` (helper in STEP 0). Defaults:
+     7→12%, 8→15%, 9→18%, 10→20%. Custom strategies override via
+     STRATEGY_CONVICTION_TABLE_JSON. REFUSE if SHARES * ask >
      equity * target_pct. Print "BLOCKED: position size $X exceeds
      conviction target $Y (score N → cap N%)".
    - SHARES * ask <= available cash
@@ -39,9 +66,9 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
      30 days. Print "BLOCKED: sector rotation rule (last 2 X-sector trades
      were losses)".
    - Sector concentration (rule #17): count open positions by sector via
-     SECTOR-MAP.md. REFUSE if this entry would push that sector to > 3
-     positions. Print "BLOCKED: sector concentration cap reached (3/3 in
-     $sector)".
+     SECTOR-MAP.md. REFUSE if this entry would push that sector to >
+     $SECTOR_CAP positions (default 3 from STEP 0). Print "BLOCKED: sector
+     concentration cap reached ($SECTOR_CAP/$SECTOR_CAP in $sector)".
    - Re-entry guard (rule #20): grep memory/${BOT_MODE:-live}/${STRATEGY:-default}/SECTOR-LEDGER.md for closed
      trades of SYMBOL with outcome `L` in the last 3 trading days. If
      found AND today's RESEARCH-LOG has no fresh dated catalyst for
@@ -54,8 +81,8 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
        risk_reward (target / stop distance, must be >= 2:1)
        stop_distance (room above last support, not within 3% of entry)
      Compute total = round((catalyst + momentum + risk_reward + stop_distance) / 4).
-     If total < 7, REFUSE the trade. Print the rubric and scores so the
-     user can see why.
+     If total < $ENTRY_SCORE_MIN, REFUSE the trade (default 7 from STEP 0).
+     Print the rubric and scores so the user can see why.
 3. For SELL, confirm position exists with right qty. No other checks.
 4. Choose order type (BUY only):
      mid = (bp + ap) / 2; spread_bps = (ap - bp) / mid * 10000

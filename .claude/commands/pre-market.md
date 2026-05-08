@@ -18,8 +18,10 @@ DATE=$(date +%Y-%m-%d)
 source scripts/_routine-header.sh
 _routine_assert_bots_present pre-market
 _routine_emit_start pre-market
-while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+  [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+  _routine_export_strategy_params
   _routine_preflight_or_skip pre-market || continue
   # — STEPS 1..N below execute per bot —
 done < <(bash scripts/bots.sh list --routine=pre-market)

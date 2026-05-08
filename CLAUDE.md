@@ -75,6 +75,43 @@ For discord.sh, always pass `--type=<category>` so each message gets a
 category emoji prefix. Categories: research, fill, midday, eod, weekly,
 error.
 
+## Strategy env vars in routines (Phase 4)
+
+The cloud `_cloud-header.md` per-bot fan-out exports each strategy's
+typed knobs as `STRATEGY_<KEY>` env vars before the STEP body runs.
+Number/percent/enum params land as scalars; table params land as
+`STRATEGY_<KEY>_JSON` (compact JSON arrays — routines `jq` over them).
+
+A routine that gates on a knob references it with a safe-default
+fallback: `${STRATEGY_DAY_BREAKER_PCT:--2}`. Defaults must equal the
+legacy literal so a `default`-strategy bot stays byte-identical to its
+pre-Phase-4 behavior.
+
+The `default` strategy currently exposes:
+
+| Env var                          | Default | Rule |
+|----------------------------------|---------|------|
+| `STRATEGY_SECTOR_CAP`            | 3       | #17  |
+| `STRATEGY_MAX_OPEN_POSITIONS`    | 6       | #3   |
+| `STRATEGY_DAY_BREAKER_PCT`       | -2      | #14  |
+| `STRATEGY_WEEK_BREAKER_PCT`      | -4      | #14  |
+| `STRATEGY_ENTRY_SCORE_MIN`       | 7       | #12  |
+| `STRATEGY_EARNINGS_GATE_DAYS`    | 2       | #13  |
+| `STRATEGY_CONVICTION_TABLE_JSON` | 7→12, 8→15, 9→18, 10→20 | #19 |
+
+Routines that consume these (today): `market-open`, `trade`. The
+preamble at the top of those commands' STEPS resolves the env vars
+into local shell vars (`SECTOR_CAP`, `MAX_OPEN_POSITIONS`,
+`DAY_BREAKER_DEC`, `WEEK_BREAKER_DEC`, `conviction_pct` helper) so the
+gating logic stays readable.
+
+To add a NEW knob to an existing strategy:
+1. Add a typed `StrategyParam` to that strategy via `/strategies` UI.
+2. Reference `${STRATEGY_<KEY>:-<safe-default>}` in the relevant
+   command file's STEP 0 preamble + decision lines.
+3. `bash scripts/build-routines.sh` to regenerate `routines/*.md`.
+4. Commit + push.
+
 ## Strategies registry (Phase 1)
 
 The dashboard now persists a list of named strategies in

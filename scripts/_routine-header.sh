@@ -10,8 +10,9 @@
 #   _routine_assert_bots_present pre-market   # Discord error + exit if 0 enabled
 #   _routine_emit_start          pre-market   # heartbeat: routine fired
 #
-#   while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE; do
-#     export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE
+#   while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+#     export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+#     _routine_export_strategy_params           # → STRATEGY_<KEY> + STRATEGY_<KEY>_JSON
 #     _routine_preflight_or_skip pre-market || continue
 #     # STEP 1..N below — alpaca.sh calls include
 #     # --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID"
@@ -69,17 +70,66 @@ _emit_run_log_for_each_bot() {
   # this file is sourced interactively. Rename to `run_status` so the
   # helpers work the same when called from bash, zsh, or via `bash …`.
   local action="$1" routine="$2" run_status="$3"
-  local bot acct strat alloc mode
-  # acct/alloc/mode are intentionally consumed but unused here — bots.sh
-  # list emits 5 fields per row and we only need bot+strategy for the
-  # heartbeat write.
+  local bot acct strat alloc mode params_json
+  # acct/alloc/mode/params_json are intentionally consumed but unused
+  # here — bots.sh list emits 6 fields per row (Phase 4 added the params
+  # JSON) and we only need bot+strategy for the heartbeat write. The
+  # literal "null" sentinel for empty allocation prevents IFS-tab from
+  # collapsing consecutive delimiters; we don't need to translate it
+  # back here because we don't use $alloc.
   # shellcheck disable=SC2034
-  while IFS=$'\t' read -r bot acct strat alloc mode; do
+  while IFS=$'\t' read -r bot acct strat alloc mode params_json; do
     [[ -z "$bot" ]] && continue
     BOT_ID="$bot" STRATEGY="${strat:-default}" \
       bash "$ROUTINE_HEADER_ROOT/scripts/run-log.sh" "$action" "$routine" "$run_status" \
       >/dev/null
   done < <(bash "$ROUTINE_HEADER_ROOT/scripts/bots.sh" list)
+}
+
+# Unpack the per-bot STRATEGY_PARAMS_JSON exported by the fan-out loop
+# into per-key env vars. Phase 4 of the multi-strategy upgrade.
+#
+# - number / percent / enum params: exported as `STRATEGY_<KEY>=<value>`
+#   where <value> is the raw scalar (numbers stay as numbers, enums stay
+#   as strings).
+# - table params: exported as `STRATEGY_<KEY>_JSON=<compact-json-array>`.
+#   Routines look up rows with `jq -r '.[] | select(.k==…) | .v'`.
+#
+# A missing or empty STRATEGY_PARAMS_JSON is a no-op — routines fall back
+# to documented defaults via `${STRATEGY_<KEY>:-<default>}` substitution,
+# which keeps default-strategy bots byte-identical to pre-Phase-4 runs.
+#
+# Bash 3.2-safe (macOS): no `mapfile`, no `declare -A`. Uses `eval` to
+# export — values are JSON-encoded scalars so they're safe (no shell
+# metacharacters slip through `jq` for the kinds we support).
+_routine_export_strategy_params() {
+  [[ -z "${STRATEGY_PARAMS_JSON:-}" || "$STRATEGY_PARAMS_JSON" == "null" ]] && return 0
+  local params_count
+  params_count=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq 'length' 2>/dev/null || echo 0)
+  [[ "$params_count" == "0" ]] && return 0
+  local i kind key value rows_json export_name
+  for ((i = 0; i < params_count; i++)); do
+    kind=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].kind")
+    key=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].key")
+    [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] || continue
+    case "$kind" in
+      number|percent)
+        value=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].value")
+        export_name="STRATEGY_${key}"
+        eval "export $export_name=\"\$value\""
+        ;;
+      enum)
+        value=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].value")
+        export_name="STRATEGY_${key}"
+        eval "export $export_name=\"\$value\""
+        ;;
+      table)
+        rows_json=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -c ".[$i].rows")
+        export_name="STRATEGY_${key}_JSON"
+        eval "export $export_name=\"\$rows_json\""
+        ;;
+    esac
+  done
 }
 
 # Per-iteration preflight. Returns non-zero when the bot's creds are bad —
