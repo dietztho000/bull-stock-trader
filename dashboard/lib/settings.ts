@@ -1,7 +1,7 @@
 import "server-only";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { resolveMemoryFile, setMemoryAliases } from "./memoryPath";
+import { botMemoryDir, resolveMemoryFile, setMemoryAliases } from "./memoryPath";
 import {
   DEFAULTS,
   REDACTED_MASK,
@@ -260,6 +260,69 @@ export async function getStrategy(slug: string): Promise<StrategyDefinition | nu
   return all.find((s) => s.slug === slug) ?? null;
 }
 
+/** Empty marker files seeded into a bot's per-strategy memory dir alongside
+ *  TRADING-STRATEGY.md. Routines append to these; pre-creating them keeps
+ *  the first cron tick after a strategy switch from tripping "no such file
+ *  or directory" errors. RUN-LOG.jsonl is intentionally append-only — it
+ *  starts empty so the daily-summary watchdog sees an empty stream rather
+ *  than a missing file. */
+const STRATEGY_BOOTSTRAP_FILES = [
+  "TRADE-LOG.md",
+  "RESEARCH-LOG.md",
+  "BENCHMARK.md",
+  "SECTOR-LEDGER.md",
+  "RUN-LOG.jsonl",
+] as const;
+
+/** Idempotently creates `memory/<botId>/<strategySlug>/` and seeds it with
+ *  TRADING-STRATEGY.md (from the registry's `ruleBookTemplate`) plus a few
+ *  empty marker files. Existing files are NEVER overwritten — once a bot's
+ *  rule book has been customized via routines or hand-edits, repeat calls
+ *  are no-ops on the rule-book front.
+ *
+ *  Returns which files were created vs. skipped, mostly for tests + logging.
+ *  Safe to call from the request path: each file write is small and the
+ *  whole operation is bounded to one bot + one strategy slug. */
+export async function ensureBotStrategyMemory(
+  botId: string,
+  strategySlug: string
+): Promise<{ created: string[]; skipped: string[] }> {
+  const dir = botMemoryDir(botId, strategySlug);
+  await fs.mkdir(dir, { recursive: true });
+  const created: string[] = [];
+  const skipped: string[] = [];
+
+  const ruleBookPath = path.join(dir, "TRADING-STRATEGY.md");
+  if (await fileExists(ruleBookPath)) {
+    skipped.push("TRADING-STRATEGY.md");
+  } else {
+    const def = await getStrategy(strategySlug);
+    const tpl = def?.ruleBookTemplate ?? "";
+    await fs.writeFile(ruleBookPath, tpl, "utf8");
+    created.push("TRADING-STRATEGY.md");
+  }
+
+  for (const file of STRATEGY_BOOTSTRAP_FILES) {
+    const filePath = path.join(dir, file);
+    if (await fileExists(filePath)) {
+      skipped.push(file);
+    } else {
+      await fs.writeFile(filePath, "", "utf8");
+      created.push(file);
+    }
+  }
+  return { created, skipped };
+}
+
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Creates a new strategy. Throws on duplicate slug. Phase 2 of the multi-
  *  strategy upgrade — edit/disable/delete land in Phase 5. New entries
  *  always start at `version: 1`; the `version` field is later bumped on
@@ -336,7 +399,19 @@ export async function addBot(bot: Bot): Promise<DashboardSettings> {
   if (current.bots.some((b) => b.id === bot.id)) {
     throw new Error(`Bot id "${bot.id}" already exists`);
   }
-  return saveSettings({ bots: [...current.bots, bot] });
+  // Stamp the strategy version snapshot so the bot card can later show a
+  // "strategy edited since assignment" badge when the registry advances.
+  const stamped: Bot = {
+    ...bot,
+    strategyVersionAtAssign:
+      bot.strategyVersionAtAssign ??
+      current.strategies.find((s) => s.slug === bot.strategySlug)?.version,
+  };
+  const next = await saveSettings({ bots: [...current.bots, stamped] });
+  // Seed the per-bot strategy memory dir so the first cron tick has files
+  // to read. Idempotent — safe even if the dir already exists.
+  await ensureBotStrategyMemory(stamped.id, stamped.strategySlug);
+  return next;
 }
 
 export async function updateBot(
@@ -358,9 +433,22 @@ export async function updateBot(
   const current = await loadSettings();
   const idx = current.bots.findIndex((b) => b.id === id);
   if (idx < 0) throw new Error(`Bot "${id}" not found`);
+  const before = current.bots[idx];
+  const merged: Bot = { ...before, ...patch };
+  // When the strategy slug changes, refresh the version stamp from the
+  // registry so the new assignment is "current". Unchanged slug = leave
+  // the stamp alone (still represents whatever the user last assigned).
+  if (patch.strategySlug && patch.strategySlug !== before.strategySlug) {
+    const def = current.strategies.find((s) => s.slug === patch.strategySlug);
+    merged.strategyVersionAtAssign = def?.version;
+  }
   const nextBots = current.bots.slice();
-  nextBots[idx] = { ...nextBots[idx], ...patch };
-  return saveSettings({ bots: nextBots });
+  nextBots[idx] = merged;
+  const next = await saveSettings({ bots: nextBots });
+  if (patch.strategySlug && patch.strategySlug !== before.strategySlug) {
+    await ensureBotStrategyMemory(id, patch.strategySlug);
+  }
+  return next;
 }
 
 export async function deleteBot(id: string): Promise<DashboardSettings> {

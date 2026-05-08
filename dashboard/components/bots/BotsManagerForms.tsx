@@ -1,9 +1,126 @@
 "use client";
 
-import { useState } from "react";
-import { mutate } from "swr";
-import type { Bot, RedactedAccount } from "@/lib/settings";
+import { useMemo, useState } from "react";
+import useSWR, { mutate } from "swr";
+import type { Bot, RedactedAccount, StrategyDefinition } from "@/lib/settings";
 import { AllocationBar, type AllocationSlice } from "./AllocationBar";
+
+const STRATEGIES_URL = "/api/strategies";
+
+const strategiesFetcher = (url: string) =>
+  fetch(url)
+    .then((r) => r.json())
+    .then((d) => (d as { strategies: StrategyDefinition[] }).strategies ?? []);
+
+/** Hook used by both BotForm and EditBotForm. SWR-shared so opening one
+ *  modal warms the cache for the other. Falls back to an empty array when
+ *  the registry is unseeded — the picker compensates by surfacing the
+ *  current slug as an "(unmanaged)" option. */
+function useStrategies(): StrategyDefinition[] {
+  const { data } = useSWR<StrategyDefinition[]>(STRATEGIES_URL, strategiesFetcher);
+  return data ?? [];
+}
+
+/** Renders the strategy picker (dropdown) + a read-only preview of the
+ *  selected strategy's typed knobs and rule-book line count. The preview
+ *  helps users sanity-check what the bot will run with before saving;
+ *  knob edits happen on /strategies, not here. */
+function StrategyPicker({
+  value,
+  onChange,
+  hint,
+}: {
+  value: string;
+  onChange: (slug: string) => void;
+  hint?: string;
+}) {
+  const strategies = useStrategies();
+  // Include the current value as an option even if it's not in the
+  // registry (e.g., legacy bots whose slug predates the seed).
+  const options = useMemo(() => {
+    const known = new Set(strategies.map((s) => s.slug));
+    const list = strategies.map((s) => ({
+      slug: s.slug,
+      name: s.name,
+      enabled: s.enabled,
+    }));
+    if (value && !known.has(value)) {
+      list.unshift({ slug: value, name: `${value} (unmanaged)`, enabled: true });
+    }
+    return list;
+  }, [strategies, value]);
+  const selected = strategies.find((s) => s.slug === value) ?? null;
+  return (
+    <Field
+      label="Strategy"
+      hint={hint ?? "Memory dir: memory/<bot>/<strategy>/. Edit knobs on /strategies."}
+    >
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputClass}
+      >
+        {options.length === 0 && <option value="">— no strategies registered —</option>}
+        {options.map((s) => (
+          <option key={s.slug} value={s.slug} disabled={!s.enabled}>
+            {s.name} ({s.slug})
+            {!s.enabled ? " · disabled" : ""}
+          </option>
+        ))}
+      </select>
+      {selected && <StrategyPreview strategy={selected} />}
+    </Field>
+  );
+}
+
+function StrategyPreview({ strategy }: { strategy: StrategyDefinition }) {
+  const ruleBookLines = strategy.ruleBookTemplate.trim().length
+    ? strategy.ruleBookTemplate.split("\n").length
+    : 0;
+  if (strategy.params.length === 0) {
+    return (
+      <div className="mt-2 text-[10px] text-[var(--color-muted)]">
+        v{strategy.version} · no typed params · {ruleBookLines} rule-book line
+        {ruleBookLines === 1 ? "" : "s"}
+      </div>
+    );
+  }
+  return (
+    <details className="mt-2 text-[10px] text-[var(--color-muted)]">
+      <summary className="cursor-pointer">
+        v{strategy.version} · {strategy.params.length} param
+        {strategy.params.length === 1 ? "" : "s"} · {ruleBookLines} rule-book line
+        {ruleBookLines === 1 ? "" : "s"}
+      </summary>
+      <ul className="mt-1.5 space-y-0.5 pl-2">
+        {strategy.params.slice(0, 8).map((p) => (
+          <li key={p.key} className="flex items-baseline justify-between gap-2">
+            <span className="truncate">{p.label}</span>
+            <span className="font-mono text-[var(--color-text)] shrink-0">
+              {formatPreviewValue(p)}
+            </span>
+          </li>
+        ))}
+        {strategy.params.length > 8 && (
+          <li className="text-[9px]">+{strategy.params.length - 8} more</li>
+        )}
+      </ul>
+    </details>
+  );
+}
+
+function formatPreviewValue(p: StrategyDefinition["params"][number]): string {
+  switch (p.kind) {
+    case "number":
+      return p.unit ? `${p.value} ${p.unit}` : String(p.value);
+    case "percent":
+      return `${p.value}%`;
+    case "enum":
+      return p.value;
+    case "table":
+      return `${p.rows.length} rows`;
+  }
+}
 
 /** Audit NA7 — extracted from BotsManager.tsx so the parent stays focused
  *  on rendering account rows and bot cards. Owns the create/edit modals,
@@ -561,14 +678,7 @@ export function BotForm({
           totalCapital={account?.totalCapital ?? null}
           slices={allocationSlices}
         />
-        <Field label="Strategy slug" hint="Memory dir: memory/<bot>/<strategy>/">
-          <input
-            value={strategySlug}
-            onChange={(e) => setStrategySlug(e.target.value)}
-            placeholder="default"
-            className={inputClass}
-          />
-        </Field>
+        <StrategyPicker value={strategySlug} onChange={setStrategySlug} />
 
         {error && <div className="text-xs text-[var(--color-down)]">{error}</div>}
 
@@ -795,14 +905,15 @@ export function EditBotForm({
           totalCapital={account?.totalCapital ?? null}
           slices={allocationSlices}
         />
-        <Field label="Strategy slug" hint="Memory dir: memory/<bot>/<strategy>/">
-          <input
-            value={strategySlug}
-            onChange={(e) => setStrategySlug(e.target.value)}
-            placeholder="default"
-            className={inputClass}
-          />
-        </Field>
+        <StrategyPicker
+          value={strategySlug}
+          onChange={setStrategySlug}
+          hint={
+            strategySlug !== bot.strategySlug
+              ? `Switching strategies will seed memory/${bot.id}/${strategySlug || "<slug>"}/ with the registry's rule book on save.`
+              : undefined
+          }
+        />
 
         <Field
           label="Discord webhook (override)"

@@ -447,6 +447,13 @@ function BotCard({
             {account && (
               <Badge tone={account.mode === "live" ? "down" : "warn"}>{account.mode}</Badge>
             )}
+            <a
+              href="/strategies"
+              title="Manage strategies"
+              className="hover:opacity-80"
+            >
+              <Badge tone="neutral">{bot.strategySlug}</Badge>
+            </a>
           </div>
           <div className="text-[10px] text-[var(--color-muted)] mt-0.5 font-mono">
             id: {bot.id} · acct: {account?.label ?? bot.accountId}

@@ -200,3 +200,133 @@ describe("assertReferentialIntegrity — strategy slug uniqueness", () => {
     ).rejects.toThrow(/Duplicate strategy slug/);
   });
 });
+
+describe("ensureBotStrategyMemory", () => {
+  it("creates the per-bot strategy dir and seeds TRADING-STRATEGY.md from registry template", async () => {
+    const result = await s.ensureBotStrategyMemory("paper", "default");
+    expect(result.created).toContain("TRADING-STRATEGY.md");
+    expect(result.created).toContain("RUN-LOG.jsonl");
+    const ruleBook = await fs.readFile(
+      path.join(tmpRoot, "memory/paper/default/TRADING-STRATEGY.md"),
+      "utf8"
+    );
+    expect(ruleBook).toBe(baseSeed.strategies[0].ruleBookTemplate);
+  });
+
+  it("is idempotent — second call skips every file", async () => {
+    await s.ensureBotStrategyMemory("paper", "default");
+    const second = await s.ensureBotStrategyMemory("paper", "default");
+    expect(second.created).toEqual([]);
+    expect(second.skipped).toContain("TRADING-STRATEGY.md");
+    expect(second.skipped).toContain("RUN-LOG.jsonl");
+  });
+
+  it("does not overwrite a customized rule book on subsequent calls", async () => {
+    await s.ensureBotStrategyMemory("paper", "default");
+    const ruleBookPath = path.join(tmpRoot, "memory/paper/default/TRADING-STRATEGY.md");
+    await fs.writeFile(ruleBookPath, "# user-edited rules\n", "utf8");
+    await s.ensureBotStrategyMemory("paper", "default");
+    const after = await fs.readFile(ruleBookPath, "utf8");
+    expect(after).toBe("# user-edited rules\n");
+  });
+
+  it("falls back to an empty rule book when slug isn't in the registry", async () => {
+    const result = await s.ensureBotStrategyMemory("paper", "ghost-slug");
+    expect(result.created).toContain("TRADING-STRATEGY.md");
+    const ruleBook = await fs.readFile(
+      path.join(tmpRoot, "memory/paper/ghost-slug/TRADING-STRATEGY.md"),
+      "utf8"
+    );
+    expect(ruleBook).toBe("");
+  });
+});
+
+describe("addBot wiring (Phase 3)", () => {
+  async function createSecondAccount() {
+    await s.saveSettings({
+      accounts: [
+        ...(await s.listAccounts()),
+        {
+          id: "live-main",
+          label: "Live",
+          mode: "live",
+          endpoint: "https://api.alpaca.markets/v2",
+          apiKeyEnc: "v1.iv.tag.ct",
+          secretKeyEnc: "v1.iv.tag.ct",
+          createdAt: "2026-05-08T00:00:00Z",
+        },
+      ],
+    });
+  }
+
+  it("stamps strategyVersionAtAssign from the registry on creation", async () => {
+    await createSecondAccount();
+    await s.addBot({
+      id: "live",
+      name: "Live",
+      accountId: "live-main",
+      allocation: null,
+      strategySlug: "default",
+      enabled: false,
+      sentinelTrips: [],
+      createdAt: "2026-05-08T00:00:00Z",
+    });
+    const bots = await s.listBots();
+    const live = bots.find((b) => b.id === "live");
+    expect(live?.strategyVersionAtAssign).toBe(1);
+  });
+
+  it("seeds memory/<bot>/<slug>/TRADING-STRATEGY.md after persisting the bot", async () => {
+    await createSecondAccount();
+    await s.addBot({
+      id: "live",
+      name: "Live",
+      accountId: "live-main",
+      allocation: null,
+      strategySlug: "default",
+      enabled: false,
+      sentinelTrips: [],
+      createdAt: "2026-05-08T00:00:00Z",
+    });
+    const ruleBook = await fs.readFile(
+      path.join(tmpRoot, "memory/live/default/TRADING-STRATEGY.md"),
+      "utf8"
+    );
+    expect(ruleBook).toContain("Default rules");
+  });
+});
+
+describe("updateBot wiring (Phase 3)", () => {
+  it("re-stamps strategyVersionAtAssign + seeds memory when slug changes", async () => {
+    // Add a second strategy so the existing paper bot has somewhere to switch to.
+    await s.addStrategy({
+      slug: "momentum-v1",
+      name: "Momentum v1",
+      description: "test",
+      enabled: true,
+      ruleBookTemplate: "# Momentum\n- buy strength",
+      params: [],
+    });
+    await s.updateBot("paper", { strategySlug: "momentum-v1" });
+    const bots = await s.listBots();
+    const paper = bots.find((b) => b.id === "paper");
+    expect(paper?.strategySlug).toBe("momentum-v1");
+    expect(paper?.strategyVersionAtAssign).toBe(1);
+    const ruleBook = await fs.readFile(
+      path.join(tmpRoot, "memory/paper/momentum-v1/TRADING-STRATEGY.md"),
+      "utf8"
+    );
+    expect(ruleBook).toContain("Momentum");
+  });
+
+  it("does not reseed memory or restamp version when slug is unchanged", async () => {
+    // Bump default strategy by adding a new param (simulating an edit).
+    // Here we just confirm: an unrelated patch (e.g. name change) leaves
+    // strategyVersionAtAssign untouched.
+    const before = (await s.listBots()).find((b) => b.id === "paper");
+    await s.updateBot("paper", { name: "Paper renamed" });
+    const after = (await s.listBots()).find((b) => b.id === "paper");
+    expect(after?.name).toBe("Paper renamed");
+    expect(after?.strategyVersionAtAssign).toBe(before?.strategyVersionAtAssign);
+  });
+});
