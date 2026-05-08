@@ -1,8 +1,13 @@
 "use client";
 
+import { useState } from "react";
+import { mutate } from "swr";
 import clsx from "clsx";
 import { Badge } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/bots/BotsManagerForms";
 import type { StrategyDefinition, StrategyParam } from "@/lib/settings";
+
+const STRATEGIES_URL = "/api/strategies";
 
 function formatParamValue(p: StrategyParam): string {
   switch (p.kind) {
@@ -20,11 +25,42 @@ function formatParamValue(p: StrategyParam): string {
 export function StrategyCard({
   strategy,
   inUseBy,
+  onEdit,
 }: {
   strategy: StrategyDefinition;
   /** Bot ids currently referencing this strategy. */
   inUseBy: string[];
+  /** Opens the edit modal. Wired by the parent so the modal lives next
+   *  to the manager's other modal state. */
+  onEdit: (strategy: StrategyDefinition) => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const blocked = inUseBy.length > 0;
+
+  async function onDelete() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `${STRATEGIES_URL}/${encodeURIComponent(strategy.slug)}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      await mutate(STRATEGIES_URL);
+      setConfirmDelete(false);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   const ruleBookLines = strategy.ruleBookTemplate.trim().length
     ? strategy.ruleBookTemplate.split("\n").length
     : 0;
@@ -106,6 +142,49 @@ export function StrategyCard({
             </li>
           )}
         </ul>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
+        <button
+          type="button"
+          onClick={() => onEdit(strategy)}
+          className="glass rounded-full px-3 py-1 text-[11px] font-semibold hover:opacity-90"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          disabled={blocked}
+          title={
+            blocked
+              ? `Reassign the ${inUseBy.length} bot${inUseBy.length === 1 ? "" : "s"} on this strategy first.`
+              : "Delete strategy"
+          }
+          className="glass rounded-full px-3 py-1 text-[11px] disabled:opacity-40 hover:opacity-90"
+        >
+          Delete
+        </button>
+      </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete strategy "${strategy.slug}"?`}
+          confirmLabel="Delete"
+          destructive
+          busy={deleteBusy}
+          error={deleteError}
+          onCancel={() => {
+            setDeleteError(null);
+            setConfirmDelete(false);
+          }}
+          onConfirm={onDelete}
+        >
+          The registry entry will be removed. Per-bot memory at{" "}
+          <code>memory/&lt;bot&gt;/{strategy.slug}/</code> is left in place
+          (no data loss). Bots currently bound to this strategy must be
+          reassigned first — the API rejects the delete otherwise.
+        </ConfirmDialog>
       )}
     </div>
   );

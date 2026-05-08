@@ -5,7 +5,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { Card, Badge } from "@/components/ui/Card";
 import { fmtMoney, fmtRelativeTime, fmtSignedMoney } from "@/lib/format";
-import type { Bot, RedactedAccount } from "@/lib/settings";
+import type { Bot, RedactedAccount, StrategyDefinition } from "@/lib/settings";
 import { VaultKeyBanner } from "./VaultKeyBanner";
 import { BotsLeaderboard } from "./BotsLeaderboard";
 import { LaunchdStatusTile } from "./LaunchdStatusTile";
@@ -27,6 +27,7 @@ const ACCOUNTS_URL = "/api/accounts";
 // includeDisabled=true so the admin page can still see disabled bots and
 // re-enable them. The unscoped /api/bots default filters to enabled-only.
 const BOTS_URL = "/api/bots?includeDisabled=true";
+const STRATEGIES_URL = "/api/strategies";
 
 type SentinelTripRecord = NonNullable<Bot["sentinelTrips"]>[number];
 
@@ -46,9 +47,14 @@ function tripTooltip(trip: SentinelTripRecord): string {
 export function BotsManager() {
   const accountsResp = useSWR<{ accounts: RedactedAccount[] }>(ACCOUNTS_URL, fetcher);
   const botsResp = useSWR<{ bots: Bot[] }>(BOTS_URL, fetcher);
+  const strategiesResp = useSWR<{ strategies: StrategyDefinition[] }>(
+    STRATEGIES_URL,
+    fetcher
+  );
 
   const accounts = accountsResp.data?.accounts ?? [];
   const bots = botsResp.data?.bots ?? [];
+  const strategies = strategiesResp.data?.strategies ?? [];
   const loading = accountsResp.isLoading || botsResp.isLoading;
 
   const [showAccountForm, setShowAccountForm] = useState(false);
@@ -136,12 +142,14 @@ export function BotsManager() {
               <div className="grid sm:grid-cols-2 gap-3">
                 {bots.map((b) => {
                   const acct = accounts.find((a) => a.id === b.accountId);
+                  const strat = strategies.find((s) => s.slug === b.strategySlug);
                   const promotable = acct?.mode === "paper" && hasLiveBot;
                   return (
                     <BotCard
                       key={b.id}
                       bot={b}
                       account={acct}
+                      strategy={strat}
                       onEdit={() => setEditingBot(b)}
                       onPromote={promotable ? () => setPromotingBot(b) : null}
                       onRotateCreds={
@@ -342,12 +350,18 @@ type BotEquityResp = {
 function BotCard({
   bot,
   account,
+  strategy,
   onEdit,
   onPromote,
   onRotateCreds,
 }: {
   bot: Bot;
   account: RedactedAccount | undefined;
+  /** The bot's strategy definition from the registry, if it exists.
+   *  Used to drive the drift badge — when `strategy.version` exceeds
+   *  `bot.strategyVersionAtAssign`, the registry has been edited since
+   *  this bot was last assigned. */
+  strategy: StrategyDefinition | undefined;
   onEdit: () => void;
   /** When non-null, surfaces a "Promote → live" button on the card.
    *  Set by the parent only for paper bots when at least one live target
@@ -454,6 +468,17 @@ function BotCard({
             >
               <Badge tone="neutral">{bot.strategySlug}</Badge>
             </a>
+            {strategy &&
+              bot.strategyVersionAtAssign != null &&
+              strategy.version > bot.strategyVersionAtAssign && (
+                <a
+                  href="/strategies"
+                  title={`Strategy "${bot.strategySlug}" is at v${strategy.version}; this bot was last assigned at v${bot.strategyVersionAtAssign}. Re-save the bot to acknowledge the new version.`}
+                  className="hover:opacity-80"
+                >
+                  <Badge tone="warn">strategy edited</Badge>
+                </a>
+              )}
           </div>
           <div className="text-[10px] text-[var(--color-muted)] mt-0.5 font-mono">
             id: {bot.id} · acct: {account?.label ?? bot.accountId}

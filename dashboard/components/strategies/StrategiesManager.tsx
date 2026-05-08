@@ -24,6 +24,7 @@ export function StrategiesManager() {
   const loading = stratResp.isLoading || botsResp.isLoading;
 
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<StrategyDefinition | null>(null);
 
   const usageBySlug = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -73,6 +74,7 @@ export function StrategiesManager() {
                 key={s.slug}
                 strategy={s}
                 inUseBy={usageBySlug.get(s.slug) ?? []}
+                onEdit={setEditing}
               />
             ))}
           </div>
@@ -116,6 +118,13 @@ export function StrategiesManager() {
 
       {showForm && (
         <StrategyForm existing={strategies} onClose={() => setShowForm(false)} />
+      )}
+      {editing && (
+        <StrategyForm
+          existing={strategies}
+          editing={editing}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );

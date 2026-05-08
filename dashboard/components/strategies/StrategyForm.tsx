@@ -28,28 +28,44 @@ function emptyParam(kind: StrategyParamKind): StrategyParam {
 
 export function StrategyForm({
   existing,
+  editing,
   onClose,
 }: {
-  /** Strategies to offer as "Clone from" options. */
+  /** Strategies to offer as "Clone from" options. In edit mode, the
+   *  current strategy is excluded from the clone-from list. */
   existing: StrategyDefinition[];
+  /** When set, the form is in edit mode: slug is locked, fields are
+   *  pre-filled, "Clone from" is hidden, and submit PATCHes. */
+  editing?: StrategyDefinition;
   onClose: () => void;
 }) {
-  const defaultClone = existing.find((s) => s.slug === "default") ?? existing[0] ?? null;
-  const [cloneFromSlug, setCloneFromSlug] = useState<string>(defaultClone?.slug ?? "");
+  const isEdit = editing != null;
+  const cloneCandidates = useMemo(
+    () => (isEdit ? [] : existing),
+    [existing, isEdit]
+  );
+  const defaultClone =
+    cloneCandidates.find((s) => s.slug === "default") ?? cloneCandidates[0] ?? null;
+  const [cloneFromSlug, setCloneFromSlug] = useState<string>(
+    isEdit ? "" : defaultClone?.slug ?? ""
+  );
   const cloneSource = useMemo(
-    () => existing.find((s) => s.slug === cloneFromSlug) ?? null,
-    [existing, cloneFromSlug]
+    () => cloneCandidates.find((s) => s.slug === cloneFromSlug) ?? null,
+    [cloneCandidates, cloneFromSlug]
   );
 
-  const [slug, setSlug] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [enabled, setEnabled] = useState(true);
+  const [slug, setSlug] = useState(editing?.slug ?? "");
+  const [name, setName] = useState(editing?.name ?? "");
+  const [description, setDescription] = useState(editing?.description ?? "");
+  const [enabled, setEnabled] = useState(editing?.enabled ?? true);
   const [ruleBookTemplate, setRuleBookTemplate] = useState(
-    cloneSource?.ruleBookTemplate ?? ""
+    editing?.ruleBookTemplate ?? cloneSource?.ruleBookTemplate ?? ""
   );
   const [params, setParams] = useState<StrategyParam[]>(
-    () => cloneSource?.params.map((p) => structuredClone(p)) ?? []
+    () =>
+      editing
+        ? editing.params.map((p) => structuredClone(p))
+        : cloneSource?.params.map((p) => structuredClone(p)) ?? []
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +77,7 @@ export function StrategyForm({
       setParams([]);
       return;
     }
-    const src = existing.find((s) => s.slug === slug);
+    const src = cloneCandidates.find((s) => s.slug === slug);
     if (!src) return;
     setRuleBookTemplate(src.ruleBookTemplate);
     setParams(src.params.map((p) => structuredClone(p)));
@@ -82,7 +98,7 @@ export function StrategyForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!slugRe.test(slug)) {
+    if (!isEdit && !slugRe.test(slug)) {
       setError("Slug must be lowercase letters, digits, and hyphens.");
       return;
     }
@@ -98,21 +114,32 @@ export function StrategyForm({
     }
     setBusy(true);
     try {
-      const res = await fetch(STRATEGIES_URL, {
-        method: "POST",
+      const url = isEdit ? `${STRATEGIES_URL}/${encodeURIComponent(slug)}` : STRATEGIES_URL;
+      const method = isEdit ? "PATCH" : "POST";
+      const body = isEdit
+        ? {
+            name: name.trim(),
+            description: description.trim(),
+            enabled,
+            ruleBookTemplate,
+            params,
+          }
+        : {
+            slug,
+            name: name.trim(),
+            description: description.trim(),
+            enabled,
+            ruleBookTemplate,
+            params,
+          };
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          name: name.trim(),
-          description: description.trim(),
-          enabled,
-          ruleBookTemplate,
-          params,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error ?? `HTTP ${res.status}`);
       }
       await mutate(STRATEGIES_URL);
       onClose();
@@ -124,10 +151,17 @@ export function StrategyForm({
   }
 
   return (
-    <Modal title="New strategy" onClose={onClose}>
+    <Modal title={isEdit ? `Edit strategy — ${editing!.slug}` : "New strategy"} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Slug" hint="lowercase, hyphens only — used in memory paths">
+          <Field
+            label="Slug"
+            hint={
+              isEdit
+                ? "Slug is immutable — drives memory paths."
+                : "lowercase, hyphens only — used in memory paths"
+            }
+          >
             <input
               type="text"
               value={slug}
@@ -135,7 +169,8 @@ export function StrategyForm({
               placeholder="momentum-v1"
               required
               maxLength={40}
-              className={inputClass}
+              disabled={isEdit}
+              className={`${inputClass} ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
             />
           </Field>
           <Field label="Name">
@@ -174,7 +209,7 @@ export function StrategyForm({
               </span>
             </label>
           </Field>
-          {existing.length > 0 && (
+          {!isEdit && cloneCandidates.length > 0 && (
             <Field label="Clone from">
               <select
                 value={cloneFromSlug}
@@ -182,7 +217,7 @@ export function StrategyForm({
                 className={inputClass}
               >
                 <option value="">— blank —</option>
-                {existing.map((s) => (
+                {cloneCandidates.map((s) => (
                   <option key={s.slug} value={s.slug}>
                     {s.name} ({s.slug})
                   </option>
@@ -248,7 +283,7 @@ export function StrategyForm({
             disabled={busy}
             className="glass rounded-full px-3 py-1.5 text-xs font-semibold glass-tint-accent disabled:opacity-50"
           >
-            {busy ? "Saving…" : "Create strategy"}
+            {busy ? "Saving…" : isEdit ? "Save changes" : "Create strategy"}
           </button>
         </div>
       </form>

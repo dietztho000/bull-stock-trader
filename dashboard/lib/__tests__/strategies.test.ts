@@ -319,14 +319,100 @@ describe("updateBot wiring (Phase 3)", () => {
     expect(ruleBook).toContain("Momentum");
   });
 
-  it("does not reseed memory or restamp version when slug is unchanged", async () => {
-    // Bump default strategy by adding a new param (simulating an edit).
-    // Here we just confirm: an unrelated patch (e.g. name change) leaves
-    // strategyVersionAtAssign untouched.
+  it("re-stamps strategyVersionAtAssign on every save (Phase 5: explicit save = ack)", async () => {
+    // Bump the registry past the bot's stamped version, then save the
+    // bot with no slug change. The stamp should refresh to the current
+    // version — that's the mechanism that clears the drift badge.
+    await s.updateStrategy("default", { description: "edited once" });
+    await s.updateStrategy("default", { description: "edited twice" });
+    const reg = (await s.listStrategies()).find((x) => x.slug === "default");
+    expect(reg?.version).toBe(3);
+    // The test seed mimics a pre-Phase-1 bot — strategyVersionAtAssign
+    // is undefined until first save. After save, it picks up the
+    // current registry version.
     const before = (await s.listBots()).find((b) => b.id === "paper");
+    expect(before?.strategyVersionAtAssign).toBeUndefined();
     await s.updateBot("paper", { name: "Paper renamed" });
     const after = (await s.listBots()).find((b) => b.id === "paper");
     expect(after?.name).toBe("Paper renamed");
-    expect(after?.strategyVersionAtAssign).toBe(before?.strategyVersionAtAssign);
+    expect(after?.strategyVersionAtAssign).toBe(3);
+  });
+});
+
+describe("updateStrategy", () => {
+  it("bumps version + updatedAt on a meaningful change", async () => {
+    const before = await s.getStrategy("default");
+    expect(before?.version).toBe(1);
+    await s.updateStrategy("default", { description: "tighter sector cap" });
+    const after = await s.getStrategy("default");
+    expect(after?.version).toBe(2);
+    expect(after?.description).toBe("tighter sector cap");
+    expect(after?.updatedAt).not.toBe(before?.updatedAt);
+  });
+
+  it("is a no-op (no version bump) when patch values match current", async () => {
+    const before = await s.getStrategy("default");
+    await s.updateStrategy("default", {
+      name: before!.name,
+      description: before!.description,
+      enabled: before!.enabled,
+      ruleBookTemplate: before!.ruleBookTemplate,
+      params: before!.params,
+    });
+    const after = await s.getStrategy("default");
+    expect(after?.version).toBe(before?.version);
+    expect(after?.updatedAt).toBe(before?.updatedAt);
+  });
+
+  it("rejects an update for a missing slug", async () => {
+    await expect(
+      s.updateStrategy("ghost", { name: "Ghost" })
+    ).rejects.toThrow(/not found/i);
+  });
+
+  it("preserves other strategies when patching one", async () => {
+    await s.addStrategy({
+      slug: "extra",
+      name: "Extra",
+      description: "",
+      enabled: true,
+      ruleBookTemplate: "",
+      params: [],
+    });
+    await s.updateStrategy("default", { description: "edited" });
+    const all = await s.listStrategies();
+    expect(all).toHaveLength(2);
+    expect(all.find((x) => x.slug === "extra")?.version).toBe(1);
+  });
+});
+
+describe("deleteStrategy", () => {
+  it("rejects when any bot references the slug", async () => {
+    // Default strategy is referenced by the seeded "paper" bot.
+    await expect(s.deleteStrategy("default")).rejects.toThrow(/still reference/i);
+  });
+
+  it("succeeds when no bot references the slug", async () => {
+    await s.addStrategy({
+      slug: "orphan",
+      name: "Orphan",
+      description: "",
+      enabled: true,
+      ruleBookTemplate: "",
+      params: [],
+    });
+    await s.deleteStrategy("orphan");
+    const remaining = await s.listStrategies();
+    expect(remaining.map((x) => x.slug)).not.toContain("orphan");
+  });
+
+  it("force=true bypasses the FK check", async () => {
+    await s.deleteStrategy("default", { force: true });
+    const remaining = await s.listStrategies();
+    expect(remaining.map((x) => x.slug)).not.toContain("default");
+  });
+
+  it("rejects deletion of a missing slug", async () => {
+    await expect(s.deleteStrategy("ghost")).rejects.toThrow(/not found/i);
   });
 });

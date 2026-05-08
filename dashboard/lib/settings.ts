@@ -324,9 +324,9 @@ async function fileExists(p: string): Promise<boolean> {
 }
 
 /** Creates a new strategy. Throws on duplicate slug. Phase 2 of the multi-
- *  strategy upgrade — edit/disable/delete land in Phase 5. New entries
- *  always start at `version: 1`; the `version` field is later bumped on
- *  every `updateStrategy` call so the bot card can flag drift. */
+ *  strategy upgrade. New entries always start at `version: 1`; the
+ *  `version` field is bumped on every `updateStrategy` call (Phase 5) so
+ *  the bot card can flag drift via `strategyVersionAtAssign`. */
 export async function addStrategy(
   input: Omit<StrategyDefinition, "createdAt" | "updatedAt" | "version"> & {
     createdAt?: string;
@@ -351,6 +351,80 @@ export async function addStrategy(
     version: input.version ?? 1,
   };
   return saveSettings({ strategies: [...current.strategies, next] });
+}
+
+/** Edits an existing strategy in place. Bumps `version` and `updatedAt`
+ *  unless every patched field round-trips to the current value (a no-op
+ *  save shouldn't churn the version, otherwise drift badges fire on
+ *  spurious clicks). Cannot rename a slug — use addStrategy + redirect
+ *  bots if a rename is genuinely needed. */
+export async function updateStrategy(
+  slug: string,
+  patch: Partial<
+    Pick<StrategyDefinition, "name" | "description" | "enabled" | "ruleBookTemplate" | "params">
+  >
+): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  const idx = current.strategies.findIndex((s) => s.slug === slug);
+  if (idx < 0) throw new Error(`Strategy "${slug}" not found`);
+  const before = current.strategies[idx];
+  const merged: StrategyDefinition = {
+    ...before,
+    ...(patch.name !== undefined && { name: patch.name }),
+    ...(patch.description !== undefined && { description: patch.description }),
+    ...(patch.enabled !== undefined && { enabled: patch.enabled }),
+    ...(patch.ruleBookTemplate !== undefined && { ruleBookTemplate: patch.ruleBookTemplate }),
+    ...(patch.params !== undefined && {
+      params: patch.params.map((p) => cloneStrategyParam(p)),
+    }),
+  };
+  const meaningfulChange =
+    merged.name !== before.name ||
+    merged.description !== before.description ||
+    merged.enabled !== before.enabled ||
+    merged.ruleBookTemplate !== before.ruleBookTemplate ||
+    JSON.stringify(merged.params) !== JSON.stringify(before.params);
+  if (!meaningfulChange) {
+    // No-op save — return current state without bumping version. Saves
+    // the bot drift badges from firing on idle "save" clicks.
+    return current;
+  }
+  merged.updatedAt = new Date().toISOString();
+  merged.version = before.version + 1;
+  const nextStrategies = current.strategies.slice();
+  nextStrategies[idx] = merged;
+  return saveSettings({ strategies: nextStrategies });
+}
+
+/** Removes a strategy from the registry. Refuses when any bot still
+ *  references the slug (regardless of whether the bot is enabled — a
+ *  disabled bot might be re-enabled later, and orphaning its memory
+ *  dir would silently break it).
+ *
+ *  `force: true` bypasses the FK check. Caller must have already
+ *  reassigned bots; the per-bot memory dir at
+ *  `memory/<bot>/<slug>/` is left in place either way (routines pick up
+ *  whatever the bot's current strategySlug points at, and stranded
+ *  files don't break correctness — they just take disk space). */
+export async function deleteStrategy(
+  slug: string,
+  options: { force?: boolean } = {}
+): Promise<DashboardSettings> {
+  const current = await loadSettings();
+  if (!current.strategies.some((s) => s.slug === slug)) {
+    throw new Error(`Strategy "${slug}" not found`);
+  }
+  if (!options.force) {
+    const blockingBots = current.bots.filter((b) => b.strategySlug === slug).map((b) => b.id);
+    if (blockingBots.length > 0) {
+      throw new Error(
+        `Cannot delete strategy "${slug}" — bots still reference it: ${blockingBots.join(", ")}. Reassign those bots to a different strategy first, or pass force=true.`
+      );
+    }
+  }
+  return saveSettings({
+    strategies: current.strategies.filter((s) => s.slug !== slug),
+  });
 }
 
 export async function addAccount(account: Account): Promise<DashboardSettings> {
@@ -435,12 +509,15 @@ export async function updateBot(
   if (idx < 0) throw new Error(`Bot "${id}" not found`);
   const before = current.bots[idx];
   const merged: Bot = { ...before, ...patch };
-  // When the strategy slug changes, refresh the version stamp from the
-  // registry so the new assignment is "current". Unchanged slug = leave
-  // the stamp alone (still represents whatever the user last assigned).
-  if (patch.strategySlug && patch.strategySlug !== before.strategySlug) {
-    const def = current.strategies.find((s) => s.slug === patch.strategySlug);
-    merged.strategyVersionAtAssign = def?.version;
+  // Refresh the version stamp from the registry on every explicit save —
+  // an explicit save is implicit acknowledgement of the current strategy
+  // version, which is what clears the "strategy edited" drift badge.
+  // Reseeding memory only happens when the slug actually changed (the
+  // existing memory dir is the source of truth otherwise).
+  const slugForStamp = patch.strategySlug ?? before.strategySlug;
+  const stampedVersion = current.strategies.find((s) => s.slug === slugForStamp)?.version;
+  if (stampedVersion != null) {
+    merged.strategyVersionAtAssign = stampedVersion;
   }
   const nextBots = current.bots.slice();
   nextBots[idx] = merged;
