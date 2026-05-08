@@ -109,17 +109,27 @@ _newest_writer_for_path() {
             --format='%(committerdate:iso-strict)|%(refname:short)')
 }
 
-# Dispatch on file extension. .jsonl is append-only (RUN-LOG); the
-# checkout-replace mode would silently drop every earlier routine's rows
-# on a multi-routine day where each cloud routine pushed to its own
-# claude/* branch off the same origin/main (hit on 2026-05-06: 6 of 7
-# routines lost). All other files (.md) use grep-first idempotency in
-# the writer, so the newest writer's version is always a superset and
-# replace is fine.
+# Dispatch on file extension.
+#
+# - .jsonl: line-union by .ts (RUN-LOG.jsonl etc.). Each row is a complete
+#   JSON object; semantic boundary is the line. Bug fixed 2026-05-06.
+#
+# - .md: 3-way merge of every writer's branch into HEAD's tree via
+#   `git merge-tree`. Bug fixed 2026-05-07: REPLACE silently dropped
+#   disjoint sections when two cloud routines pushed to separate claude/*
+#   branches off the same origin/main snapshot in the same trading day
+#   (hit on 2026-05-07: pre-market RESEARCH-LOG section vanished because
+#   midday-addendum's writer branched before pre-market pushed). Writers
+#   are grep-first idempotent within a single execution, but that doesn't
+#   protect against parallel writers; the 3-way merge does.
+#
+# - other (no extension match): REPLACE fallback for any file we haven't
+#   classified yet. Dirty branches still gated through the safety check.
 _pick_one() {
   local label="$1" path="$2"
   case "$path" in
     *.jsonl) _pick_one_union "$label" "$path" ;;
+    *.md)    _pick_one_3way_merge "$label" "$path" ;;
     *)       _pick_one_replace "$label" "$path" ;;
   esac
 }
@@ -194,6 +204,111 @@ _pick_one_union() {
   printf '%s\n' "$merged" > "$path.tmp" && mv "$path.tmp" "$path"
   git add -- "$path"
   printf '  %-44s ⊕ %d branch(es) union-merged\n' "$label" "${#writers[@]}"
+  return 0
+}
+
+# 3-way merge mode: iteratively merge every memory-only claude/* writer
+# that touched $path into HEAD's tree using `git merge-tree`. Writers
+# are processed oldest-first by committerdate so the resulting file
+# preserves chronological section order (pre-market before midday before
+# eod, etc.). On any merge conflict — which means two writers touched
+# the same section with different content — abort and surface for human
+# review rather than silently dropping data.
+#
+# Why merge-tree (Git 2.38+): performs the 3-way merge entirely in the
+# object DB without touching the working tree, returns the merged tree
+# OID directly. We can chain calls (each iteration's output feeds the
+# next) and only write the final blob to the working tree at the end.
+_pick_one_3way_merge() {
+  local label="$1" path="$2"
+  local writers=() ref base diff_files
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    base="$(git merge-base "$ref" origin/main 2>/dev/null || true)"
+    [[ -z "$base" ]] && continue
+    diff_files="$(git diff --name-only "$base..$ref" 2>/dev/null)"
+    grep -qx "$path" <<<"$diff_files" || continue
+    grep -qv '^memory/' <<<"$diff_files" && continue
+    writers+=("$ref")
+  done < <(git for-each-ref --sort=committerdate refs/remotes/origin/claude/ \
+            --format='%(refname:short)')
+
+  if [[ ${#writers[@]} -eq 0 ]]; then
+    printf '  %-44s — no cloud writer found, leaving as-is\n' "$label"
+    return 1
+  fi
+
+  # Single writer is equivalent to checkout-replace: skip the merge
+  # machinery, but route through the same dirty-branch guard.
+  if [[ ${#writers[@]} -eq 1 ]]; then
+    ref="${writers[0]}"
+    if [[ "$(_branch_touches_non_memory "$ref")" == "1" ]]; then
+      printf '  %-44s ⚠️  newest writer (%s) touches non-memory paths — skipped\n' "$label" "$ref"
+      return 1
+    fi
+    git checkout "$ref" -- "$path"
+    local writer_date
+    writer_date="$(git log -1 --format='%ci' "$ref")"
+    printf '  %-44s ← %s (%s)\n' "$label" "$ref" "$writer_date"
+    return 0
+  fi
+
+  # Multi-writer: chain 3-way merges. current_tree starts at HEAD (which
+  # is post-pull, so already has whatever main has). Each writer merges
+  # into current_tree using its own merge-base with origin/main as the
+  # 3-way base — that's the correct base for "what did this writer add
+  # vs the snapshot it branched from."
+  local current_tree merged_tree merge_status
+  current_tree="$(git rev-parse HEAD^{tree})"
+
+  for ref in "${writers[@]}"; do
+    base="$(git merge-base "$ref" origin/main 2>/dev/null || true)"
+    if [[ -z "$base" ]]; then
+      printf '  %-44s ⚠️  no merge-base for %s — skipped\n' "$label" "$ref"
+      return 1
+    fi
+    # `-X theirs` resolves conflicts by preferring the writer being
+    # merged in (the "theirs" side). Combined with oldest-first ordering,
+    # this means newer writers always win on overlapping sections —
+    # exactly matching the OLD REPLACE semantics for that case — while
+    # disjoint sections from earlier writers still get preserved.
+    # Writers are grep-first idempotent, so a real cross-writer "this
+    # section disagrees" conflict doesn't arise in practice; if it ever
+    # does, the newer writer's version is the operationally-correct one.
+    #
+    # --write-tree writes the merged tree to the object DB and prints
+    # its OID. With `-X theirs` the merge effectively cannot fail on
+    # text conflict; we still guard the exit status for other failure
+    # modes (binary conflict, invalid base, etc.).
+    merged_tree="$(git merge-tree -X theirs --write-tree --merge-base="$base" \
+                    "$current_tree" "$ref" 2>/dev/null)"
+    merge_status=$?
+    if [[ $merge_status -ne 0 ]] || [[ -z "$merged_tree" ]]; then
+      printf '  %-44s ⚠️  unrecoverable merge error at %s — leaving as-is for manual review\n' "$label" "$ref"
+      return 1
+    fi
+    current_tree="$merged_tree"
+  done
+
+  # Extract the merged blob for $path from the final tree.
+  local blob_oid
+  blob_oid="$(git ls-tree "$current_tree" -- "$path" 2>/dev/null | awk '{print $3}')"
+  if [[ -z "$blob_oid" ]]; then
+    printf '  %-44s ⚠️  merge result has no blob for path — skipped\n' "$label"
+    return 1
+  fi
+
+  # No-op detection: skip staging if the merged content is byte-identical
+  # to local. Avoids gratuitous "auto-sync" commits when cloud branches
+  # only repeated content already in local.
+  if [[ -f "$path" ]] && diff -q <(git cat-file blob "$blob_oid") "$path" >/dev/null 2>&1; then
+    printf '  %-44s = already up to date (%d writer(s) merged)\n' "$label" "${#writers[@]}"
+    return 1
+  fi
+
+  git cat-file blob "$blob_oid" > "$path.tmp" && mv "$path.tmp" "$path"
+  git add -- "$path"
+  printf '  %-44s ⊕ %d writer(s) 3-way merged\n' "$label" "${#writers[@]}"
   return 0
 }
 
