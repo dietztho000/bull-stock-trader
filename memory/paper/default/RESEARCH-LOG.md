@@ -164,3 +164,53 @@ TRADE or HOLD (default HOLD if no edge)
 - Q1 beat thesis intact: EPS $0.33 vs $0.22 est, Rev $1.69B vs $1.54B, Q2 guide $1.75–1.85B
 - Pullback is technical; stock had run +79% YTD near 52-week high
 - Action: none — trailing stop $71.065 (HWM $78.96) is exchange authority
+
+---
+
+## 2026-05-08 — Pre-market Research
+
+### Account
+- Equity: $101,352.41
+- Cash: $34,963.49 (34.5% — below 75-85% target; 4/6 positions open)
+- Buying power: $136,315.90
+- Daytrade count: 0
+- Week trades: 1/3 used (2 remaining)
+
+### Market Context
+- WTI: ~$94.87–96/barrel | Brent: ~$98–101/barrel (est.)
+- S&P 500 futures: +0.41–0.46% (ESM26 ~7,385); Nasdaq futures +0.6%
+- VIX: ~17.08 (May 7 close) — slightly elevated, pre-market data unavailable
+- **Today's big release: NFP / Employment Situation (April 2026) 08:30 ET** — forecast 65K vs prior 178K (sharp slowdown expected). Report already released. Futures holding gains (+0.41-0.46%) suggests data not catastrophic.
+- US-Iran tensions (Strait of Hormuz exchange of fire) — supporting oil; geopolitical risk present
+- Fed Cook Speech 09:45 ET; Consumer Sentiment + Factory Orders 10:00 ET
+- Next big: CPI May 12, PPI May 13, Retail Sales May 14, FOMC Minutes May 20
+
+### Open Position Status & Pre-market Gap Check (rule #15)
+- AMKR: $73.60 (+1.84% vs prev $72.27) — trailing stop $71.065 (HWM $78.96); +8.01% unrealized. **Only 3.5% above stop — close watch required**. Investor Day May 21 upcoming. Form 144 filings May 5 (insider sales). Analyst consensus $62.75 Hold (below current).
+- GOOGL: $398.35 (+0.09% vs prev $397.99) — trailing stop $360.09 (HWM $400.10); +4.07% unrealized. Thesis intact; potential $200B Anthropic deal.
+- NVDA: $213.55 (+0.97% vs prev $211.50) — trailing stop $192.78 (HWM $214.20); +2.06% unrealized. **Earnings exit required by May 19 (8 trading days)**. Q4 FY26 beat: Rev $68.13B vs $65.56B est.
+- XOM: $146.31 (-0.18% vs prev $146.58) — trailing stop $139.761 (HWM $155.29); -4.07% unrealized. **Only 4.5% above stop**. Q1 beat: Rev $85.1B, EPS $2.09 vs $1.07 est. Analyst target $159.80 (+9.2%). US-Iran tensions support oil.
+- No force exits required (no gap ≤ -7%).
+
+### Drawdown Check (rule #14)
+- Day P&L: ($101,352.41 - $100,910.31) / $100,910.31 = +0.44% → OK
+- Week P&L: ($101,352.41 - $99,676.86) / $99,676.86 = +1.68% → OK
+- Circuit breaker: NOT tripped
+
+### Trade Ideas
+1. **No entry today (default HOLD)** — NFP release day creates elevated volatility regardless of print direction. VIX 17+ still elevated. AMKR and XOM both within 3.5-4.5% of stops. No fresh (<48h) catalyst identified for any non-held ticker that would score ≥7.
+
+### Sector Check (SECTOR-LEDGER.md)
+- Ledger empty — no sectors on 2-loss streak. No idea flagged.
+- Current exposure: IT (AMKR + NVDA = 2/3 cap), Energy (XOM = 1/3 cap), Communications (GOOGL = 1/3 cap)
+
+### Risk Factors
+- NFP data (already released) — actual unknown; futures +0.41% suggests benign but data could be revised
+- VIX 17+ — elevated uncertainty; market at all-time highs priced for perfection
+- AMKR $73.60 vs stop $71.065 — 3.5% cushion; any continued weakness triggers stop
+- XOM $146.31 vs stop $139.761 — 4.5% cushion; Energy sector headwinds persist (Iran oil = mixed)
+- NVDA earnings exit deadline May 19 — must act by market-open May 19 at latest
+- US-Iran Strait of Hormuz exchange of fire — geopolitical tail risk, oil spike possible
+
+### Decision
+HOLD — NFP day volatility, VIX elevated, two positions dangerously close to stops. No fresh catalysts for new ideas. Preserve capital for next week's CPI/PPI window if cleaner setups emerge.
