@@ -74,3 +74,5 @@
 {"ts":"2026-05-07T19:06:24Z","routine":"afternoon","action":"end","status":"ok","git_sha":"da1a077"}
 {"ts":"2026-05-07T20:07:17Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"c56ff5d"}
 {"ts":"2026-05-07T20:11:41Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-08T04:34:22Z","routine":"refresh-market-earnings","action":"start","status":"ok","git_sha":"f58b452"}
+{"ts":"2026-05-08T04:38:41Z","routine":"refresh-market-earnings","action":"end","status":"ok","git_sha":"f58b452"}
