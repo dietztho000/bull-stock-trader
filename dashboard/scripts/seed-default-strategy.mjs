@@ -116,6 +116,83 @@ function buildParams(globalStrategy) {
         { k: 10, v: 20 },
       ],
     },
+    // Stop mechanics. Promoted to registry params after Phase 5 — these
+    // were inline literals in stops.md / market-open.md / trade.md.
+    // Defaults match rule #4 (-7%/-8% stop-limit at entry), rule #6
+    // (10% trail once green, ratchet to 7% at +15%, 5% at +20%), and
+    // rule #16 (take-profit ladder at +20%).
+    {
+      kind: "percent",
+      key: "STOP_TRIGGER_PCT",
+      label: "Entry stop trigger (% from fill price)",
+      value: -7,
+      min: -20,
+      max: 0,
+    },
+    {
+      kind: "percent",
+      key: "STOP_LIMIT_PCT",
+      label: "Stop-limit slippage floor (% from fill price)",
+      value: -8,
+      min: -25,
+      max: 0,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_PROMOTION_PCT",
+      label: "Promote fixed stop → trailing once gain reaches",
+      value: 1,
+      min: 0,
+      max: 50,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_INITIAL_PCT",
+      label: "Initial trail % once promoted",
+      value: 10,
+      min: 1,
+      max: 30,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+      label: "First trail-tighten trigger (gain %)",
+      value: 15,
+      min: 0,
+      max: 100,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_TIGHTEN_15_PCT",
+      label: "Trail % at first tighten",
+      value: 7,
+      min: 1,
+      max: 30,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+      label: "Second trail-tighten trigger (gain %)",
+      value: 20,
+      min: 0,
+      max: 100,
+    },
+    {
+      kind: "percent",
+      key: "TRAIL_TIGHTEN_20_PCT",
+      label: "Trail % at second tighten",
+      value: 5,
+      min: 1,
+      max: 30,
+    },
+    {
+      kind: "percent",
+      key: "TAKE_PROFIT_LADDER_PCT",
+      label: "Take-profit ladder trigger (sell half at gain %)",
+      value: 20,
+      min: 0,
+      max: 100,
+    },
   ];
 }
 

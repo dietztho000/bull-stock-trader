@@ -99,7 +99,13 @@ ENTRY_SCORE_MIN=${STRATEGY_ENTRY_SCORE_MIN:-7}
 EARNINGS_GATE_DAYS=${STRATEGY_EARNINGS_GATE_DAYS:-2}
 DAY_BREAKER_DEC=$(awk -v p="${STRATEGY_DAY_BREAKER_PCT:--2}" 'BEGIN{printf "%.4f", p/100}')
 WEEK_BREAKER_DEC=$(awk -v p="${STRATEGY_WEEK_BREAKER_PCT:--4}" 'BEGIN{printf "%.4f", p/100}')
-echo "[$BOT_ID] strategy=$STRATEGY sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC"
+# Stop-mechanic factors used by STEP 5's entry-stop placement. Defaults
+# match rule #4 (-7% trigger, -8% slippage floor).
+STOP_TRIGGER_PCT=${STRATEGY_STOP_TRIGGER_PCT:--7}
+STOP_LIMIT_PCT=${STRATEGY_STOP_LIMIT_PCT:--8}
+STOP_TRIGGER_FACTOR=$(awk -v p="$STOP_TRIGGER_PCT" 'BEGIN{printf "%.4f", 1 + p/100}')
+STOP_LIMIT_FACTOR=$(awk -v p="$STOP_LIMIT_PCT" 'BEGIN{printf "%.4f", 1 + p/100}')
+echo "[$BOT_ID] strategy=$STRATEGY sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC stop_trigger=${STOP_TRIGGER_PCT}% stop_limit=${STOP_LIMIT_PCT}%"
 # Conviction-table lookup helper. Use as: pct=$(conviction_pct $score)
 # Returns the position-size FRACTION (0.12, 0.15, 0.18, 0.20) keyed by
 # entry-scorer total. Defaults match rule #19 exactly.
@@ -250,12 +256,13 @@ spread > 50 bps (illiquid name = market is safer):
 Wait for fill confirmation before placing the stop. If the limit is unfilled
 at routine end, leave it — midday will escalate to market if still unfilled.
 
-STEP 5 — Immediately place a fixed -7% **stop-limit** GTC for each new
-position. The stop-limit caps slippage to ~1% past trigger (rule #4) — a
-plain stop becomes a market order and can fill far below -7% in fast or
-illiquid moves. Compute:
-  stop_price  = round(fill_price * 0.93, 2)   # -7% trigger
-  limit_price = round(fill_price * 0.92, 2)   # -8% slippage floor
+STEP 5 — Immediately place a fixed ${STOP_TRIGGER_PCT}% **stop-limit**
+GTC for each new position (resolved in STEP 0; default -7%). The
+stop-limit caps slippage past trigger (rule #4) — a plain stop becomes a
+market order and can fill far below the trigger in fast or illiquid
+moves. Compute:
+  stop_price  = round(fill_price * $STOP_TRIGGER_FACTOR, 2)   # default 0.93 = -7% trigger
+  limit_price = round(fill_price * $STOP_LIMIT_FACTOR, 2)     # default 0.92 = -8% slippage floor
   bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" submit-order --symbol SYM --qty N --side sell --type stop_limit --stop-price X.XX --limit-price Y.YY --tif gtc
 Once the position prints unrealized_plpc >= +1%, a later intraday routine
 (mid-morning / midday / etc) PATCHes this stop into a 10% trailing stop —

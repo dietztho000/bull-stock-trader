@@ -19,6 +19,10 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
    EARNINGS_GATE_DAYS=${STRATEGY_EARNINGS_GATE_DAYS:-2}
    DAY_BREAKER_DEC=$(awk -v p="${STRATEGY_DAY_BREAKER_PCT:--2}" 'BEGIN{printf "%.4f", p/100}')
    WEEK_BREAKER_DEC=$(awk -v p="${STRATEGY_WEEK_BREAKER_PCT:--4}" 'BEGIN{printf "%.4f", p/100}')
+   STOP_TRIGGER_PCT=${STRATEGY_STOP_TRIGGER_PCT:--7}
+   STOP_LIMIT_PCT=${STRATEGY_STOP_LIMIT_PCT:--8}
+   STOP_TRIGGER_FACTOR=$(awk -v p="$STOP_TRIGGER_PCT" 'BEGIN{printf "%.4f", 1 + p/100}')
+   STOP_LIMIT_FACTOR=$(awk -v p="$STOP_LIMIT_PCT" 'BEGIN{printf "%.4f", 1 + p/100}')
    conviction_pct() {
      local score="$1"
      if [[ -n "${STRATEGY_CONVICTION_TABLE_JSON:-}" ]]; then
@@ -28,7 +32,7 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
      fi
      case "$score" in 7) echo 0.12 ;; 8) echo 0.15 ;; 9) echo 0.18 ;; 10) echo 0.20 ;; *) echo 0.00 ;; esac
    }
-   echo "strategy=${STRATEGY:-default} sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC"
+   echo "strategy=${STRATEGY:-default} sector_cap=$SECTOR_CAP max_open=$MAX_OPEN_POSITIONS entry_score_min=$ENTRY_SCORE_MIN earnings_gate_days=$EARNINGS_GATE_DAYS day_breaker=$DAY_BREAKER_DEC week_breaker=$WEEK_BREAKER_DEC stop_trigger=${STOP_TRIGGER_PCT}% stop_limit=${STOP_LIMIT_PCT}%"
    ```
 
 1. Pull state: account, positions, quote SYMBOL (capture bid bp, ask ap).
@@ -97,12 +101,13 @@ Args: SYMBOL SHARES SIDE (buy or sell). If missing, ask.
    Ask "execute? (y/n)".
 5. On confirm:
      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side buy --type <market|limit> [--limit-price X.XX] --tif day
-6. For BUYs, immediately place a fixed -7% stop-limit GTC (rule #4 caps
-   slippage to -8%). Compute:
-     stop_price  = round(fill_price * 0.93, 2)
-     limit_price = round(fill_price * 0.92, 2)
-   The intraday routines will PATCH this into a 10% trailing stop once
-   the position is green.
+6. For BUYs, immediately place a fixed ${STOP_TRIGGER_PCT}% stop-limit
+   GTC (rule #4 caps slippage at ${STOP_LIMIT_PCT}%). Compute via the
+   factors resolved in Step 0:
+     stop_price  = round(fill_price * $STOP_TRIGGER_FACTOR, 2)   # default 0.93
+     limit_price = round(fill_price * $STOP_LIMIT_FACTOR, 2)     # default 0.92
+   The intraday routines will PATCH this into a trailing stop (registry-
+   driven; default 10%) once the position is green.
      bash scripts/alpaca.sh submit-order --symbol SYM --qty N --side sell --type stop_limit --stop-price X.XX --limit-price Y.YY --tif gtc
 7. Log to memory/${BOT_MODE:-live}/${STRATEGY:-default}/TRADE-LOG.md with full thesis, entry, stop, target, R:R,
    sector, and the entry-scorer JSON block:

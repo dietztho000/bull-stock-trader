@@ -89,21 +89,30 @@ pre-Phase-4 behavior.
 
 The `default` strategy currently exposes:
 
-| Env var                          | Default | Rule |
-|----------------------------------|---------|------|
-| `STRATEGY_SECTOR_CAP`            | 3       | #17  |
-| `STRATEGY_MAX_OPEN_POSITIONS`    | 6       | #3   |
-| `STRATEGY_DAY_BREAKER_PCT`       | -2      | #14  |
-| `STRATEGY_WEEK_BREAKER_PCT`      | -4      | #14  |
-| `STRATEGY_ENTRY_SCORE_MIN`       | 7       | #12  |
-| `STRATEGY_EARNINGS_GATE_DAYS`    | 2       | #13  |
-| `STRATEGY_CONVICTION_TABLE_JSON` | 7→12, 8→15, 9→18, 10→20 | #19 |
+| Env var                              | Default | Rule |
+|--------------------------------------|---------|------|
+| `STRATEGY_SECTOR_CAP`                | 3       | #17  |
+| `STRATEGY_MAX_OPEN_POSITIONS`        | 6       | #3   |
+| `STRATEGY_DAY_BREAKER_PCT`           | -2      | #14  |
+| `STRATEGY_WEEK_BREAKER_PCT`          | -4      | #14  |
+| `STRATEGY_ENTRY_SCORE_MIN`           | 7       | #12  |
+| `STRATEGY_EARNINGS_GATE_DAYS`        | 2       | #13  |
+| `STRATEGY_CONVICTION_TABLE_JSON`     | 7→12, 8→15, 9→18, 10→20 | #19 |
+| `STRATEGY_STOP_TRIGGER_PCT`          | -7      | #4   |
+| `STRATEGY_STOP_LIMIT_PCT`            | -8      | #4   |
+| `STRATEGY_TRAIL_PROMOTION_PCT`       | 1       | #6   |
+| `STRATEGY_TRAIL_INITIAL_PCT`         | 10      | #6   |
+| `STRATEGY_TRAIL_TIGHTEN_15_TRIGGER_PCT` | 15   | #6   |
+| `STRATEGY_TRAIL_TIGHTEN_15_PCT`      | 7       | #6   |
+| `STRATEGY_TRAIL_TIGHTEN_20_TRIGGER_PCT` | 20   | #6   |
+| `STRATEGY_TRAIL_TIGHTEN_20_PCT`      | 5       | #6   |
+| `STRATEGY_TAKE_PROFIT_LADDER_PCT`    | 20      | #16  |
 
-Routines that consume these (today): `market-open`, `trade`. The
-preamble at the top of those commands' STEPS resolves the env vars
-into local shell vars (`SECTOR_CAP`, `MAX_OPEN_POSITIONS`,
-`DAY_BREAKER_DEC`, `WEEK_BREAKER_DEC`, `conviction_pct` helper) so the
-gating logic stays readable.
+Routines that consume these: `market-open`, `trade`, `stops`. The STEP 0
+preamble at the top of each command resolves the env vars into local
+shell vars (`SECTOR_CAP`, `MAX_OPEN_POSITIONS`, `DAY_BREAKER_DEC`,
+`WEEK_BREAKER_DEC`, `STOP_TRIGGER_FACTOR`, `STOP_LIMIT_FACTOR`,
+`TRAIL_*`, `conviction_pct` helper) so the gating logic stays readable.
 
 To add a NEW knob to an existing strategy:
 1. Add a typed `StrategyParam` to that strategy via `/strategies` UI.
