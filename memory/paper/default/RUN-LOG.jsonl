@@ -93,3 +93,8 @@
 {"ts":"2026-05-08T16:02:40Z","routine":"late-morning","action":"end","status":"ok","git_sha":"f58b452"}
 {"ts":"2026-05-08T17:08:55Z","routine":"midday","action":"start","status":"ok","git_sha":"bb68d69"}
 {"ts":"2026-05-08T17:09:50Z","routine":"midday","action":"end","status":"ok","git_sha":"bb68d69"}
+{"ts":"2026-05-08T18:34:20Z","routine":"stops","action":"start","status":"ok","git_sha":"8a4f4be"}
+{"ts":"2026-05-08T18:35:15Z","routine":"stops","action":"end","status":"ok","git_sha":"8a4f4be"}
+{"ts":"2026-05-08T19:07:17Z","routine":"afternoon","action":"start","status":"ok","git_sha":"d043538"}
+{"ts":"2026-05-08T19:07:20Z","routine":"afternoon","action":"start","status":"ok","git_sha":"d043538"}
+{"ts":"2026-05-08T19:08:41Z","routine":"afternoon","action":"end","status":"ok","git_sha":"d043538"}

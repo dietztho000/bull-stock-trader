@@ -172,3 +172,14 @@
 - NVDA: +3.29% (price $216.13) — trailing 10%, HWM $217.80, stop $196.02. Earnings exit required by May 19 (rule #13). No action.
 - XOM: -5.07% (price $144.78) — trailing 10%, HWM $155.29, stop $139.76. Above -7% cut floor ($141.83). No action.
 - No earnings exits today. No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No unfilled limit buys.
+
+---
+
+### May 08 14:00 CT — Afternoon scan
+
+- AMKR: +11.80% (price $76.18) — trailing 10%, HWM $78.96, stop $71.06. Below +15% tighten threshold. No action.
+- GOOGL: +4.30% (price $399.25) — trailing 10%, HWM $401.34, stop $361.21. No action.
+- NVDA: +3.08% (price $215.69) — trailing 10%, HWM $217.80, stop $196.02. Earnings exit required by May 19 (rule #13). No action.
+- XOM: -5.38% (price $144.30) — trailing 10%, HWM $155.29, stop $139.76. Above -7% cut floor ($141.83). Energy sector continued selling; thesis intact (Q1 beat + Golden Pass LNG). No action.
+- No earnings exits today. All stops trailing. No tighten triggers (<+15%). No take-profit triggers (<+20%).
+- No actions taken this scan.
