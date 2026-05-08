@@ -32,3 +32,17 @@ _Populated by daily-summary routine. Dashboard Journal "Daily" tab source._
 **Routines:** 8/9 fired today (daily-summary: in progress at time of check)
 
 ---
+
+## 2026-05-07 — Daily Summary
+
+**Total portfolio:** $100,910.31 across 1 bot
+**Day P&L:** -$919.71 (-0.90% weighted)
+**Phase P&L:** +$910.31 (+0.91% weighted)
+**vs SPY:** day +1.95% / phase -1.95%
+
+### Per bot
+- **paper** (): $100,910.31 equity, -0.90% day, +0.91% phase, 4 open
+
+**Routines:** 3/12 fired today (missing: afternoon, auth-canary, daily-summary, late-morning, market-open, mid-morning, midday, pre-market, stops)
+
+---

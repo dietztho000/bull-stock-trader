@@ -62,3 +62,15 @@
 {"ts":"2026-05-07T13:34:25Z","routine":"market-open","action":"start","status":"ok","git_sha":"c56ff5d"}
 {"ts":"2026-05-07T13:34:34Z","routine":"market-open","action":"start","status":"ok","git_sha":"c56ff5d"}
 {"ts":"2026-05-07T13:39:42Z","routine":"market-open","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T15:08:51Z","routine":"mid-morning","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T15:10:08Z","routine":"mid-morning","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T16:03:49Z","routine":"late-morning","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T16:05:14Z","routine":"late-morning","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T17:01:25Z","routine":"midday","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T17:03:31Z","routine":"midday","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T18:37:26Z","routine":"stops","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T18:38:27Z","routine":"stops","action":"end","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T19:05:11Z","routine":"afternoon","action":"start","status":"ok","git_sha":"da1a077"}
+{"ts":"2026-05-07T19:06:24Z","routine":"afternoon","action":"end","status":"ok","git_sha":"da1a077"}
+{"ts":"2026-05-07T20:07:17Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"c56ff5d"}
+{"ts":"2026-05-07T20:11:41Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"c56ff5d"}

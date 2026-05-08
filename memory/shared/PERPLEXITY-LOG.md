@@ -318,7 +318,4 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for SQ (Block)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for RTX (RTX Corporation)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
 | 2026-05-07 03:05 UTC | sonar | When is the next earnings report for ZS (Zscaler)? Return ONLY a JSON object with date (YYYY-MM-DD or empty), type (BMO/AMC/empty), epsEstimate ($ prefix or empty). Today is 2026-05-07. |
-| 2026-05-07 13:35 UTC | sonar | Today is 2026-05-07, pre-market. Give me: (1) VIX level, (2) S&P 500 futures direction, (3) key macro events today (economic calendar), (4) major earnings before open, (5) sector momentum (top and bot |
-| 2026-05-07 13:35 UTC | sonar | Today is 2026-05-07. What are the top stock trade ideas for today? Focus on: (1) any strong earnings beats in last 48h with continued momentum, (2) sector rotation plays (which sectors are seeing infl |
-| 2026-05-07 13:37 UTC | sonar | Today is 2026-05-07. DDOG (Datadog) and MCD (McDonald's) reported earnings this morning before market open. What were the actual results vs estimates? Did they beat or miss? Any guidance provided? Wha |
-| 2026-05-07 14:45 CT | sonar | smoke test |
+| 2026-05-07 17:02 UTC | sonar | AMKR Amkor Technology stock move today May 7 2026 why is it falling news catalyst |
