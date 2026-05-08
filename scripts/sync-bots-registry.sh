@@ -24,6 +24,11 @@ fi
 # secretKeyEnc, label, endpoint, totalCapital, hardCapAllocation, createdAt,
 # memoryAlias, name, discordWebhookUrl — none of those are referenced by
 # bots.sh and most are either secrets (enc keys) or per-machine UI prefs.
+#
+# Strategies are projected too (Phase 4): cloud routines need each bot's
+# typed params via `bots.sh list`'s 6th column, and the strategy rule
+# book is what new-bot scaffolding seeds into per-bot memory. None of
+# these fields are secret.
 projected="$(jq '{
   _comment: "Cloud-side fallback for scripts/bots.sh when memory/shared/dashboard-settings.json is missing (fresh cloud clone). Regenerate via `bash scripts/sync-bots-registry.sh` after editing bots in the dashboard.",
   accounts: ((.accounts // []) | map({id, mode})),
@@ -36,6 +41,15 @@ projected="$(jq '{
     # silently re-enable a disabled bot. Default explicitly via `if`.
     enabled: (if .enabled == false then false else true end),
     routineFilter: (.routineFilter // null)
+  })),
+  strategies: ((.strategies // []) | map({
+    slug,
+    name,
+    description,
+    enabled,
+    ruleBookTemplate,
+    params,
+    version
   }))
 }' "$SETTINGS")"
 

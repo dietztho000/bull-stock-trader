@@ -99,34 +99,31 @@ _emit_run_log_for_each_bot() {
 # to documented defaults via `${STRATEGY_<KEY>:-<default>}` substitution,
 # which keeps default-strategy bots byte-identical to pre-Phase-4 runs.
 #
-# Bash 3.2-safe (macOS): no `mapfile`, no `declare -A`. Uses `eval` to
-# export — values are JSON-encoded scalars so they're safe (no shell
-# metacharacters slip through `jq` for the kinds we support).
+# Bash 3.2-safe (macOS): no `mapfile`, no `declare -A`. Uses `printf -v`
+# for indirect assignment (bash 3.1+) followed by `export "$name"` —
+# clearer than eval and shellcheck-clean.
 _routine_export_strategy_params() {
   [[ -z "${STRATEGY_PARAMS_JSON:-}" || "$STRATEGY_PARAMS_JSON" == "null" ]] && return 0
   local params_count
   params_count=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq 'length' 2>/dev/null || echo 0)
   [[ "$params_count" == "0" ]] && return 0
-  local i kind key value rows_json export_name
+  local i kind key raw export_name
   for ((i = 0; i < params_count; i++)); do
     kind=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].kind")
     key=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].key")
     [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] || continue
     case "$kind" in
-      number|percent)
-        value=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].value")
+      number|percent|enum)
+        raw=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].value")
         export_name="STRATEGY_${key}"
-        eval "export $export_name=\"\$value\""
-        ;;
-      enum)
-        value=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -r ".[$i].value")
-        export_name="STRATEGY_${key}"
-        eval "export $export_name=\"\$value\""
+        printf -v "$export_name" '%s' "$raw"
+        export "${export_name?}"
         ;;
       table)
-        rows_json=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -c ".[$i].rows")
+        raw=$(printf '%s' "$STRATEGY_PARAMS_JSON" | jq -c ".[$i].rows")
         export_name="STRATEGY_${key}_JSON"
-        eval "export $export_name=\"\$rows_json\""
+        printf -v "$export_name" '%s' "$raw"
+        export "${export_name?}"
         ;;
     esac
   done
