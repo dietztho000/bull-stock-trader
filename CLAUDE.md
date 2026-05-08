@@ -75,6 +75,39 @@ For discord.sh, always pass `--type=<category>` so each message gets a
 category emoji prefix. Categories: research, fill, midday, eod, weekly,
 error.
 
+## Strategies registry (Phase 1)
+
+The dashboard now persists a list of named strategies in
+`memory/shared/dashboard-settings.json` under `strategies[]` (PLURAL — the
+existing singular `strategy` section continues to hold dashboard-wide
+threshold UI defaults). Each entry carries:
+
+- `slug` — id used as the `<strategy>` segment in `memory/<bot>/<strategy>/`
+- `name`, `description`, `enabled`, `version` — registry metadata
+- `ruleBookTemplate` — the markdown body used to seed
+  `memory/<bot>/<slug>/TRADING-STRATEGY.md` when a bot is first assigned
+  this strategy (Phase 3 wiring; the live `default` rule book remains
+  authoritative until then)
+- `params[]` — typed knobs (`number`, `percent`, `enum`, `table`) the
+  dashboard edits and routines will read as `STRATEGY_<KEY>` env vars
+  with safe defaults (Phase 4)
+
+Seed the `default` strategy from the live `memory/paper/default/TRADING-STRATEGY.md`
+and the existing `strategy` section thresholds:
+
+```bash
+node dashboard/scripts/seed-default-strategy.mjs
+```
+
+Idempotent. Re-run after edits to the source rule book to refresh
+`ruleBookTemplate` and bump `version`.
+
+Until the admin UI lands (Phase 2), strategies are read-only from the
+dashboard's perspective — `listStrategies()` / `getStrategy(slug)` in
+`dashboard/lib/settings.ts`. Routines continue to read the per-bot rule
+book at `memory/<bot>/<strategy>/TRADING-STRATEGY.md` exactly as before;
+nothing in the cron path changes in Phase 1.
+
 ## Mode switching
 
 `BOT_MODE=paper` swaps the Alpaca creds to `ALPACA_PAPER_*` and the endpoint

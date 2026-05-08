@@ -142,13 +142,16 @@ const mascotSchema = z
   .default({});
 
 /**
- * Strategy thresholds. These mirror the hard rules in
+ * Global strategy thresholds. These mirror the hard rules in
  * `memory/TRADING-STRATEGY.md` and previously lived as inline constants
  * across components. Surfacing them here lets a paper-bot operator tweak
  * the dashboard's enforcement view without forking the bot's rulebook —
  * the bot's CLI routines still read from `.env` and `TRADING-STRATEGY.md`.
+ *
+ * Note: this is the SINGULAR `strategy` section — applies dashboard-wide.
+ * The PLURAL `strategies` section below is the per-strategy registry.
  */
-const strategySchema = z
+const globalStrategySchema = z
   .object({
     sectorCap: z.number().int().min(1).max(10).default(3),
     maxOpenPositions: z.number().int().min(1).max(20).default(6),
@@ -247,6 +250,12 @@ const botSchema = z.object({
   accountId: slugSchema,
   allocation: z.number().positive().nullable(),
   strategySlug: z.string().min(1).max(40).default("default"),
+  /** Snapshot of `strategies[i].version` at the moment this bot was last
+   *  assigned/updated to its strategy. The bot card surfaces a "strategy
+   *  edited since assignment" badge when the live strategy version exceeds
+   *  this value. Optional + back-compat: bots created before the registry
+   *  upgrade simply omit it and don't show the badge. */
+  strategyVersionAtAssign: z.number().int().min(1).optional(),
   memoryAlias: slugSchema.optional(),
   enabled: z.boolean().default(true),
   /** Per-bot Discord webhook override (audit F10). When set, dashboard-
@@ -297,6 +306,101 @@ const botSchema = z.object({
   createdAt: z.string(),
 });
 
+// ─── Multi-strategy registry (Phase 1 of strategies upgrade) ───────────
+
+/** Identifier for a strategy param. Uppercase + underscores so it round-
+ *  trips cleanly to `STRATEGY_<KEY>` env vars when routines consume the
+ *  values at runtime. */
+const strategyParamKeySchema = z
+  .string()
+  .min(1)
+  .max(40)
+  .regex(/^[A-Z][A-Z0-9_]*$/, "Use SCREAMING_SNAKE_CASE (e.g. SECTOR_CAP)");
+
+/** Discriminated union of typed knobs a strategy exposes. Dashboard renders
+ *  a different form widget for each kind; routines read them as env vars
+ *  with safe defaults that match today's hard-coded values, so existing
+ *  bots stay byte-identical until knobs are deliberately changed. */
+const strategyParamSchema = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("number"),
+      key: strategyParamKeySchema,
+      label: z.string().min(1).max(60),
+      value: z.number(),
+      min: z.number().optional(),
+      max: z.number().optional(),
+      step: z.number().positive().optional(),
+      unit: z.string().max(8).optional(),
+    }),
+    z.object({
+      kind: z.literal("percent"),
+      key: strategyParamKeySchema,
+      label: z.string().min(1).max(60),
+      value: z.number(),
+      min: z.number(),
+      max: z.number(),
+    }),
+    z.object({
+      kind: z.literal("enum"),
+      key: strategyParamKeySchema,
+      label: z.string().min(1).max(60),
+      value: z.string().min(1),
+      options: z.array(z.string().min(1)).min(2).max(20),
+    }),
+    z.object({
+      kind: z.literal("table"),
+      key: strategyParamKeySchema,
+      label: z.string().min(1).max(60),
+      rows: z
+        .array(
+          z.object({
+            k: z.union([z.string(), z.number()]),
+            v: z.union([z.string(), z.number()]),
+          })
+        )
+        .min(1)
+        .max(50),
+    }),
+  ])
+  .superRefine((p, ctx) => {
+    if (p.kind === "percent") {
+      if (p.min > p.max) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "min must be <= max" });
+      }
+      if (p.value < p.min || p.value > p.max) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "value must be within [min, max]" });
+      }
+    }
+    if (p.kind === "number" && p.min != null && p.max != null && p.min > p.max) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "min must be <= max" });
+    }
+    if (p.kind === "enum" && !p.options.includes(p.value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "value must be one of options" });
+    }
+  });
+
+/** A first-class strategy definition. Bots reference one of these via
+ *  `botSchema.strategySlug`. The `ruleBookTemplate` is the markdown body
+ *  used to seed `memory/<bot>/<slug>/TRADING-STRATEGY.md` when a bot is
+ *  first assigned this strategy; `params` are typed knobs the dashboard
+ *  edits and routines read as env vars at runtime.
+ *
+ *  `version` is bumped on every save (see `updateStrategy`). Bots store a
+ *  snapshot in `botSchema.strategyVersionAtAssign` so the bot card can
+ *  surface a "strategy edited since assignment" badge. */
+const strategyDefinitionSchema = z.object({
+  slug: slugSchema,
+  name: z.string().min(1).max(60),
+  description: z.string().max(500).default(""),
+  enabled: z.boolean().default(true),
+  ruleBookTemplate: z.string().default(""),
+  params: z.array(strategyParamSchema).default([]),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  version: z.number().int().min(1).default(1),
+});
+
 /** Audit F2 — vault rotation cadence. When `rotateEveryDays` is a positive
  *  integer, the dashboard surfaces an "overdue" warning on the bots page
  *  once the on-disk fingerprint marker's `rekeyedAt` is older than that
@@ -322,10 +426,14 @@ export const settingsSchema = z.object({
   defaults: defaultsSchema,
   notifications: notificationsSchema,
   mascot: mascotSchema,
-  strategy: strategySchema,
+  strategy: globalStrategySchema,
   alerts: alertsSchema,
   accounts: z.array(accountSchema).default([]),
   bots: z.array(botSchema).default([]),
+  /** Per-strategy registry. Empty by default — populated by
+   *  `dashboard/scripts/seed-default-strategy.mjs` on first install,
+   *  then mutated through `/api/strategies` once the admin UI ships. */
+  strategies: z.array(strategyDefinitionSchema).default([]),
 });
 
 export type DashboardSettings = z.infer<typeof settingsSchema>;
@@ -339,6 +447,9 @@ export type TradesFilter = z.infer<typeof tradesFilterSchema>;
 export type WebhookCategory = keyof z.infer<typeof webhookCategoryFiltersSchema>;
 export type Account = z.infer<typeof accountSchema>;
 export type Bot = z.infer<typeof botSchema>;
+export type StrategyParam = z.infer<typeof strategyParamSchema>;
+export type StrategyDefinition = z.infer<typeof strategyDefinitionSchema>;
+export type StrategyParamKind = StrategyParam["kind"];
 
 export const SECTION_KEYS = [
   "discord",
@@ -351,6 +462,7 @@ export const SECTION_KEYS = [
   "alerts",
   "accounts",
   "bots",
+  "strategies",
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 
@@ -481,6 +593,10 @@ export const settingsPatchSchema = z.object({
   accounts: z.array(accountSchema).optional(),
   /** Full replacement of the bots list. Same rationale as `accounts`. */
   bots: z.array(botSchema).optional(),
+  /** Full replacement of the strategies list. Mutations go through
+   *  dedicated /api/strategies routes once the admin UI ships; this
+   *  branch exists for /api/settings/import. */
+  strategies: z.array(strategyDefinitionSchema).optional(),
 });
 
 export type AlertRule = z.infer<typeof alertRuleSchema>;
@@ -528,6 +644,7 @@ export type RedactedSettings = {
   alerts: DashboardSettings["alerts"];
   accounts: RedactedAccount[];
   bots: DashboardSettings["bots"];
+  strategies: DashboardSettings["strategies"];
 };
 
 /** Mask token used in exported JSON for secret fields. */

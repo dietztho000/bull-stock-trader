@@ -15,6 +15,9 @@ import {
   type RedactedSettings,
   type SectionKey,
   type SettingsPatch,
+  type StrategyDefinition,
+  type StrategyParam,
+  type StrategyParamKind,
   isRedactedMask,
 } from "./settings.schema";
 import { credentialHint } from "./accountVault";
@@ -40,6 +43,9 @@ export type {
   RedactedSettings,
   SectionKey,
   SettingsPatch,
+  StrategyDefinition,
+  StrategyParam,
+  StrategyParamKind,
   Theme,
   LandingPage,
   NumberFormatPref,
@@ -105,6 +111,10 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
     },
     accounts: current.accounts.map((a) => ({ ...a })),
     bots: current.bots.map((b) => ({ ...b })),
+    strategies: current.strategies.map((s) => ({
+      ...s,
+      params: s.params.map((p) => cloneStrategyParam(p)),
+    })),
   };
 
   if (patch.discord) {
@@ -158,6 +168,12 @@ export async function saveSettings(patch: SettingsPatch): Promise<DashboardSetti
   }
   if (patch.accounts !== undefined) next.accounts = patch.accounts.map((a) => ({ ...a }));
   if (patch.bots !== undefined) next.bots = patch.bots.map((b) => ({ ...b }));
+  if (patch.strategies !== undefined) {
+    next.strategies = patch.strategies.map((s) => ({
+      ...s,
+      params: s.params.map((p) => cloneStrategyParam(p)),
+    }));
+  }
 
   assertReferentialIntegrity(next);
   await writeFile(next);
@@ -198,6 +214,19 @@ function assertReferentialIntegrity(s: DashboardSettings): void {
   }
 }
 
+/** Deep-clones a `StrategyParam` so saveSettings's persistence layer can't
+ *  mutate the caller's input. The discriminated union has a `table` variant
+ *  whose nested `rows` array would otherwise be shared by reference. */
+function cloneStrategyParam(p: StrategyParam): StrategyParam {
+  if (p.kind === "table") {
+    return { ...p, rows: p.rows.map((row) => ({ ...row })) };
+  }
+  if (p.kind === "enum") {
+    return { ...p, options: [...p.options] };
+  }
+  return { ...p };
+}
+
 // ─── Account-level mutations (used by /api/accounts routes) ──────────────
 
 export async function listAccounts(): Promise<Account[]> {
@@ -206,6 +235,17 @@ export async function listAccounts(): Promise<Account[]> {
 
 export async function listBots(): Promise<Bot[]> {
   return (await loadSettings()).bots;
+}
+
+/** Read-only helpers for the strategies registry. Phase 1 of the multi-
+ *  strategy upgrade. CRUD mutations land in Phase 2 with the admin UI. */
+export async function listStrategies(): Promise<StrategyDefinition[]> {
+  return (await loadSettings()).strategies;
+}
+
+export async function getStrategy(slug: string): Promise<StrategyDefinition | null> {
+  const all = await listStrategies();
+  return all.find((s) => s.slug === slug) ?? null;
 }
 
 export async function addAccount(account: Account): Promise<DashboardSettings> {
@@ -304,15 +344,20 @@ export function redactAccount(a: Account): RedactedAccount {
  *  registered bots. Use the dedicated /api/accounts and /api/bots DELETE
  *  routes instead. */
 export async function resetSection(section: SectionKey | "all"): Promise<DashboardSettings> {
-  if (section === "accounts" || section === "bots") {
+  if (section === "accounts" || section === "bots" || section === "strategies") {
     throw new Error(
-      `Refusing to reset "${section}" via resetSection — use DELETE /api/${section}/[id] for individual records.`
+      `Refusing to reset "${section}" via resetSection — use the dedicated /api/${section}/[id] route to remove individual records.`
     );
   }
   const current = await loadSettings();
   let next: DashboardSettings;
   if (section === "all") {
-    next = { ...DEFAULTS, accounts: current.accounts, bots: current.bots };
+    next = {
+      ...DEFAULTS,
+      accounts: current.accounts,
+      bots: current.bots,
+      strategies: current.strategies,
+    };
   } else {
     next = { ...current, [section]: DEFAULTS[section] } as DashboardSettings;
   }
@@ -405,6 +450,7 @@ export async function loadRedactedSettings(): Promise<RedactedSettings> {
     alerts: s.alerts,
     accounts: s.accounts.map(redactAccount),
     bots: s.bots,
+    strategies: s.strategies,
   };
 }
 

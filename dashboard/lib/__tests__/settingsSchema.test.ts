@@ -176,3 +176,191 @@ describe("isWebhookCategory", () => {
     expect(isWebhookCategory("")).toBe(false);
   });
 });
+
+describe("strategies registry — Phase 1 schema", () => {
+  const baseStrategy = {
+    slug: "default",
+    name: "Default",
+    description: "",
+    enabled: true,
+    ruleBookTemplate: "# Rules\n- Be disciplined.",
+    params: [],
+    createdAt: "2026-05-08T00:00:00Z",
+    updatedAt: "2026-05-08T00:00:00Z",
+    version: 1,
+  };
+
+  it("DEFAULTS.strategies starts empty (seed populates it)", () => {
+    expect(DEFAULTS.strategies).toEqual([]);
+  });
+
+  it("includes 'strategies' in SECTION_KEYS", () => {
+    expect(SECTION_KEYS).toContain("strategies");
+  });
+
+  it("parses a minimal strategy with only required fields", () => {
+    const result = settingsSchema.parse({
+      strategies: [
+        {
+          slug: "default",
+          name: "Default",
+          createdAt: "2026-05-08T00:00:00Z",
+          updatedAt: "2026-05-08T00:00:00Z",
+        },
+      ],
+    });
+    expect(result.strategies).toHaveLength(1);
+    expect(result.strategies[0]).toMatchObject({
+      slug: "default",
+      name: "Default",
+      description: "",
+      enabled: true,
+      ruleBookTemplate: "",
+      params: [],
+      version: 1,
+    });
+  });
+
+  it("rejects an invalid slug (uppercase or whitespace)", () => {
+    expect(() =>
+      settingsSchema.parse({ strategies: [{ ...baseStrategy, slug: "Default" }] })
+    ).toThrow();
+    expect(() =>
+      settingsSchema.parse({ strategies: [{ ...baseStrategy, slug: "default v1" }] })
+    ).toThrow();
+  });
+
+  it("accepts each StrategyParam kind via the discriminated union", () => {
+    const result = settingsSchema.parse({
+      strategies: [
+        {
+          ...baseStrategy,
+          params: [
+            { kind: "number", key: "MAX_OPEN", label: "Max open", value: 6, min: 1, max: 20, step: 1 },
+            { kind: "percent", key: "DAY_BREAKER", label: "Day breaker", value: -2, min: -20, max: 0 },
+            { kind: "enum", key: "MOMENTUM_PERIOD", label: "Momentum period", value: "14d", options: ["7d", "14d", "30d"] },
+            {
+              kind: "table",
+              key: "CONVICTION_TABLE",
+              label: "Conviction → size",
+              rows: [
+                { k: 7, v: 12 },
+                { k: 8, v: 15 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.strategies[0].params).toHaveLength(4);
+    const kinds = result.strategies[0].params.map((p) => p.kind);
+    expect(kinds).toEqual(["number", "percent", "enum", "table"]);
+  });
+
+  it("rejects a param key that isn't SCREAMING_SNAKE_CASE", () => {
+    expect(() =>
+      settingsSchema.parse({
+        strategies: [
+          {
+            ...baseStrategy,
+            params: [{ kind: "number", key: "max_open", label: "x", value: 1 }],
+          },
+        ],
+      })
+    ).toThrow(/SCREAMING_SNAKE_CASE/);
+  });
+
+  it("rejects a percent param whose value is outside [min, max]", () => {
+    expect(() =>
+      settingsSchema.parse({
+        strategies: [
+          {
+            ...baseStrategy,
+            params: [
+              { kind: "percent", key: "DAY_BREAKER", label: "Day", value: 5, min: -20, max: 0 },
+            ],
+          },
+        ],
+      })
+    ).toThrow(/within \[min, max\]/);
+  });
+
+  it("rejects an enum param whose value isn't one of the options", () => {
+    expect(() =>
+      settingsSchema.parse({
+        strategies: [
+          {
+            ...baseStrategy,
+            params: [
+              {
+                kind: "enum",
+                key: "MOMENTUM_PERIOD",
+                label: "Period",
+                value: "60d",
+                options: ["7d", "14d", "30d"],
+              },
+            ],
+          },
+        ],
+      })
+    ).toThrow(/one of options/);
+  });
+
+  it("rejects an enum param with fewer than 2 options", () => {
+    expect(() =>
+      settingsSchema.parse({
+        strategies: [
+          {
+            ...baseStrategy,
+            params: [
+              { kind: "enum", key: "MODE", label: "Mode", value: "a", options: ["a"] },
+            ],
+          },
+        ],
+      })
+    ).toThrow();
+  });
+
+  it("rejects a number param whose min > max", () => {
+    expect(() =>
+      settingsSchema.parse({
+        strategies: [
+          {
+            ...baseStrategy,
+            params: [
+              { kind: "number", key: "MAX_OPEN", label: "x", value: 5, min: 10, max: 1 },
+            ],
+          },
+        ],
+      })
+    ).toThrow(/min must be <= max/);
+  });
+
+  it("Bot.strategyVersionAtAssign is optional and accepts a positive int", () => {
+    const result = settingsSchema.parse({
+      accounts: [
+        {
+          id: "a1",
+          label: "Acct 1",
+          mode: "paper",
+          endpoint: "https://paper-api.alpaca.markets",
+          apiKeyEnc: "v1.iv.tag.ct",
+          secretKeyEnc: "v1.iv.tag.ct",
+          createdAt: "2026-05-05T00:00:00Z",
+        },
+      ],
+      bots: [
+        {
+          id: "b1",
+          name: "Bot 1",
+          accountId: "a1",
+          allocation: null,
+          enabled: true,
+          strategyVersionAtAssign: 3,
+          createdAt: "2026-05-05T00:00:00Z",
+        },
+      ],
+    });
+    expect(result.bots[0].strategyVersionAtAssign).toBe(3);
+  });
+});
