@@ -3,23 +3,29 @@
 # (see scripts/launchd/com.bullstocktrader.cloud-sync.plist).
 #
 # Flow:
-#   1. auto-commit any DIRTY memory/      — local writers (smoke tests,
+#   1. pin GH_TOKEN to dietztho000        — git credential helper for
+#                                           github.com is `!gh auth
+#                                           git-credential`; pinning the
+#                                           token prevents `gh auth switch`
+#                                           to a work account from silently
+#                                           breaking pulls
+#   2. auto-commit any DIRTY memory/      — local writers (smoke tests,
 #                                           browser writes, cache appends)
 #                                           land first so the pull + sync
 #                                           steps see a clean working tree
-#   2. git pull --rebase --autostash      — pick up cloud-side pushes to
+#   3. git pull --rebase --autostash      — pick up cloud-side pushes to
 #                                           main; --autostash is defense in
 #                                           depth against any race between
-#                                           step 1 and the rebase
-#   3. scripts/sync-cloud-memory.sh       — pull memory writes from any
+#                                           step 2 and the rebase
+#   4. scripts/sync-cloud-memory.sh       — pull memory writes from any
 #                                           orphan claude/* branches (this
 #                                           script refuses dirty memory/,
-#                                           hence step 1's pre-commit)
-#   4. auto-commit any staged memory/*    — keeps the loop idempotent
+#                                           hence step 2's pre-commit)
+#   5. auto-commit any staged memory/*    — keeps the loop idempotent
 #
 # Refuses to run if there are uncommitted changes OUTSIDE memory/ — that
 # almost always means the user is mid-edit on the dashboard or a script,
-# and we don't want to surprise them. Memory/ writes are fine — step 1's
+# and we don't want to surprise them. Memory/ writes are fine — step 2's
 # pre-pull commit makes the rest of the flow's clean-tree expectations
 # hold.
 #
@@ -87,6 +93,28 @@ if ! git diff --quiet -- . ':!memory/' || ! git diff --cached --quiet -- . ':!me
   write_status 0 "skipped: uncommitted changes outside memory/"
   exit 0
 fi
+
+# Pin the GitHub token to a specific gh user (default: dietztho000) for
+# the duration of this script, regardless of which gh account is active
+# at tick time. Without this, flipping `gh auth switch` to a work account
+# (thryvegrowthco, reportfordoody) silently breaks every cron-sync tick
+# until you switch back — symptom: dashboard freshness pill drifts hours
+# behind cloud while the err.log shows `denied to <wrong-account>`.
+#
+# How it works: `~/.gitconfig` already wires git's github.com credential
+# helper to `!gh auth git-credential`. When GH_TOKEN is set in env, gh
+# uses that token directly and bypasses its active-user state, so every
+# git pull/push in this subprocess tree authenticates as the pinned user.
+# Override with BULL_GH_USER=<other-user> if you ever rename or need to
+# test under a different account.
+PINNED_GH_USER="${BULL_GH_USER:-dietztho000}"
+PINNED_GH_TOKEN="$(gh auth token -u "$PINNED_GH_USER" -h github.com 2>/dev/null || true)"
+if [[ -z "$PINNED_GH_TOKEN" ]]; then
+  log "ERROR: gh has no logged-in account '$PINNED_GH_USER' — run: gh auth login -u $PINNED_GH_USER"
+  write_status 1 "gh auth missing for $PINNED_GH_USER"
+  exit 1
+fi
+export GH_TOKEN="$PINNED_GH_TOKEN"
 
 # Auto-commit any dirty memory/ from local writers (smoke tests, browser-
 # side dashboard writes, perplexity.sh cache appends) BEFORE the pull. The
