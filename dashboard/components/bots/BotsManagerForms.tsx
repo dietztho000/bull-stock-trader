@@ -7,18 +7,24 @@ import { AllocationBar, type AllocationSlice } from "./AllocationBar";
 
 const STRATEGIES_URL = "/api/strategies";
 
+// Use the same envelope-returning fetcher as BotsManager and
+// StrategiesManager — SWR caches by URL, so all three consumers MUST
+// agree on shape. (Mismatch caused a "strategies.map is not a function"
+// crash in the bot edit modal when BotsManager's fetcher won the cache
+// race and stored the envelope here.)
 const strategiesFetcher = (url: string) =>
-  fetch(url)
-    .then((r) => r.json())
-    .then((d) => (d as { strategies: StrategyDefinition[] }).strategies ?? []);
+  fetch(url).then((r) => r.json());
 
 /** Hook used by both BotForm and EditBotForm. SWR-shared so opening one
  *  modal warms the cache for the other. Falls back to an empty array when
  *  the registry is unseeded — the picker compensates by surfacing the
  *  current slug as an "(unmanaged)" option. */
 function useStrategies(): StrategyDefinition[] {
-  const { data } = useSWR<StrategyDefinition[]>(STRATEGIES_URL, strategiesFetcher);
-  return data ?? [];
+  const { data } = useSWR<{ strategies: StrategyDefinition[] }>(
+    STRATEGIES_URL,
+    strategiesFetcher
+  );
+  return data?.strategies ?? [];
 }
 
 /** Renders the strategy picker (dropdown) + a read-only preview of the
