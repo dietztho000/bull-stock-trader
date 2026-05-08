@@ -163,4 +163,49 @@ describe("loadResearchLog", () => {
     expect(day4?.body).toContain("marker-day-4");
     expect(day4?.body).not.toContain("marker-day-5");
   });
+
+  it("captures non-pre-market labels (Midday Addendum, Late-morning, etc.)", async () => {
+    await fs.writeFile(
+      logPath,
+      [
+        "## 2026-05-07 — Midday Addendum",
+        "",
+        "Intraday catalyst note.",
+        "",
+        "## 2026-05-06 — Pre-market Research",
+        "",
+        "Morning brief.",
+        "",
+      ].join("\n")
+    );
+    const out = await mod.loadResearchLog(ctx);
+    expect(out).toHaveLength(2);
+    expect(out[0].date).toBe("2026-05-07");
+    expect(out[0].label).toBe("Midday Addendum");
+    expect(out[1].date).toBe("2026-05-06");
+    expect(out[1].label).toBe("Pre-market Research");
+  });
+
+  it("keeps multiple sections on the same date as separate entries", async () => {
+    await fs.writeFile(
+      logPath,
+      [
+        "## 2026-05-07 — Pre-market Research",
+        "morning content",
+        "",
+        "## 2026-05-07 — Midday Addendum",
+        "midday content",
+        "",
+      ].join("\n")
+    );
+    const out = await mod.loadResearchLog(ctx);
+    expect(out).toHaveLength(2);
+    expect(out.map((e) => e.label)).toEqual([
+      "Pre-market Research",
+      "Midday Addendum",
+    ]);
+    expect(out[0].body).toContain("morning content");
+    expect(out[0].body).not.toContain("midday content");
+    expect(out[1].body).toContain("midday content");
+  });
 });

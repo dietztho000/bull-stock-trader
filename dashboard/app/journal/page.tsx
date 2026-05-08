@@ -169,8 +169,9 @@ async function ResearchTab({ botId, strategy }: { botId: string; strategy: strin
         const isToday = e.date === todayDate;
         return (
           <Card
-            key={e.date}
+            key={`${e.date}-${e.label}`}
             title={e.date}
+            subtitle={e.label}
             right={
               e.decision ? (
                 <Badge
