@@ -3,14 +3,25 @@
 # (see scripts/launchd/com.bullstocktrader.cloud-sync.plist).
 #
 # Flow:
-#   1. git pull --rebase origin main      — pick up cloud-side pushes to main
-#   2. scripts/sync-cloud-memory.sh       — pull memory writes from any
-#                                           orphan claude/* branches
-#   3. auto-commit any staged memory/*    — keeps the loop idempotent
+#   1. auto-commit any DIRTY memory/      — local writers (smoke tests,
+#                                           browser writes, cache appends)
+#                                           land first so the pull + sync
+#                                           steps see a clean working tree
+#   2. git pull --rebase --autostash      — pick up cloud-side pushes to
+#                                           main; --autostash is defense in
+#                                           depth against any race between
+#                                           step 1 and the rebase
+#   3. scripts/sync-cloud-memory.sh       — pull memory writes from any
+#                                           orphan claude/* branches (this
+#                                           script refuses dirty memory/,
+#                                           hence step 1's pre-commit)
+#   4. auto-commit any staged memory/*    — keeps the loop idempotent
 #
 # Refuses to run if there are uncommitted changes OUTSIDE memory/ — that
 # almost always means the user is mid-edit on the dashboard or a script,
-# and we don't want to surprise them.
+# and we don't want to surprise them. Memory/ writes are fine — step 1's
+# pre-pull commit makes the rest of the flow's clean-tree expectations
+# hold.
 #
 # Best-effort: each step logs and exits on its own failure; we never fall
 # through to commit something we didn't expect.
@@ -77,8 +88,23 @@ if ! git diff --quiet -- . ':!memory/' || ! git diff --cached --quiet -- . ':!me
   exit 0
 fi
 
-log "git pull --rebase origin main"
-if ! git pull --rebase origin main; then
+# Auto-commit any dirty memory/ from local writers (smoke tests, browser-
+# side dashboard writes, perplexity.sh cache appends) BEFORE the pull. The
+# pull's --autostash would carry these across the rebase, but the next
+# step (sync-cloud-memory.sh) refuses to run with dirty memory/ because
+# its cherry-pick logic isn't safe alongside unstaged changes. Committing
+# here keeps the working tree clean for the rest of the flow.
+if ! git diff --quiet -- memory/ || ! git diff --cached --quiet -- memory/; then
+  log "auto-committing local memory/ writes pre-pull"
+  if ! git add -- memory/ || ! git commit -m "auto-commit local memory writes for $(TZ=America/Chicago date +%Y-%m-%d)"; then
+    log "ERROR: pre-pull memory commit failed — aborting"
+    write_status 1 "pre-pull memory commit failed"
+    exit 1
+  fi
+fi
+
+log "git pull --rebase --autostash origin main"
+if ! git pull --rebase --autostash origin main; then
   log "ERROR: pull failed (rebase conflict?) — aborting"
   write_status 1 "git pull failed (rebase conflict or network)"
   exit 1
