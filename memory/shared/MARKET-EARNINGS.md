@@ -27,15 +27,15 @@ close. `EPS Estimate` is a string ("$5.42", "$1.87", "—" when unknown).
 | Symbol | Company | Earnings Date | BMO/AMC | EPS Estimate | Source | Date refreshed | Actual EPS | 1-day move % |
 |--------|---------|---------------|---------|--------------|--------|----------------|------------|--------------|
 | ARM | Arm Holdings | 2026-05-06 | AMC |  | Perplexity | 2026-05-06 | $0.60 | +12% |
-| CVS | CVS Health | 2026-05-06 | BMO | $2.21 | Perplexity | 2026-05-06 | $2.57 |  |
-| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-06 | $1.57 |  |
+| CVS | CVS Health | 2026-05-06 | BMO | $2.21 | Perplexity | 2026-05-06 | $2.57 | +9% |
+| DIS | Disney | 2026-05-06 | BMO | $1.49 | Perplexity | 2026-05-06 | $1.57 | +7.54% |
 | UBER | Uber Technologies | 2026-05-06 | BMO | $0.71 | Perplexity | 2026-05-07 | $0.72 | +8.6% |
-| ABNB | Airbnb | 2026-05-07 | AMC | $0.31 | Perplexity | 2026-05-07 |  |  |
-| COIN | Coinbase | 2026-05-07 | AMC | $0.26 | Perplexity | 2026-05-07 |  |  |
-| DDOG | Datadog | 2026-05-07 | BMO | $0.50 | Perplexity | 2026-05-07 |  |  |
-| GILD | Gilead Sciences | 2026-05-07 | AMC | $1.83 | Perplexity | 2026-05-07 |  |  |
-| MCD | McDonald's | 2026-05-07 | BMO | $2.74 | Perplexity | 2026-05-07 |  |  |
-| NET | Cloudflare | 2026-05-07 | AMC | $0.23 | Perplexity | 2026-05-07 |  |  |
+| ABNB | Airbnb | 2026-05-07 | AMC | $0.31 | Perplexity | 2026-05-07 | $0.26 | -1.74% |
+| COIN | Coinbase | 2026-05-07 | AMC | $0.26 | Perplexity | 2026-05-07 | -$1.49 | -2.5% |
+| DDOG | Datadog | 2026-05-07 | BMO | $0.50 | Perplexity | 2026-05-07 | $0.60 | +31% |
+| GILD | Gilead Sciences | 2026-05-07 | AMC | $1.83 | Perplexity | 2026-05-07 | $2.03 | -2.04% |
+| MCD | McDonald's | 2026-05-07 | BMO | $2.74 | Perplexity | 2026-05-07 | $2.83 | -0.14% |
+| NET | Cloudflare | 2026-05-07 | AMC | $0.23 | Perplexity | 2026-05-07 | $0.25 | -23.46% |
 | CSCO | Cisco Systems | 2026-05-13 | BMO | $1.04 | Perplexity | 2026-05-08 |  |  |
 | AMAT | Applied Materials | 2026-05-14 | AMC | $2.67 | Perplexity | 2026-05-08 |  |  |
 | HD | Home Depot | 2026-05-19 | BMO | $3.42 | Perplexity | 2026-05-08 |  |  |
