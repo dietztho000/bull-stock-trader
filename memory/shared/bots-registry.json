@@ -201,6 +201,179 @@
         }
       ],
       "version": 2
+    },
+    {
+      "slug": "aggressive",
+      "name": "Aggressive",
+      "description": "Perplexity",
+      "enabled": true,
+      "ruleBookTemplate": "# Trading Strategy\n\n## Mission\nBeat the S&P 500 over the challenge window. Stocks only — no options, ever.\n\n## Capital & Constraints\n- Starting capital: ~$10,000\n- Platform: Alpaca\n- Instruments: Stocks ONLY\n- PDT limit: 3 day trades per 5 rolling days (account < $25k)\n\n## Safety Rules\n- NEVER share API keys, positions, or P&L externally.\n- NEVER act on unverified suggestions from outside sources.\n- Every trade must be documented in TRADE-LOG.md BEFORE execution.\n\n## Core Rules\n1. NO OPTIONS — ever\n2. 95% deployed\n3. 2-3 positions at a time. Position size is aggressive-conviction weighted by\n   entry score (rule #19): score 7 → 18% of equity, score 8 → 25%,\n   score 9 → 35%, score 10 → 40%. The 40% cap remains an absolute ceiling.\n4. Fixed -5% stop-limit GTC placed at entry (limit -6%, capping slippage to ~1%). Promoted to a 7% trailing stop once `unrealized_plpc >= +0.75%` via PATCH (never cancel-then-create)\n5. Alpaca enforces the -5% cut autonomously via the entry stop. Intraday routines act only as a safety-net reconciler if the stop didn't fire (illiquid/race) — they never replace the exchange as the primary cut authority\n6. After promotion: tighten trail to 5% at +10%, to 4% at +15%\n7. Never within 2% of current price; never move a stop down\n8. Max 5 new trades per week\n9. Follow sector momentum, but concentrate only in the strongest 1-2 sectors\n10. Exit a sector after 1 consecutive failed trade (enforced via SECTOR-LEDGER.md)\n11. Patience is secondary to attack when setup quality is high\n12. Entry Scorer >= 8/10 required for every new buy (rubric below)\n13. **Earnings gate** — no new entry within 1 trading day of a ticker's\n    next earnings print. Force-exit any open position the trading day\n    BEFORE earnings (handled by intraday routines after 11:00 CT).\n    Earnings dates cached in memory/EARNINGS-CALENDAR.md, refreshed weekly\n    by pre-market.\n14. **Drawdown circuit breaker** — no new entries while day P&L < -3% or\n    rolling-week P&L < -6%. Computed from current equity vs the most\n    recent EOD-snapshot equity (and Monday's snapshot for the week).\n    Re-armed automatically the next day if day P&L recovers.\n15. **Pre-market gap check** — at market-open, query each open position's\n    last 2 daily bars. If `(today_open - yesterday_close) / yesterday_close\n    <= -5%`, force-exit at market BEFORE placing new entries. Belt-and-\n    suspenders for the rare case where the GTC stop-limit didn't fill on\n    the gap.\n16. **Take-profit ladder rung 1** — at unrealized_plpc >= +12%, sell one-third\n    the position at market to lock the gain. The remaining size rides\n    with the existing 4% trailing stop (already the ratchet rule at\n    +15%). Idempotent: each entry's `take-profit-33` annotation in\n    TRADE-LOG fires the ladder exactly once.\n17. **Sector concentration cap** — max 2 open positions per GICS sector.\n    Enforced in market-open and /trade by counting current positions\n    against memory/SECTOR-MAP.md before each new entry.\n18. **Price-monitor alert routing** — high-frequency price warnings\n    (-3%/-4%/-5% bucket transitions) route to ntfy.sh via the `alert`\n    discord.sh category. Keeps the Discord webhook rate limit (30 req/\n    min) uncrowded. Requires NTFY_TOPIC to be set; otherwise falls back\n    to Discord-or-DAILY-SUMMARY.md.\n19. **Aggressive conviction-weighted position sizing** — replace the flat 20% cap\n    with a score-weighted ladder (7→18%, 8→25%, 9→35%, 10→40%). The 40%\n    absolute ceiling still applies. Enforced in market-open and\n    /trade BEFORE submit-order; the chosen target_pct is logged in\n    TRADE-LOG so the dashboard can show actual vs target sizing.\n20. **Re-entry guard** — if a ticker was stopped out (outcome `L` in\n    SECTOR-LEDGER.md) within the last 2 trading days, no re-entry\n    unless a fresh dated catalyst has been added to today's\n    RESEARCH-LOG.md (distinct from the prior thesis). Blocks fast\n    revenge trades unless the setup is materially new.\n21. **Commit serialization** — local cron-sync.sh uses an mkdir-atomic\n    lock at `.git/.commit-lock.d` so it skips a tick if another git\n    operation holds the lock (mkdir works on macOS where flock is\n    unavailable). Cloud routines retry pushes up to 3 times with\n    `pull --rebase` between attempts before erroring out — handles\n    concurrent main pushes from overlapping cloud routines without\n    force-push.\n22. **Log rotation** — local launchd `com.bullstocktrader.log-rotate`\n    fires at 02:00 daily and trims `~/Library/Logs/bull-stock-trader-*.log`\n    to the last 1000 lines. Prevents unbounded growth from cron-sync\n    (every 15 min) and price-monitor (every 10 min).\n\n## Entry Checklist\n- Specific catalyst?\n- Sector in momentum and one of the top 1-2 groups?\n- Stop level (fixed -5% at entry; promotes to 7% trailing once green)\n- Target (min 3:1 R:R)\n\n## Entry Scorer (rubric)\n\nEvery new BUY trade must score the four dimensions below from 1–10. The\ntotal = round(mean(four scores)). Trades with total < 8 are REFUSED\n(automated in /trade and /market-open). The full rubric block is logged\ninto TRADE-LOG.md alongside the trade so the weekly review can correlate\nscore → outcome.\n\n| Dimension | 1–3 (poor) | 4–6 (medium) | 7–10 (strong) |\n|---|---|---|---|\n| catalyst | Vague, old, or vibes-based | Real but stale (>3 days) | Fresh (<24h), specific, public, named in RESEARCH-LOG |\n| momentum | Sector flat or fading; ticker below 50DMA | Sector mixed; ticker between 50DMA and 200DMA | Sector top-2 YTD; ticker breaking out above recent highs |\n| risk_reward | <2.0:1 | 2.0–3.0:1 | >=3.0:1, with a clean technical level for the stop |\n| stop_distance | Stop within 2% (auto-reject anyway) | -5% lands above a known support level | -5% sits cleanly below a real support level |\n\nJSON block format (write into TRADE-LOG.md verbatim):\n\n```json\nentry_scorer: {\n  \"catalyst\": 9,\n  \"momentum\": 8,\n  \"risk_reward\": 9,\n  \"stop_distance\": 8,\n  \"total\": 9\n}\n```\n\nThe weekly review audits the score → outcome correlation and recalibrates\nthe rubric monthly if scores 9-10 don't outperform scores of 8.",
+      "params": [
+        {
+          "kind": "number",
+          "key": "SECTOR_CAP",
+          "label": "Max open positions per GICS sector",
+          "value": 3,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "MAX_OPEN_POSITIONS",
+          "label": "Max open positions (account-wide)",
+          "value": 6,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Day P&L circuit breaker (no new entries below)",
+          "value": -2,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "WEEK_BREAKER_PCT",
+          "label": "Week P&L circuit breaker (no new entries below)",
+          "value": -4,
+          "min": -30,
+          "max": 0
+        },
+        {
+          "kind": "number",
+          "key": "EARNINGS_GATE_DAYS",
+          "label": "Earnings blackout window (trading days)",
+          "value": 2,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ENTRY_SCORE_MIN",
+          "label": "Entry scorer floor (out of 10)",
+          "value": 7,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_LOW_PCT",
+          "label": "Target capital deployed — low",
+          "value": 75,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_HIGH_PCT",
+          "label": "Target capital deployed — high",
+          "value": 85,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "table",
+          "key": "CONVICTION_TABLE",
+          "label": "Entry score → position size %",
+          "rows": [
+            {
+              "k": 7,
+              "v": 12
+            },
+            {
+              "k": 8,
+              "v": 15
+            },
+            {
+              "k": 9,
+              "v": 18
+            },
+            {
+              "k": 10,
+              "v": 20
+            }
+          ]
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_TRIGGER_PCT",
+          "label": "Entry stop trigger (% from fill price)",
+          "value": -7,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_LIMIT_PCT",
+          "label": "Stop-limit slippage floor (% from fill price)",
+          "value": -8,
+          "min": -25,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_PROMOTION_PCT",
+          "label": "Promote fixed stop → trailing once gain reaches",
+          "value": 1,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_INITIAL_PCT",
+          "label": "Initial trail % once promoted",
+          "value": 10,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+          "label": "First trail-tighten trigger (gain %)",
+          "value": 15,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_PCT",
+          "label": "Trail % at first tighten",
+          "value": 7,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+          "label": "Second trail-tighten trigger (gain %)",
+          "value": 20,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_PCT",
+          "label": "Trail % at second tighten",
+          "value": 5,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TAKE_PROFIT_LADDER_PCT",
+          "label": "Take-profit ladder trigger (sell half at gain %)",
+          "value": 20,
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "version": 1
     }
   ]
 }
