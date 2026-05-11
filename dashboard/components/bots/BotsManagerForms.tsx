@@ -154,11 +154,16 @@ export function Modal({
   title,
   onClose,
   children,
+  size = "md",
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** "md" matches existing modals (28rem). "lg" widens for forms that
+   *  embed multiple fieldsets — currently the strategy form. */
+  size?: "md" | "lg";
 }) {
+  const widthClass = size === "lg" ? "max-w-2xl" : "max-w-md";
   return (
     <div
       role="dialog"
@@ -167,7 +172,7 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className="frost rounded-2xl p-5 w-full max-w-md mt-12"
+        className={`frost rounded-2xl p-5 w-full ${widthClass} mt-12`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">

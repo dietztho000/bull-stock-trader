@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { mutate } from "swr";
 import { Modal } from "@/components/bots/BotsManagerForms";
 import type { StrategyDefinition, StrategyParam, StrategyParamKind } from "@/lib/settings";
+import type { ParsedStrategy } from "@/lib/ai/strategyParser";
+import { AIStrategyBuilder } from "./AIStrategyBuilder";
 
 const STRATEGIES_URL = "/api/strategies";
 
@@ -69,6 +71,37 @@ export function StrategyForm({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Advanced fieldsets (params + rule book) are collapsed by default in
+   *  create mode so AI-first users see the builder first; expanded in edit
+   *  mode because the user explicitly came to tweak existing values. */
+  const [advancedOpen, setAdvancedOpen] = useState<boolean>(isEdit);
+  const [aiToast, setAiToast] = useState<string | null>(null);
+
+  // Auto-dismiss the success toast after a few seconds.
+  useEffect(() => {
+    if (!aiToast) return;
+    const t = setTimeout(() => setAiToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [aiToast]);
+
+  function applyAiResult(result: ParsedStrategy) {
+    // In create mode the LLM may suggest a slug; only fill if the user
+    // hasn't typed one. Slug is immutable in edit mode, so skip there.
+    if (!isEdit && !slug.trim() && result.slug) {
+      setSlug(result.slug);
+    }
+    setName(result.name);
+    setDescription(result.description ?? "");
+    setRuleBookTemplate(result.ruleBookTemplate ?? "");
+    // Strip the clone-source link — params now come from AI.
+    setCloneFromSlug("");
+    setParams(result.params.map((p) => structuredClone(p)));
+    setError(null);
+    setAdvancedOpen(false);
+    setAiToast(
+      `Strategy "${result.name}" loaded from AI prompt — ${result.params.length} parameter${result.params.length === 1 ? "" : "s"}. Tweak any settings below.`
+    );
+  }
 
   function applyClone(slug: string) {
     setCloneFromSlug(slug);
@@ -151,8 +184,31 @@ export function StrategyForm({
   }
 
   return (
-    <Modal title={isEdit ? `Edit strategy — ${editing!.slug}` : "New strategy"} onClose={onClose}>
+    <Modal
+      title={isEdit ? `Edit strategy — ${editing!.slug}` : "New strategy"}
+      onClose={onClose}
+      size="lg"
+    >
       <form onSubmit={submit} className="space-y-3">
+        <AIStrategyBuilder onApply={applyAiResult} disabled={busy} />
+
+        {aiToast && (
+          <div
+            role="status"
+            className="rounded-lg border border-[rgba(120,255,180,0.3)] bg-[rgba(80,200,140,0.12)] px-3 py-2 text-[11px] text-[var(--color-up,#7be7a8)] flex items-start justify-between gap-2"
+          >
+            <span>✓ {aiToast}</span>
+            <button
+              type="button"
+              onClick={() => setAiToast(null)}
+              aria-label="Dismiss"
+              className="text-[var(--color-muted)] hover:text-[var(--color-text)] leading-none"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <Field
             label="Slug"
@@ -227,43 +283,77 @@ export function StrategyForm({
           )}
         </div>
 
-        <fieldset className="space-y-2 border-t border-[rgba(255,255,255,0.06)] pt-3">
-          <legend className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-            Params ({params.length})
-          </legend>
-          <div className="space-y-2">
-            {params.map((p, idx) => (
-              <ParamEditor
-                key={`${p.key}-${idx}`}
-                param={p}
-                onChange={(next) => updateParam(idx, next)}
-                onRemove={() => removeParam(idx)}
-              />
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 text-[11px]">
-            <span className="text-[var(--color-muted)]">+ Add:</span>
-            {(["number", "percent", "enum", "table"] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => addParam(k)}
-                className="glass rounded-full px-2 py-0.5 hover:opacity-90"
+        <div className="border-t border-[rgba(255,255,255,0.06)] pt-3">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((o) => !o)}
+            aria-expanded={advancedOpen}
+            aria-controls="advanced-strategy-section"
+            className="w-full flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            <span className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className={`inline-block transition-transform ${advancedOpen ? "rotate-90" : ""}`}
               >
-                {k}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+                ▸
+              </span>
+              Advanced Strategy Parameters
+            </span>
+            <span className="text-[10px] normal-case tracking-normal text-[var(--color-muted)]">
+              {params.length} param{params.length === 1 ? "" : "s"}
+              {ruleBookTemplate.trim() ? " · rule book" : ""}
+            </span>
+          </button>
 
-        <Field label="Rule book (markdown)" hint="Seeded into memory/<bot>/<slug>/TRADING-STRATEGY.md when first assigned.">
-          <textarea
-            value={ruleBookTemplate}
-            onChange={(e) => setRuleBookTemplate(e.target.value)}
-            rows={10}
-            className={`${inputClass} font-mono text-[11px]`}
-          />
-        </Field>
+          {advancedOpen && (
+            <div
+              id="advanced-strategy-section"
+              className="space-y-3 mt-3"
+            >
+              <fieldset className="space-y-2">
+                <legend className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  Params ({params.length})
+                </legend>
+                <div className="space-y-2">
+                  {params.map((p, idx) => (
+                    <ParamEditor
+                      key={`${p.key}-${idx}`}
+                      param={p}
+                      onChange={(next) => updateParam(idx, next)}
+                      onRemove={() => removeParam(idx)}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="text-[var(--color-muted)]">+ Add:</span>
+                  {(["number", "percent", "enum", "table"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => addParam(k)}
+                      className="glass rounded-full px-2 py-0.5 hover:opacity-90"
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <Field
+                label="Rule book (markdown)"
+                hint="Seeded into memory/<bot>/<slug>/TRADING-STRATEGY.md when first assigned."
+              >
+                <textarea
+                  value={ruleBookTemplate}
+                  onChange={(e) => setRuleBookTemplate(e.target.value)}
+                  rows={10}
+                  className={`${inputClass} font-mono text-[11px]`}
+                />
+              </Field>
+            </div>
+          )}
+        </div>
 
         {error && (
           <div className="text-[11px] text-[var(--color-down)] break-all">{error}</div>
