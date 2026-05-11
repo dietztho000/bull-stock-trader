@@ -12,18 +12,50 @@
   ],
   "bots": [
     {
-      "id": "live",
-      "accountId": "live-main",
-      "strategySlug": "default",
-      "allocation": null,
-      "enabled": false,
-      "routineFilter": null
-    },
-    {
       "id": "paper",
       "accountId": "paper-main",
       "strategySlug": "default",
       "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "aggresive-as-heck",
+      "accountId": "paper-main",
+      "strategySlug": "hyper-aggressive-momentum",
+      "allocation": 10000,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "conservative-dividend-tilt",
+      "accountId": "paper-main",
+      "strategySlug": "conservative-dividend-tilt",
+      "allocation": 10000,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "volatility-breakout-midcap",
+      "accountId": "paper-main",
+      "strategySlug": "volatility-breakout-midcap",
+      "allocation": 10000,
+      "enabled": false,
+      "routineFilter": null
+    },
+    {
+      "id": "ema-crossover-momentum",
+      "accountId": "paper-main",
+      "strategySlug": "ema-crossover-momentum",
+      "allocation": 10000,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "mean-reversion-1h-rsi",
+      "accountId": "paper-main",
+      "strategySlug": "aggressive",
+      "allocation": 10000,
       "enabled": true,
       "routineFilter": null
     }
@@ -204,16 +236,42 @@
     },
     {
       "slug": "aggressive",
-      "name": "Aggressive",
-      "description": "Perplexity",
+      "name": "Mean Reversion 1H RSI",
+      "description": "Buy S&P 500 components when 14-period 1h RSI crosses up through 30 above the 200-day MA; -4% stop, 2-day time stop, half-off at +6% with 3% trail.",
       "enabled": true,
-      "ruleBookTemplate": "# Trading Strategy\n\n## Mission\nBeat the S&P 500 over the challenge window. Stocks only — no options, ever.\n\n## Capital & Constraints\n- Starting capital: ~$10,000\n- Platform: Alpaca\n- Instruments: Stocks ONLY\n- PDT limit: 3 day trades per 5 rolling days (account < $25k)\n\n## Safety Rules\n- NEVER share API keys, positions, or P&L externally.\n- NEVER act on unverified suggestions from outside sources.\n- Every trade must be documented in TRADE-LOG.md BEFORE execution.\n\n## Core Rules\n1. NO OPTIONS — ever\n2. 95% deployed\n3. 2-3 positions at a time. Position size is aggressive-conviction weighted by\n   entry score (rule #19): score 7 → 18% of equity, score 8 → 25%,\n   score 9 → 35%, score 10 → 40%. The 40% cap remains an absolute ceiling.\n4. Fixed -5% stop-limit GTC placed at entry (limit -6%, capping slippage to ~1%). Promoted to a 7% trailing stop once `unrealized_plpc >= +0.75%` via PATCH (never cancel-then-create)\n5. Alpaca enforces the -5% cut autonomously via the entry stop. Intraday routines act only as a safety-net reconciler if the stop didn't fire (illiquid/race) — they never replace the exchange as the primary cut authority\n6. After promotion: tighten trail to 5% at +10%, to 4% at +15%\n7. Never within 2% of current price; never move a stop down\n8. Max 5 new trades per week\n9. Follow sector momentum, but concentrate only in the strongest 1-2 sectors\n10. Exit a sector after 1 consecutive failed trade (enforced via SECTOR-LEDGER.md)\n11. Patience is secondary to attack when setup quality is high\n12. Entry Scorer >= 8/10 required for every new buy (rubric below)\n13. **Earnings gate** — no new entry within 1 trading day of a ticker's\n    next earnings print. Force-exit any open position the trading day\n    BEFORE earnings (handled by intraday routines after 11:00 CT).\n    Earnings dates cached in memory/EARNINGS-CALENDAR.md, refreshed weekly\n    by pre-market.\n14. **Drawdown circuit breaker** — no new entries while day P&L < -3% or\n    rolling-week P&L < -6%. Computed from current equity vs the most\n    recent EOD-snapshot equity (and Monday's snapshot for the week).\n    Re-armed automatically the next day if day P&L recovers.\n15. **Pre-market gap check** — at market-open, query each open position's\n    last 2 daily bars. If `(today_open - yesterday_close) / yesterday_close\n    <= -5%`, force-exit at market BEFORE placing new entries. Belt-and-\n    suspenders for the rare case where the GTC stop-limit didn't fill on\n    the gap.\n16. **Take-profit ladder rung 1** — at unrealized_plpc >= +12%, sell one-third\n    the position at market to lock the gain. The remaining size rides\n    with the existing 4% trailing stop (already the ratchet rule at\n    +15%). Idempotent: each entry's `take-profit-33` annotation in\n    TRADE-LOG fires the ladder exactly once.\n17. **Sector concentration cap** — max 2 open positions per GICS sector.\n    Enforced in market-open and /trade by counting current positions\n    against memory/SECTOR-MAP.md before each new entry.\n18. **Price-monitor alert routing** — high-frequency price warnings\n    (-3%/-4%/-5% bucket transitions) route to ntfy.sh via the `alert`\n    discord.sh category. Keeps the Discord webhook rate limit (30 req/\n    min) uncrowded. Requires NTFY_TOPIC to be set; otherwise falls back\n    to Discord-or-DAILY-SUMMARY.md.\n19. **Aggressive conviction-weighted position sizing** — replace the flat 20% cap\n    with a score-weighted ladder (7→18%, 8→25%, 9→35%, 10→40%). The 40%\n    absolute ceiling still applies. Enforced in market-open and\n    /trade BEFORE submit-order; the chosen target_pct is logged in\n    TRADE-LOG so the dashboard can show actual vs target sizing.\n20. **Re-entry guard** — if a ticker was stopped out (outcome `L` in\n    SECTOR-LEDGER.md) within the last 2 trading days, no re-entry\n    unless a fresh dated catalyst has been added to today's\n    RESEARCH-LOG.md (distinct from the prior thesis). Blocks fast\n    revenge trades unless the setup is materially new.\n21. **Commit serialization** — local cron-sync.sh uses an mkdir-atomic\n    lock at `.git/.commit-lock.d` so it skips a tick if another git\n    operation holds the lock (mkdir works on macOS where flock is\n    unavailable). Cloud routines retry pushes up to 3 times with\n    `pull --rebase` between attempts before erroring out — handles\n    concurrent main pushes from overlapping cloud routines without\n    force-push.\n22. **Log rotation** — local launchd `com.bullstocktrader.log-rotate`\n    fires at 02:00 daily and trims `~/Library/Logs/bull-stock-trader-*.log`\n    to the last 1000 lines. Prevents unbounded growth from cron-sync\n    (every 15 min) and price-monitor (every 10 min).\n\n## Entry Checklist\n- Specific catalyst?\n- Sector in momentum and one of the top 1-2 groups?\n- Stop level (fixed -5% at entry; promotes to 7% trailing once green)\n- Target (min 3:1 R:R)\n\n## Entry Scorer (rubric)\n\nEvery new BUY trade must score the four dimensions below from 1–10. The\ntotal = round(mean(four scores)). Trades with total < 8 are REFUSED\n(automated in /trade and /market-open). The full rubric block is logged\ninto TRADE-LOG.md alongside the trade so the weekly review can correlate\nscore → outcome.\n\n| Dimension | 1–3 (poor) | 4–6 (medium) | 7–10 (strong) |\n|---|---|---|---|\n| catalyst | Vague, old, or vibes-based | Real but stale (>3 days) | Fresh (<24h), specific, public, named in RESEARCH-LOG |\n| momentum | Sector flat or fading; ticker below 50DMA | Sector mixed; ticker between 50DMA and 200DMA | Sector top-2 YTD; ticker breaking out above recent highs |\n| risk_reward | <2.0:1 | 2.0–3.0:1 | >=3.0:1, with a clean technical level for the stop |\n| stop_distance | Stop within 2% (auto-reject anyway) | -5% lands above a known support level | -5% sits cleanly below a real support level |\n\nJSON block format (write into TRADE-LOG.md verbatim):\n\n```json\nentry_scorer: {\n  \"catalyst\": 9,\n  \"momentum\": 8,\n  \"risk_reward\": 9,\n  \"stop_distance\": 8,\n  \"total\": 9\n}\n```\n\nThe weekly review audits the score → outcome correlation and recalibrates\nthe rubric monthly if scores 9-10 don't outperform scores of 8.",
+      "ruleBookTemplate": "# Mean Reversion 1H RSI — Rule Book\n\n## Mission\nCapture short-term mean reversion in large-cap S&P 500 names. Edge comes from buying technically oversold conditions that are structurally bullish (above 200-day MA) and letting price snap back within two sessions.\n\n## Universe & timeframes\n- S&P 500 components only.\n- 1h candles for entry signal; daily chart for trend filter.\n- Earnings gate: no new entries within 2 trading days of an earnings announcement.\n\n## Entry rules\n1. 14-period RSI on 1h bars crosses **up through 30 from below** (full candle close required).\n2. Price is **above the 200-day simple moving average** on the daily chart.\n3. No earnings event within `EARNINGS_GATE_DAYS` trading days.\n4. Total open positions is below `MAX_OPEN_POSITIONS`.\n5. Intraday portfolio P&L has not breached `DAY_BREAKER_PCT`.\n6. Entry score meets or exceeds `ENTRY_SCORE_MIN` (catalyst quality, R:R, sector tape).\n\n## Position sizing\n- Conviction-weighted via `CONVICTION_TABLE` (entry score → % of portfolio deployed).\n- Hard 20% ceiling per single position regardless of score.\n- Stay within `TARGET_DEPLOYED_LOW_PCT` – `TARGET_DEPLOYED_HIGH_PCT` total deployment band.\n\n## Risk management\n- **Stop trigger:** `STOP_TRIGGER_PCT` (-4%) below entry price.\n- **Stop limit floor:** `STOP_LIMIT_PCT` (-5%) to cap slippage.\n- **Day circuit breaker:** halt all new entries when intraday P&L ≤ `DAY_BREAKER_PCT` (-2%).\n- **Week circuit breaker:** halt new entries for remainder of week when weekly P&L ≤ `WEEK_BREAKER_PCT` (-5%).\n- **Sector cap:** no more than `SECTOR_CAP` positions in any single GICS sector.\n\n## Exit rules\n1. **Take-profit ladder:** sell 50% of position when price rises `TAKE_PROFIT_LADDER_PCT` (+6%) above entry.\n2. **Trail promotion:** promote remainder to a trailing stop of `TRAIL_INITIAL_PCT` (3%) once ladder triggers.\n3. **Trail tighten at +15%:** if price reaches `TRAIL_TIGHTEN_15_TRIGGER_PCT` above entry, tighten trail to `TRAIL_TIGHTEN_15_PCT`.\n4. **Trail tighten at +20%:** if price reaches `TRAIL_TIGHTEN_20_TRIGGER_PCT` above entry, tighten trail further to `TRAIL_TIGHTEN_20_PCT`.\n5. **Time stop:** hard close of any position that is **not green** by end of trading day 2 after entry, regardless of price.\n\n## Hard NOs\n- No options, futures, or leveraged instruments.\n- No averaging down into a losing position.\n- No entries below the 200-day MA.\n- No entries within earnings gate window.\n- No new entries after day or week circuit breaker has fired.\n",
       "params": [
         {
           "kind": "number",
-          "key": "SECTOR_CAP",
-          "label": "Max open positions per GICS sector",
-          "value": 3,
+          "key": "RSI_PERIOD",
+          "label": "RSI lookback (1h bars)",
+          "value": 14,
+          "min": 2,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "RSI_OVERSOLD_THRESHOLD",
+          "label": "RSI oversold entry threshold",
+          "value": 30,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "number",
+          "key": "MA_TREND_PERIOD",
+          "label": "Trend filter MA period (daily bars)",
+          "value": 200,
+          "min": 20,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "MAX_HOLD_DAYS",
+          "label": "Max holding period before time stop (days)",
+          "value": 2,
           "min": 1,
           "max": 10,
           "step": 1
@@ -221,32 +279,16 @@
         {
           "kind": "number",
           "key": "MAX_OPEN_POSITIONS",
-          "label": "Max open positions (account-wide)",
-          "value": 6,
+          "label": "Max open positions",
+          "value": 5,
           "min": 1,
           "max": 20,
           "step": 1
         },
         {
-          "kind": "percent",
-          "key": "DAY_BREAKER_PCT",
-          "label": "Day P&L circuit breaker (no new entries below)",
-          "value": -2,
-          "min": -20,
-          "max": 0
-        },
-        {
-          "kind": "percent",
-          "key": "WEEK_BREAKER_PCT",
-          "label": "Week P&L circuit breaker (no new entries below)",
-          "value": -4,
-          "min": -30,
-          "max": 0
-        },
-        {
           "kind": "number",
           "key": "EARNINGS_GATE_DAYS",
-          "label": "Earnings blackout window (trading days)",
+          "label": "Earnings gate (trading days)",
           "value": 2,
           "min": 0,
           "max": 10,
@@ -255,25 +297,332 @@
         {
           "kind": "number",
           "key": "ENTRY_SCORE_MIN",
-          "label": "Entry scorer floor (out of 10)",
+          "label": "Minimum entry score to open position",
           "value": 7,
-          "min": 0,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "SECTOR_CAP",
+          "label": "Max positions per GICS sector",
+          "value": 2,
+          "min": 1,
           "max": 10,
           "step": 1
         },
         {
           "kind": "percent",
+          "key": "STOP_TRIGGER_PCT",
+          "label": "Stop trigger % below entry",
+          "value": -4,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_LIMIT_PCT",
+          "label": "Stop-limit floor % below entry",
+          "value": -5,
+          "min": -25,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Intraday P&L circuit breaker",
+          "value": -2,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "WEEK_BREAKER_PCT",
+          "label": "Weekly P&L circuit breaker",
+          "value": -5,
+          "min": -30,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "TAKE_PROFIT_LADDER_PCT",
+          "label": "Take-profit ladder trigger (sell half)",
+          "value": 6,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_INITIAL_PCT",
+          "label": "Initial trailing stop after ladder (% from peak)",
+          "value": 3,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+          "label": "Trail tighten trigger at gain %",
+          "value": 15,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_PCT",
+          "label": "Tightened trail % at +15% trigger",
+          "value": 2,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+          "label": "Trail tighten trigger at gain %",
+          "value": 20,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_PCT",
+          "label": "Tightened trail % at +20% trigger",
+          "value": 1.5,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
           "key": "TARGET_DEPLOYED_LOW_PCT",
-          "label": "Target capital deployed — low",
-          "value": 75,
+          "label": "Target deployed capital — low end",
+          "value": 50,
           "min": 0,
           "max": 100
         },
         {
           "kind": "percent",
           "key": "TARGET_DEPLOYED_HIGH_PCT",
-          "label": "Target capital deployed — high",
-          "value": 85,
+          "label": "Target deployed capital — high end",
+          "value": 90,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "enum",
+          "key": "TIMEFRAME",
+          "label": "Signal candle timeframe",
+          "value": "1h",
+          "options": [
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "4h"
+          ]
+        },
+        {
+          "kind": "table",
+          "key": "CONVICTION_TABLE",
+          "label": "Entry score → position size %",
+          "rows": [
+            {
+              "k": 7,
+              "v": 10
+            },
+            {
+              "k": 8,
+              "v": 13
+            },
+            {
+              "k": 9,
+              "v": 16
+            },
+            {
+              "k": 10,
+              "v": 20
+            }
+          ]
+        }
+      ],
+      "version": 2
+    },
+    {
+      "slug": "ema-crossover-momentum",
+      "name": "EMA Crossover Momentum",
+      "description": "Daily trend-following: buy 10/50 EMA golden cross confirmed by ADX(14)>25, conviction-weighted sizing, -7% fixed stop with progressive trail tightening.",
+      "enabled": true,
+      "ruleBookTemplate": "# EMA Crossover Momentum — Rule Book\n\n## Mission\nCapture sustained directional trends in liquid equities by entering on confirmed EMA golden crosses. ADX filter ensures we only trade in genuinely trending environments, not choppy noise.\n\n## Universe & timeframe\n- US equities universe (screened for liquidity).\n- Daily candles for all signals and filters.\n- Max 3 positions per sector (SECTOR_CAP).\n- Max 6 open positions total.\n\n## Entry rules\n1. 10-day EMA crosses above 50-day EMA (golden cross) on daily close.\n2. ADX(14) > 25 at time of cross — confirms trend strength.\n3. No earnings within EARNINGS_GATE_DAYS trading days.\n4. Entry score >= ENTRY_SCORE_MIN (7–10 scale: momentum rank, distance from 200-day MA, sector tape, relative volume).\n5. Weekly P&L has not breached WEEK_BREAKER_PCT circuit breaker.\n6. Open positions < MAX_OPEN_POSITIONS and sector count < SECTOR_CAP.\n\n## Position sizing\n- Conviction-weighted using CONVICTION_TABLE (score → % of portfolio equity).\n- Score 7 → 10%, 8 → 13%, 9 → 17%, 10 → 20%.\n- Absolute per-position ceiling: 20%.\n\n## Risk management\n- Fixed stop: STOP_TRIGGER_PCT (-7%) stop-limit at entry; STOP_LIMIT_PCT (-8.5%) as slippage floor.\n- Day circuit breaker: DAY_BREAKER_PCT (-2%) — no new entries if daily P&L breaches.\n- Week circuit breaker: WEEK_BREAKER_PCT (-4%) — halt all new entries for remainder of week.\n- Earnings gate: no open position through an earnings event within EARNINGS_GATE_DAYS days.\n\n## Exit rules\n1. **Stop**: hard stop at -7% from entry (stop-limit floor -8.5%).\n2. **Trail promotion**: once position is green by TRAIL_PROMOTION_PCT (+10%), cancel fixed stop and apply TRAIL_INITIAL_PCT (10%) trailing stop.\n3. **Tighten at +15%**: trail tightens to TRAIL_TIGHTEN_15_PCT (7%) when unrealised gain reaches TRAIL_TIGHTEN_15_TRIGGER_PCT.\n4. **Tighten at +25%**: trail tightens further to TRAIL_TIGHTEN_20_PCT (5%) when unrealised gain reaches TRAIL_TIGHTEN_20_TRIGGER_PCT.\n5. **Take-profit ladder**: sell 50% of position at TAKE_PROFIT_LADDER_PCT (+25%); trail the remaining half per tightened rules above.\n6. **Cross reversal**: close position if 10-day EMA crosses back below 50-day EMA while still held.\n\n## Hard NOs\n- No options. No leverage. No short selling.\n- No averaging down into a losing position.\n- No new entries during earnings week for that ticker.\n- No more than 3 tickers from the same GICS sector at any time.\n",
+      "params": [
+        {
+          "kind": "number",
+          "key": "EMA_FAST_PERIOD",
+          "label": "Fast EMA period (days)",
+          "value": 10,
+          "min": 2,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "EMA_SLOW_PERIOD",
+          "label": "Slow EMA period (days)",
+          "value": 50,
+          "min": 10,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ADX_PERIOD",
+          "label": "ADX lookback period (days)",
+          "value": 14,
+          "min": 5,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ADX_THRESHOLD",
+          "label": "ADX minimum trend strength",
+          "value": 25,
+          "min": 10,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "kind": "enum",
+          "key": "TIMEFRAME",
+          "label": "Signal timeframe",
+          "value": "1d",
+          "options": [
+            "1h",
+            "4h",
+            "1d",
+            "1w"
+          ]
+        },
+        {
+          "kind": "number",
+          "key": "MAX_OPEN_POSITIONS",
+          "label": "Max open positions",
+          "value": 6,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "SECTOR_CAP",
+          "label": "Max positions per sector",
+          "value": 3,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ENTRY_SCORE_MIN",
+          "label": "Minimum entry score (1–10)",
+          "value": 7,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "EARNINGS_GATE_DAYS",
+          "label": "Earnings blackout window (days)",
+          "value": 3,
+          "min": 0,
+          "max": 14,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Day P&L circuit breaker",
+          "value": -2,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "WEEK_BREAKER_PCT",
+          "label": "Week P&L circuit breaker",
+          "value": -4,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_TRIGGER_PCT",
+          "label": "Fixed stop trigger at entry",
+          "value": -7,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_LIMIT_PCT",
+          "label": "Stop-limit slippage floor",
+          "value": -8.5,
+          "min": -25,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_PROMOTION_PCT",
+          "label": "Profit level to promote to trail",
+          "value": 10,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_INITIAL_PCT",
+          "label": "Initial trailing stop distance",
+          "value": 10,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+          "label": "Tighten trail trigger #1 (gain %)",
+          "value": 15,
+          "min": 1,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_PCT",
+          "label": "Trail distance after tighten #1",
+          "value": 7,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+          "label": "Tighten trail trigger #2 (gain %)",
+          "value": 25,
+          "min": 1,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_PCT",
+          "label": "Trail distance after tighten #2",
+          "value": 5,
+          "min": 1,
+          "max": 30
+        },
+        {
+          "kind": "percent",
+          "key": "TAKE_PROFIT_LADDER_PCT",
+          "label": "Take-profit ladder trigger (gain %)",
+          "value": 25,
           "min": 0,
           "max": 100
         },
@@ -284,11 +633,589 @@
           "rows": [
             {
               "k": 7,
-              "v": 12
+              "v": 10
             },
             {
               "k": 8,
+              "v": 13
+            },
+            {
+              "k": 9,
+              "v": 17
+            },
+            {
+              "k": 10,
+              "v": 20
+            }
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "slug": "volatility-breakout-midcap",
+      "name": "Volatility Breakout Mid-Cap",
+      "description": "Buy liquid mid-caps ($1B–$50B) on 20-day high breakouts with 1.5× volume surge; size by ATR(14) risk targeting 1% equity per 1R, hard stop at 2× ATR, trail at 3× ATR after +1R.",
+      "enabled": true,
+      "ruleBookTemplate": "# Volatility Breakout Mid-Cap — Rule Book\n\n## Mission / Edge\nCapture the early expansion phase of momentum moves in liquid mid-caps by entering confirmed 20-day range breakouts backed by volume conviction. ATR-based sizing and trailing keeps risk normalized across varying volatility regimes.\n\n## Universe & Timeframe\n- Market cap $1B–$50B (liquid mid-caps only).\n- Daily candles for breakout signal and ATR calculation.\n- Minimum average daily volume sufficient to support 1.5× surge filter.\n\n## Entry Rules\n1. Price closes or prints above the 20-day high (breakout candle).\n2. Volume on breakout bar > 1.5× the 20-day average volume.\n3. ATR(14) calculated on close of breakout bar; risk unit = 2× ATR.\n4. No earnings announcement within 3 trading days (before or after).\n5. Fewer than 4 open breakout positions at time of signal.\n6. Portfolio day P&L has not breached −3% circuit breaker.\n7. Entry score meets minimum threshold for position activation.\n\n## Position Sizing\n- Target 1% of total equity risk per position (1% equity ÷ (2× ATR in $) = share count).\n- Absolute ceiling: 18% of portfolio equity per single position.\n- ATR recalculated fresh at each entry; size locked at fill.\n\n## Risk Management\n- **Hard stop:** 2× ATR(14) below entry price, placed as stop-limit immediately on fill.\n- **Day breaker:** If portfolio day P&L hits −3%, cancel all pending entries for remainder of session.\n- **Earnings gate:** No new entries if earnings are within 3 calendar/trading days; exit existing if earnings surprise gate triggers.\n- **Max concurrent:** 4 open breakout positions at any time.\n- **Sector cap:** No more than 2 positions in the same GICS sector simultaneously.\n\n## Exit Rules\n1. **Trail promotion:** Once position reaches +1R (price ≥ entry + 2× ATR), switch to ATR trailing stop at 3× ATR below current high-water mark.\n2. **Trail tightening at +15%:** Tighten trail to 1.5× ATR below high-water mark.\n3. **Trail tightening at +20%:** Tighten trail to 1× ATR below high-water mark.\n4. **Hard stop hit:** Exit immediately via stop-limit if 2× ATR level breached before trail promotion.\n5. **Take-profit ladder:** Sell 50% of position at +2R; let trail manage remainder.\n\n## Hard NOs\n- No options, no leverage, no shorting.\n- No entries on gap-up opens > 5% above prior close (chasing).\n- No averaging down into a losing breakout.\n- No re-entry on the same ticker within 5 trading days of a stop-out.\n- No positions held through a known earnings event.\n",
+      "params": [
+        {
+          "kind": "number",
+          "key": "BREAKOUT_LOOKBACK_DAYS",
+          "label": "Breakout high lookback window (days)",
+          "value": 20,
+          "min": 5,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "VOLUME_SURGE_MULTIPLE",
+          "label": "Volume surge multiple vs avg",
+          "value": 1.5,
+          "min": 1,
+          "max": 5,
+          "step": 0.1,
+          "unit": "×"
+        },
+        {
+          "kind": "number",
+          "key": "ATR_PERIOD",
+          "label": "ATR lookback (days)",
+          "value": 14,
+          "min": 5,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "EQUITY_RISK_PER_TRADE_PCT",
+          "label": "Equity risk per trade (1R target)",
+          "value": 1,
+          "min": 0.1,
+          "max": 5
+        },
+        {
+          "kind": "number",
+          "key": "STOP_ATR_MULTIPLE",
+          "label": "Hard stop distance (× ATR)",
+          "value": 2,
+          "min": 0.5,
+          "max": 6,
+          "step": 0.25,
+          "unit": "× ATR"
+        },
+        {
+          "kind": "number",
+          "key": "TRAIL_PROMOTION_ATR_MULTIPLE",
+          "label": "Trail promotion trigger (× ATR gain = +1R)",
+          "value": 2,
+          "min": 0.5,
+          "max": 6,
+          "step": 0.25,
+          "unit": "× ATR"
+        },
+        {
+          "kind": "number",
+          "key": "TRAIL_ATR_MULTIPLE",
+          "label": "Trailing stop distance after promotion (× ATR)",
+          "value": 3,
+          "min": 0.5,
+          "max": 8,
+          "step": 0.25,
+          "unit": "× ATR"
+        },
+        {
+          "kind": "percent",
+          "key": "POSITION_SIZE_CEILING_PCT",
+          "label": "Absolute position size ceiling",
+          "value": 18,
+          "min": 1,
+          "max": 40
+        },
+        {
+          "kind": "number",
+          "key": "MAX_OPEN_POSITIONS",
+          "label": "Max concurrent breakout positions",
+          "value": 4,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "EARNINGS_GATE_DAYS",
+          "label": "Earnings gate (trading days)",
+          "value": 3,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Day P&L circuit breaker",
+          "value": -3,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "number",
+          "key": "SECTOR_CAP",
+          "label": "Max positions per GICS sector",
+          "value": 2,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "TAKE_PROFIT_LADDER_PCT",
+          "label": "Take-profit ladder trigger (partial exit at +2R)",
+          "value": 4,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+          "label": "Trail tighten trigger 1 (gain %)",
+          "value": 15,
+          "min": 1,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_PCT",
+          "label": "Trail tighten 1 — new ATR multiple (%)",
+          "value": 1.5,
+          "min": 0.1,
+          "max": 10
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+          "label": "Trail tighten trigger 2 (gain %)",
+          "value": 20,
+          "min": 1,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_PCT",
+          "label": "Trail tighten 2 — new ATR multiple (%)",
+          "value": 1,
+          "min": 0.1,
+          "max": 10
+        },
+        {
+          "kind": "number",
+          "key": "REENTRY_BLACKOUT_DAYS",
+          "label": "Re-entry blackout after stop-out (days)",
+          "value": 5,
+          "min": 0,
+          "max": 30,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "GAP_UP_FILTER_PCT",
+          "label": "Max gap-up vs prior close to still enter",
+          "value": 5,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "table",
+          "key": "CONVICTION_TABLE",
+          "label": "Entry score → position size %",
+          "rows": [
+            {
+              "k": 6,
+              "v": 5
+            },
+            {
+              "k": 7,
+              "v": 8
+            },
+            {
+              "k": 8,
+              "v": 12
+            },
+            {
+              "k": 9,
               "v": 15
+            },
+            {
+              "k": 10,
+              "v": 18
+            }
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "slug": "conservative-dividend-tilt",
+      "name": "Conservative Dividend Tilt",
+      "description": "Buy S&P 500 dividend payers (yield >2.5%, payout <75%) on pullbacks to 50-day MA with RSI<45; equal-weight 8% positions, -5% hard stop, no trailing.",
+      "enabled": true,
+      "ruleBookTemplate": "# Conservative Dividend Tilt — Rule Book\n\n## Mission\nPreserve capital by rotating into quality S&P 500 dividend payers during controlled pullbacks. Dividends compound; the strategy avoids speculation and leverage entirely.\n\n## Universe & timeframe\n- S&P 500 components with dividend yield > 2.5% and payout ratio < 75%.\n- Daily candles for all signals and filters.\n- Maximum 8 simultaneous holdings.\n\n## Entry rules\n1. Price has pulled back to within PULLBACK_BAND_PCT of the 50-day simple moving average.\n2. 14-day RSI is below 45 (stock is cooling, not free-falling).\n3. Dividend yield >= DIVIDEND_YIELD_MIN on latest data.\n4. Payout ratio <= PAYOUT_RATIO_MAX; exclude dividend traps.\n5. No earnings announcement within EARNINGS_GATE_DAYS trading days.\n6. Day P&L circuit breaker: no new entries if intraday portfolio P&L is below DAY_BREAKER_PCT.\n7. Entry score >= ENTRY_SCORE_MIN (fundamental quality, MA proximity, RSI depth, sector tape).\n\n## Position sizing\n- Equal-weight: every position targets exactly 8% of portfolio equity.\n- Maximum 8 open positions (64% max theoretical deployment).\n- Target deployed capital: TARGET_DEPLOYED_LOW_PCT – TARGET_DEPLOYED_HIGH_PCT.\n- Do NOT add to an existing position; one lot per ticker.\n\n## Risk\n- Hard stop: close position when price falls STOP_TRIGGER_PCT from entry; no partial fills below STOP_LIMIT_PCT.\n- No trailing stop — let dividend compounding work without premature exits on normal volatility.\n- Day P&L circuit breaker at DAY_BREAKER_PCT: halt all new entries for the remainder of the session.\n- Week P&L circuit breaker at WEEK_BREAKER_PCT: halt new entries for the remainder of the week.\n- Sector cap: no more than SECTOR_CAP positions in any single GICS sector.\n\n## Exits\n- Stop-loss: hard -5% trigger, no trail.\n- Fundamental deterioration: exit if dividend yield drops below DIVIDEND_YIELD_MIN or payout ratio exceeds PAYOUT_RATIO_MAX on next data refresh.\n- Discretionary: exit if 50-day MA trends down for 10+ consecutive sessions while position is open.\n- No fixed take-profit ladder; income accrues via dividends.\n\n## Hard NOs\n- No options, no leverage, no shorting.\n- No averaging down into a losing position.\n- No entries on stocks with payout ratio >= 75% regardless of yield.\n- No entries within EARNINGS_GATE_DAYS days of an earnings event.\n- No trailing stops — hard stop only.\n",
+      "params": [
+        {
+          "kind": "percent",
+          "key": "DIVIDEND_YIELD_MIN",
+          "label": "Minimum dividend yield (%)",
+          "value": 2.5,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "PAYOUT_RATIO_MAX",
+          "label": "Maximum payout ratio (%)",
+          "value": 75,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "number",
+          "key": "RSI_PERIOD",
+          "label": "RSI lookback (days)",
+          "value": 14,
+          "min": 2,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "RSI_ENTRY_MAX",
+          "label": "RSI entry ceiling (below = pullback)",
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "number",
+          "key": "MA_PERIOD",
+          "label": "Moving average period (days)",
+          "value": 50,
+          "min": 10,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "PULLBACK_BAND_PCT",
+          "label": "Max distance from MA to qualify (±%)",
+          "value": 3,
+          "min": 0,
+          "max": 15
+        },
+        {
+          "kind": "number",
+          "key": "MAX_OPEN_POSITIONS",
+          "label": "Max open positions",
+          "value": 8,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_LOW_PCT",
+          "label": "Target deployed capital — low bound (%)",
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_HIGH_PCT",
+          "label": "Target deployed capital — high bound (%)",
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_TRIGGER_PCT",
+          "label": "Hard stop trigger (%)",
+          "value": -5,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_LIMIT_PCT",
+          "label": "Stop-limit slippage floor (%)",
+          "value": -6,
+          "min": -25,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Day P&L circuit breaker (%)",
+          "value": -1,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "WEEK_BREAKER_PCT",
+          "label": "Week P&L circuit breaker (%)",
+          "value": -3,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "number",
+          "key": "EARNINGS_GATE_DAYS",
+          "label": "Earnings blackout window (days)",
+          "value": 2,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "SECTOR_CAP",
+          "label": "Max positions per GICS sector",
+          "value": 2,
+          "min": 1,
+          "max": 8,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ENTRY_SCORE_MIN",
+          "label": "Minimum entry score (out of 10)",
+          "value": 6,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "enum",
+          "key": "TIMEFRAME",
+          "label": "Signal timeframe",
+          "value": "1d",
+          "options": [
+            "1d",
+            "1h",
+            "30m"
+          ]
+        }
+      ],
+      "version": 1
+    },
+    {
+      "slug": "hyper-aggressive-momentum",
+      "name": "Hyper-Aggressive Momentum",
+      "description": "Extremely aggressive intraday momentum strategy targeting rapid gains via high-conviction breakouts, tight trailing stops, and maximum capital deployment.",
+      "enabled": true,
+      "ruleBookTemplate": "# Hyper-Aggressive Momentum — Rule Book\n\n## Mission\nCapitalize on explosive intraday momentum bursts in high-volume, high-beta equities. Get in fast, ride the wave, and exit before it reverses. Speed and conviction over safety.\n\n## Universe & Timeframes\n- High-beta equities: beta > 1.5, ADV > 1M shares, price $5–$500.\n- 5m candles for entry signal; 15m for trend confirmation.\n- Watchlist refreshed pre-market from top % gainers and volume surgers.\n\n## Entry Rules\n1. Price breaks above prior 15m high on 5m candle close with volume ≥ 2× 20-bar average.\n2. 5m EMA(9) > EMA(21) — short-term trend must be up.\n3. RSI(7) on 5m between 55 and 80 — strong but not yet exhausted.\n4. No earnings within EARNINGS_GATE_DAYS trading days.\n5. Entry score ≥ ENTRY_SCORE_MIN (momentum, volume surge, sector tape, gap size).\n6. Total open positions < MAX_OPEN_POSITIONS.\n\n## Position Sizing\n- Conviction-weighted via CONVICTION_TABLE (entry score → % of portfolio).\n- Target deployed capital: TARGET_DEPLOYED_LOW_PCT – TARGET_DEPLOYED_HIGH_PCT.\n- Hard cap: no single sector > SECTOR_CAP% of portfolio.\n\n## Risk Management\n- Hard stop trigger at STOP_TRIGGER_PCT from entry; limit floor at STOP_LIMIT_PCT.\n- Day P&L circuit breaker: halt new entries if daily P&L < DAY_BREAKER_PCT.\n- Week P&L circuit breaker: halt new entries if weekly P&L < WEEK_BREAKER_PCT.\n- Max MAX_OPEN_POSITIONS concurrent positions — concentrate firepower.\n\n## Exits\n- Initial trail: TRAIL_INITIAL_PCT from high-water mark, activated at TRAIL_PROMOTION_PCT gain.\n- Tighten trail to TRAIL_TIGHTEN_15_PCT once gain hits TRAIL_TIGHTEN_15_TRIGGER_PCT.\n- Tighten trail to TRAIL_TIGHTEN_20_PCT once gain hits TRAIL_TIGHTEN_20_TRIGGER_PCT.\n- Take-profit ladder: sell 50% at TAKE_PROFIT_LADDER_PCT; trail remainder.\n- Hard time stop: close all positions at end of regular session — no overnight holds.\n\n## Hard NOs\n- No overnight holds. No exceptions.\n- No averaging down.\n- No positions in stocks with spread > 0.5%.\n- No leverage beyond 1× (margin not used).\n- No options.\n- No trading in the first 5 minutes after open.\n",
+      "params": [
+        {
+          "kind": "number",
+          "key": "MAX_OPEN_POSITIONS",
+          "label": "Max concurrent open positions",
+          "value": 8,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "ENTRY_SCORE_MIN",
+          "label": "Minimum entry score to trade",
+          "value": 7,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "EARNINGS_GATE_DAYS",
+          "label": "Days to avoid before earnings",
+          "value": 1,
+          "min": 0,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "percent",
+          "key": "SECTOR_CAP",
+          "label": "Max portfolio % in one sector",
+          "value": 40,
+          "min": 10,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_LOW_PCT",
+          "label": "Target deployed capital (low)",
+          "value": 80,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "TARGET_DEPLOYED_HIGH_PCT",
+          "label": "Target deployed capital (high)",
+          "value": 100,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_TRIGGER_PCT",
+          "label": "Stop-loss trigger from entry",
+          "value": -2.5,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "STOP_LIMIT_PCT",
+          "label": "Stop-limit slippage floor",
+          "value": -3.5,
+          "min": -25,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "DAY_BREAKER_PCT",
+          "label": "Day P&L circuit breaker",
+          "value": -5,
+          "min": -20,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "WEEK_BREAKER_PCT",
+          "label": "Week P&L circuit breaker",
+          "value": -10,
+          "min": -40,
+          "max": 0
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_PROMOTION_PCT",
+          "label": "Gain % to activate trailing stop",
+          "value": 2,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_INITIAL_PCT",
+          "label": "Initial trail % from high-water",
+          "value": 2,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
+          "label": "Gain % to tighten trail (level 1)",
+          "value": 5,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_15_PCT",
+          "label": "Tightened trail % (level 1)",
+          "value": 1.5,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
+          "label": "Gain % to tighten trail (level 2)",
+          "value": 10,
+          "min": 0,
+          "max": 50
+        },
+        {
+          "kind": "percent",
+          "key": "TRAIL_TIGHTEN_20_PCT",
+          "label": "Tightened trail % (level 2)",
+          "value": 1,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "percent",
+          "key": "TAKE_PROFIT_LADDER_PCT",
+          "label": "Take-profit ladder trigger (sell 50%)",
+          "value": 7,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "kind": "number",
+          "key": "EMA_FAST_PERIOD",
+          "label": "Fast EMA period (5m bars)",
+          "value": 9,
+          "min": 2,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "EMA_SLOW_PERIOD",
+          "label": "Slow EMA period (5m bars)",
+          "value": 21,
+          "min": 3,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "RSI_PERIOD",
+          "label": "RSI lookback (5m bars)",
+          "value": 7,
+          "min": 2,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "kind": "number",
+          "key": "VOLUME_SURGE_MULT",
+          "label": "Volume surge multiplier vs 20-bar avg",
+          "value": 2,
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "kind": "enum",
+          "key": "SIGNAL_TIMEFRAME",
+          "label": "Entry signal timeframe",
+          "value": "5m",
+          "options": [
+            "1m",
+            "5m",
+            "15m",
+            "30m"
+          ]
+        },
+        {
+          "kind": "table",
+          "key": "CONVICTION_TABLE",
+          "label": "Entry score → position size %",
+          "rows": [
+            {
+              "k": 7,
+              "v": 10
+            },
+            {
+              "k": 8,
+              "v": 14
             },
             {
               "k": 9,
@@ -296,81 +1223,9 @@
             },
             {
               "k": 10,
-              "v": 20
+              "v": 22
             }
           ]
-        },
-        {
-          "kind": "percent",
-          "key": "STOP_TRIGGER_PCT",
-          "label": "Entry stop trigger (% from fill price)",
-          "value": -7,
-          "min": -20,
-          "max": 0
-        },
-        {
-          "kind": "percent",
-          "key": "STOP_LIMIT_PCT",
-          "label": "Stop-limit slippage floor (% from fill price)",
-          "value": -8,
-          "min": -25,
-          "max": 0
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_PROMOTION_PCT",
-          "label": "Promote fixed stop → trailing once gain reaches",
-          "value": 1,
-          "min": 0,
-          "max": 50
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_INITIAL_PCT",
-          "label": "Initial trail % once promoted",
-          "value": 10,
-          "min": 1,
-          "max": 30
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_TIGHTEN_15_TRIGGER_PCT",
-          "label": "First trail-tighten trigger (gain %)",
-          "value": 15,
-          "min": 0,
-          "max": 100
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_TIGHTEN_15_PCT",
-          "label": "Trail % at first tighten",
-          "value": 7,
-          "min": 1,
-          "max": 30
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_TIGHTEN_20_TRIGGER_PCT",
-          "label": "Second trail-tighten trigger (gain %)",
-          "value": 20,
-          "min": 0,
-          "max": 100
-        },
-        {
-          "kind": "percent",
-          "key": "TRAIL_TIGHTEN_20_PCT",
-          "label": "Trail % at second tighten",
-          "value": 5,
-          "min": 1,
-          "max": 30
-        },
-        {
-          "kind": "percent",
-          "key": "TAKE_PROFIT_LADDER_PCT",
-          "label": "Take-profit ladder trigger (sell half at gain %)",
-          "value": 20,
-          "min": 0,
-          "max": 100
         }
       ],
       "version": 1
