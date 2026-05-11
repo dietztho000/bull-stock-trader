@@ -52,7 +52,7 @@ _routine_emit_start daily-summary
 
 The numbered STEP blocks below execute **once per enabled bot**. Source
 the bot list from `bash scripts/bots.sh list --routine=daily-summary`
-(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode  strategy_params_json`)
+(TAB-separated rows: `bot_id  account_id  strategy  allocation  mode  strategy_params_json  bot_name`)
 and iterate. The auth preflight inside the loop posts Discord + emits a
 discriminated RUN-LOG entry on failure, so a bad-creds bot is logged
 loudly and skipped without aborting the others.
@@ -64,19 +64,27 @@ per-key `STRATEGY_<KEY>` env vars (scalars: number/percent/enum) plus
 values with `${STRATEGY_<KEY>:-<safe-default>}` so default-strategy bots
 stay byte-identical to the pre-Phase-4 behavior.
 
+The 7th column is the bot's human-readable name (e.g. "Aggresive as
+Heck"). Exporting `BOT_NAME` lets `scripts/discord.sh` prefix every
+routine-emitted message with `[<bot_name>]` so a shared Discord channel
+can still distinguish multi-bot output. Routines never need to pass
+`--bot-id`/`--bot-name` explicitly — discord.sh reads `BOT_ID` /
+`BOT_NAME` from the exported env.
+
 ```bash
-while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+while IFS=$'\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME; do
   # bots.sh emits the literal string "null" for empty allocation so
   # consecutive tabs never appear (bash IFS-tab collapses them otherwise
   # and shifts later fields left). Translate back to empty for the
   # downstream "[[ -z "$BOT_ALLOCATION" ]]" tests in STEPS.
   [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
-  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+  export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME
   _routine_export_strategy_params
   _routine_preflight_or_skip daily-summary || continue
   # ── STEPS 1..N from below run here for this bot ──
   # All memory paths use $BOT_ID/$STRATEGY.
   # All alpaca.sh calls include --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID".
+  # All discord.sh calls pick up BOT_ID/BOT_NAME from env for identity.
 done < <(bash scripts/bots.sh list --routine=daily-summary)
 ```
 

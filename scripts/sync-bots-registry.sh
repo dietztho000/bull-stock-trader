@@ -22,8 +22,13 @@ fi
 
 # Project only the fields cloud-side bots.sh consumes. Strip apiKeyEnc,
 # secretKeyEnc, label, endpoint, totalCapital, hardCapAllocation, createdAt,
-# memoryAlias, name, discordWebhookUrl — none of those are referenced by
-# bots.sh and most are either secrets (enc keys) or per-machine UI prefs.
+# memoryAlias, discordWebhookUrl — most are secrets (enc keys), per-machine
+# UI prefs, or per-operator routing (discordWebhookUrl is provisioned via
+# cloud env vars instead — see scripts/discord.sh's webhook precedence).
+#
+# `name` IS projected (human-readable label that discord.sh uses to prefix
+# routine-emitted messages via bots.sh's 7th column). Falls back to .id
+# on the bots.sh side if absent on a legacy registry entry.
 #
 # Strategies are projected too (Phase 4): cloud routines need each bot's
 # typed params via `bots.sh list`'s 6th column, and the strategy rule
@@ -34,6 +39,7 @@ projected="$(jq '{
   accounts: ((.accounts // []) | map({id, mode})),
   bots: ((.bots // []) | map({
     id,
+    name: (.name // .id),
     accountId,
     strategySlug: (.strategySlug // "default"),
     allocation,

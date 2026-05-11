@@ -18,14 +18,17 @@
 #                                                e.g. "PAPER_100K" for slug
 #                                                "paper-100k"
 #
-# `list` row format (TAB-separated, six columns):
-#   bot_id  account_id  strategy  allocation  mode  strategy_params_json
+# `list` row format (TAB-separated, seven columns):
+#   bot_id  account_id  strategy  allocation  mode  strategy_params_json  bot_name
 # Where `allocation` is the literal string "null" if the bot uses the full
 # account (no soft slice), `mode` is the account's mode ("live" | "paper"),
-# and `strategy_params_json` is the compact-JSON params array from the
+# `strategy_params_json` is the compact-JSON params array from the
 # registry's matching strategy entry (`[]` when the registry has no entry
-# for the slug — routines fall back to documented defaults). Phase 4 of
-# the multi-strategy upgrade.
+# for the slug — routines fall back to documented defaults), and
+# `bot_name` is the human-readable label used to prefix Discord messages
+# (falls back to bot_id if absent on legacy registry entries). Tabs and
+# newlines in bot_name are stripped before emit so the 7-column tab-split
+# stays stable.
 #
 # Why "null" rather than empty for the allocation field: bash's `read`
 # with IFS=$'\t' treats consecutive tabs as a SINGLE delimiter when IFS
@@ -34,14 +37,16 @@
 # strategy_params_json.
 #
 # Example loop in a routine:
-#   while IFS=$'\t' read -r bot_id account_id strategy allocation mode params_json; do
+#   while IFS=$'\t' read -r bot_id account_id strategy allocation mode params_json bot_name; do
 #     export BOT_ID="$bot_id" ACCOUNT_ID="$account_id" STRATEGY="$strategy"
 #     # Translate the registry's "no allocation" sentinel back to empty
 #     # so per-bot routines see a clean test ([[ -z "$BOT_ALLOCATION" ]]).
 #     [[ "$allocation" == "null" ]] && allocation=""
 #     export BOT_ALLOCATION="$allocation" BOT_MODE="$mode"
 #     export STRATEGY_PARAMS_JSON="$params_json"
+#     export BOT_NAME="$bot_name"
 #     # _cloud-header.md unpacks the JSON into per-key STRATEGY_<KEY> vars.
+#     # discord.sh reads BOT_ID/BOT_NAME from env to tag messages.
 #     # ... run steps ...
 #   done < <(bash scripts/bots.sh list)
 #
@@ -105,7 +110,8 @@ case "$cmd" in
       | [.id, .accountId, $slug,
          (if (.allocation // null) == null then "null" else (.allocation | tostring) end),
          ($modes[.accountId] // "unknown"),
-         (($params[$slug] // []) | tojson)]
+         (($params[$slug] // []) | tojson),
+         ((.name // .id) | gsub("[\t\n]"; " "))]
       | @tsv
     ' "$SETTINGS_FILE"
     ;;

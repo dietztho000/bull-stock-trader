@@ -67,19 +67,30 @@ export async function sendDiscord(
   const baseEnv = discordEnvFromSettings(settings);
   // Per-bot webhookUrl override (audit F10): when set, dashboard-originated
   // sends scoped to this bot use this webhook instead of the global one.
+  // Bot identity (id + name) is also forwarded to discord.sh so it can
+  // prefix the message with [<name>] — keeps dashboard-emitted sends
+  // consistent with cloud-routine sends after the routines/_cloud-header.md
+  // BOT_NAME export.
+  let botName: string | undefined;
   if (opts.botId) {
     const bot = settings.bots.find((b) => b.id === opts.botId);
     if (bot?.discordWebhookUrl) {
       baseEnv.DISCORD_WEBHOOK_URL = bot.discordWebhookUrl;
     }
+    botName = bot?.name;
   }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     ...baseEnv,
   };
 
+  const args = [script, `--type=${category}`];
+  if (opts.botId) args.push(`--bot-id=${opts.botId}`);
+  if (botName) args.push(`--bot-name=${botName}`);
+  args.push(message);
+
   return new Promise((resolve, reject) => {
-    const proc = spawn("bash", [script, `--type=${category}`, message], {
+    const proc = spawn("bash", args, {
       cwd: BOT_ROOT,
       env,
     });

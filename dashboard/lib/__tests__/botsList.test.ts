@@ -3,10 +3,13 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 // Phase 4 of the multi-strategy upgrade: scripts/bots.sh list emits a
-// 6th column with the bot's strategy params as compact JSON. These
-// tests guard the contract — IFS-tab collapse already bit us once on
-// empty allocation, and the cloud routines depend on the 6th field
-// surviving the trip from jq → @tsv → bash `read`.
+// 6th column with the bot's strategy params as compact JSON. The
+// per-bot Discord identity change added a 7th column with the bot's
+// human-readable name (consumed by routines/_cloud-header.md's BOT_NAME
+// export and discord.sh's identity prefix). These tests guard the
+// contract — IFS-tab collapse already bit us once on empty allocation,
+// and the cloud routines depend on all 7 fields surviving the trip
+// from jq → @tsv → bash `read`.
 //
 // Tests run against the live `memory/shared/dashboard-settings.json` —
 // hermetic isn't worth the complexity here when the real registry is
@@ -24,12 +27,28 @@ function botsList(...args: string[]): string[] {
 }
 
 describe("scripts/bots.sh list — Phase 4 contract", () => {
-  it("emits exactly 6 tab-separated fields per row", () => {
+  it("emits exactly 7 tab-separated fields per row", () => {
     const rows = botsList("--include-disabled");
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       const fields = row.split("\t");
-      expect(fields).toHaveLength(6);
+      expect(fields).toHaveLength(7);
+    }
+  });
+
+  it("emits a non-empty human-readable bot_name in the 7th field", () => {
+    const rows = botsList("--include-disabled");
+    for (const row of rows) {
+      const fields = row.split("\t");
+      const botId = fields[0];
+      const botName = fields[6];
+      // Falls back to bot id when the registry entry has no `name`.
+      expect(botName).not.toBe("");
+      expect(botName.length).toBeGreaterThanOrEqual(botId.length === 0 ? 1 : 1);
+      // No embedded tabs/newlines — discord.sh prefix sanitization
+      // assumes the column is single-line so the IFS-tab read stays
+      // stable. (Sanitization happens in bots.sh via jq gsub.)
+      expect(botName).not.toMatch(/[\t\n]/);
     }
   });
 
@@ -68,15 +87,16 @@ describe("scripts/bots.sh list — Phase 4 contract", () => {
     }
   });
 
-  it("a bash read -r round-trip preserves all 6 fields", () => {
+  it("a bash read -r round-trip preserves all 7 fields", () => {
     // Crucial regression guard: feed one row back through bash `read` the
     // same way the cloud routines do, and confirm no field gets dropped
-    // by IFS-tab collapse. Fails if anyone re-introduces empty allocation.
+    // by IFS-tab collapse. Fails if anyone re-introduces empty allocation
+    // or empty bot_name.
     const rows = botsList("--include-disabled");
     const firstRow = rows[0];
     const script = `
-      IFS=$'\\t' read -r f1 f2 f3 f4 f5 f6 <<< '${firstRow.replace(/'/g, "'\\''")}'
-      echo "f1=\${#f1} f2=\${#f2} f3=\${#f3} f4=\${#f4} f5=\${#f5} f6=\${#f6}"
+      IFS=$'\\t' read -r f1 f2 f3 f4 f5 f6 f7 <<< '${firstRow.replace(/'/g, "'\\''")}'
+      echo "f1=\${#f1} f2=\${#f2} f3=\${#f3} f4=\${#f4} f5=\${#f5} f6=\${#f6} f7=\${#f7}"
     `;
     const out = execFileSync("bash", ["-c", script], { encoding: "utf8" }).trim();
     const lengths = Object.fromEntries(
@@ -91,6 +111,7 @@ describe("scripts/bots.sh list — Phase 4 contract", () => {
     expect(lengths.f4).toBeGreaterThan(0); // allocation (sentinel or number)
     expect(lengths.f5).toBeGreaterThan(0); // mode
     expect(lengths.f6).toBeGreaterThan(0); // params JSON (at least "[]")
+    expect(lengths.f7).toBeGreaterThan(0); // bot_name (falls back to bot id)
   });
 });
 
@@ -103,9 +124,9 @@ describe("scripts/_routine-header.sh — _routine_export_strategy_params", () =>
         "-c",
         `
           source scripts/_routine-header.sh
-          while IFS=$'\\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON; do
+          while IFS=$'\\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME; do
             [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
-            export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON
+            export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME
             _routine_export_strategy_params
             echo "SECTOR_CAP=\${STRATEGY_SECTOR_CAP:-MISSING}"
             echo "MAX_OPEN=\${STRATEGY_MAX_OPEN_POSITIONS:-MISSING}"

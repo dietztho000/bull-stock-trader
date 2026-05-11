@@ -13,6 +13,7 @@
   "bots": [
     {
       "id": "paper",
+      "name": "Bot 1",
       "accountId": "paper-main",
       "strategySlug": "default",
       "allocation": null,
@@ -21,6 +22,7 @@
     },
     {
       "id": "aggresive-as-heck",
+      "name": "Hyper-Aggressive Momentum",
       "accountId": "paper-main",
       "strategySlug": "hyper-aggressive-momentum",
       "allocation": 10000,
@@ -29,6 +31,7 @@
     },
     {
       "id": "conservative-dividend-tilt",
+      "name": "Conservative Dividend Tilt",
       "accountId": "paper-main",
       "strategySlug": "conservative-dividend-tilt",
       "allocation": 10000,
@@ -37,6 +40,7 @@
     },
     {
       "id": "volatility-breakout-midcap",
+      "name": "[1st] Volatility Breakout Mid-Cap",
       "accountId": "paper-main",
       "strategySlug": "volatility-breakout-midcap",
       "allocation": 10000,
@@ -45,6 +49,7 @@
     },
     {
       "id": "ema-crossover-momentum",
+      "name": "EMA Crossover Momentum",
       "accountId": "paper-main",
       "strategySlug": "ema-crossover-momentum",
       "allocation": 10000,
@@ -53,6 +58,7 @@
     },
     {
       "id": "mean-reversion-1h-rsi",
+      "name": "Mean Reversion 1H RSI",
       "accountId": "paper-main",
       "strategySlug": "aggressive",
       "allocation": 10000,
