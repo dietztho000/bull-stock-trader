@@ -187,3 +187,19 @@
 | XOM | 120 | $152.51 | $144.40 | -1.49% | -$973.20 (-5.32%) | $139.76 |
 
 **Notes:** Portfolio +1.08% vs SPY +3.42%, -2.34% daily alpha — lagged on a broad market rip (likely tariff/trade optimism). AMKR rebounded +6.06% to $76.65, recovering most of yesterday's -6.20% drop; +12.49% unrealized, stop $71.06 (HWM $78.96). GOOGL +0.71% to $400.81, stop $361.78 (HWM $401.98). NVDA +1.64% to $214.96, stop $196.02 (HWM $217.80); earnings exit required by May 19 (rule #13). XOM -1.49% to $144.40, -5.32% unrealized; energy sector drag persists but stop $139.76 holds. No trades today; 1 trade this week (1/3 cap). All four trailing stops active.
+
+---
+
+### May 11 — EOD Snapshot (Day 8, Monday)
+**Portfolio:** $102,839.92 | **Cash:** $22,854.05 (22.2%) | **Day P&L:** +$805.03 (+0.79%) | **Phase P&L:** +$2,839.92 (+2.84%)
+**vs SPY:** day +0.57% alpha (SPY +0.22%) | phase -3.77% alpha
+
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| AMKR | 220 | $68.14 | $77.20 | +0.77% | +$1,993.88 (+13.30%) | $71.06 |
+| BA | 51 | $237.44 | $238.30 | +0.40% | +$43.87 (+0.36%) | $216.14 |
+| GOOGL | 31 | $382.79 | $388.88 | -2.97% | +$188.79 (+1.59%) | $361.78 |
+| NVDA | 95 | $209.24 | $219.16 | +1.84% | +$942.18 (+4.74%) | $200.07 |
+| XOM | 120 | $152.51 | $149.77 | +3.60% | -$328.80 (-1.80%) | $139.76 |
+
+**Notes:** New position BA opened today — 51 shares at avg $237.44 (aerospace/defense; trailing 10% stop at $216.14, HWM $240.15). Portfolio +0.79% vs SPY +0.22%, +0.57% daily alpha. NVDA +1.84% to $219.16 (+4.74% unrealized, HWM $222.30, stop $200.07); earnings exit required by May 19 (rule #13). XOM recovered +3.60% to $149.77 from energy-sector lows, still -1.80% unrealized; stop $139.76. AMKR +0.77% to $77.20, +13.30% unrealized, approaching +15% tighten threshold (HWM $78.96, stop $71.06). GOOGL -2.97% to $388.88, +1.59% unrealized; stop $361.78 (HWM $401.98). 5 positions, 77.8% deployed — within 75–85% target. 1 trade this week (1/3 cap).

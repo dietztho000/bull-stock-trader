@@ -210,3 +210,53 @@ TRADE or HOLD (default HOLD if no edge)
 
 ### Decision
 HOLD — NFP day macro risk; no fresh catalysts for new positions passing entry-scorer >=7 that also clear all hard rules (sector concentration, NFP event risk). All four trailing stops active and exchange-enforced. 2/3 weekly trades preserved for next week.
+
+## 2026-05-11 — Pre-market Research (inline fallback)
+
+### Account
+- Equity: $102,315.26
+- Cash: $34,963.49 (34.2% — below 75-85% target; 4/6 positions open at start)
+- Buying power: $137,278.75
+- Daytrade count: 0
+
+### Market Context
+- S&P 500: Near record highs; Friday +0.84%; Nasdaq 100 +2.35% Friday on chip/AI momentum
+- VIX: Futures ~15-19 range, downtrend (RSI 53, STOCH oversold on some measures); below 25 regime gate — normal risk-on
+- **KEY CATALYST: US-China tariff truce confirmed over weekend** — US suspended 24 ppt of additional duties (retaining 10% for 90 days); China suspended retaliatory tariffs (Apr 2 countermeasures); joint consultation mechanism established; Scott Bessent called talks "productive"
+- **Trump-Xi summit Beijing May 14-15** — Boeing CEO + Nvidia CEO among invited US executives; potential 600-aircraft mega-order (737 MAX + widebody) for Boeing on the table
+- Sector momentum: Industrials + Consumer Discretionary boosted by tariff truce; IT/AI leading on chip strength; Energy flat-to-positive
+
+### Open Position Status (at market open)
+- AMKR: $78.63 (+2.64% today), **+15.40% unrealized** — trailing 10%, HWM $78.96, stop $71.06 → at +15% tighten threshold; stops routine to tighten trail to 7%
+- GOOGL: $396.75 (-1.01% today), +3.65% unrealized — trailing 10%, HWM $401.98, stop $361.78
+- NVDA: $218.31 (+1.45% today), +4.33% unrealized — trailing 10%, HWM $218.49, stop $196.64; **earnings exit required by May 19**
+- XOM: $146.50 (+1.34% today), -3.94% unrealized — trailing 10%, HWM $155.29, stop $139.76
+
+### Pre-market Gap Check (rule #15)
+- AMKR: today open $77.38 vs prior close $76.65 → +0.95% — no force exit
+- GOOGL: today open $393.65 vs prior close $400.81 → -1.79% — no force exit
+- NVDA: today open $214.04 vs prior close $214.96 → -0.43% — no force exit
+- XOM: today open $146.02 vs prior close $144.40 → +1.12% — no force exit
+
+### Drawdown Check (rule #14)
+- Day P&L: ($102,315.26 - $102,000.80) / $102,000.80 = +0.31% → OK (threshold -2%)
+- Week P&L (new week, Monday): +0.31% vs May 08 base → OK (threshold -4%)
+- Circuit breaker: NOT tripped
+
+### Trade Ideas
+1. **BA (Boeing) — SELECTED** — US-China tariff truce (< 48h) + Trump-Xi summit May 14-15 + 600-plane mega-order pending confirmation at summit. Fresh catalyst, Industrials sector 0/3 cap, earnings Jul 29.
+   - Entry scorer: catalyst 7 (fresh < 48h trade deal; order pending confirmation), momentum 7 (uptrend $223→$239 this week, breaking resistance), risk_reward 6 (1.49:1 at consensus $260 target; up to 2.5:1 if summit confirms order), stop_distance 7 ($220.82 stop below prior base support)
+   - Entry score total: 7/10 ✓
+   - Sizing: score 7 → 12% of $102,315 = $12,277; qty = 51 shares
+   - BOUGHT: 51 shares @ $237.44 (market fill); stop-limit placed: trigger $220.82 / limit $218.44
+2. JLL (Real Estate) — Q1 beat 16.3% (Apr 30), analyst PT $431-441. PASS — catalyst 11 days old (>3 days stale), R:R borderline, no fresh 48h upgrade found.
+
+### Risk Factors
+- BA 600-plane order not yet confirmed — summit May 14-15 is "buy the rumor" risk; could pull back if summit disappoints
+- BA stock already rallied 7% last week ($223→$239); some catalyst already priced in
+- AMKR hit +15.4% today — approaching +15% tighten threshold (stops routine to act)
+- NVDA: earnings exit required by May 19; plan exit May 16 or 19 before earnings print
+- Capital deployed after BA: ~$79,540 / $102,315 = 77.7% — within 75-85% target
+
+### Decision
+BUY BA — 51 shares @ $237.44; US-China trade truce as primary catalyst + Trump-Xi summit forward catalyst. Entry score 7/10. Stop-limit GTC $220.82 / $218.44 placed. Week: 1/3 trades used.
