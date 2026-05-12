@@ -21,3 +21,7 @@
 {"ts":"2026-05-12T18:32:04Z","routine":"stops","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T18:32:19Z","routine":"stops","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T18:33:23Z","routine":"stops","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T19:02:36Z","routine":"afternoon","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T19:02:52Z","routine":"afternoon:preflight:mean-reversion-1h-rsi","action":"end","status":"fail","git_sha":"4fc6450"}
+{"ts":"2026-05-12T19:02:52Z","routine":"afternoon:preflight:mean-reversion-1h-rsi","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T19:03:06Z","routine":"afternoon","action":"end","status":"ok","git_sha":"4fc6450"}
