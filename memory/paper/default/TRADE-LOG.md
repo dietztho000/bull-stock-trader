@@ -203,3 +203,14 @@
 | XOM | 120 | $152.51 | $149.77 | +3.60% | -$328.80 (-1.80%) | $139.76 |
 
 **Notes:** New position BA opened today — 51 shares at avg $237.44 (aerospace/defense; trailing 10% stop at $216.14, HWM $240.15). Portfolio +0.79% vs SPY +0.22%, +0.57% daily alpha. NVDA +1.84% to $219.16 (+4.74% unrealized, HWM $222.30, stop $200.07); earnings exit required by May 19 (rule #13). XOM recovered +3.60% to $149.77 from energy-sector lows, still -1.80% unrealized; stop $139.76. AMKR +0.77% to $77.20, +13.30% unrealized, approaching +15% tighten threshold (HWM $78.96, stop $71.06). GOOGL -2.97% to $388.88, +1.59% unrealized; stop $361.78 (HWM $401.98). 5 positions, 77.8% deployed — within 75–85% target. 1 trade this week (1/3 cap).
+
+---
+
+### May 12 10:12 CT — Mid-morning scan
+
+- AMKR: +5.0% (price $71.55) — trailing 10%, HWM $78.96, stop $71.06. Near-stop caution ($0.49 above stop) — Alpaca tracking. Below +15% tighten threshold. No action.
+- BA: -2.0% (price $232.71) — trailing 10%, HWM $240.15, stop $216.14. Above -7% cut floor. No action.
+- GOOGL: +1.3% (price $387.64) — trailing 10%, HWM $401.98, stop $361.78. Below +15% tighten threshold. No action.
+- NVDA: +4.0% (price $217.61) — trailing 10%, HWM $223.75, stop $201.38. Earnings exit required May 19 (rule #13). No action today.
+- XOM: -1.4% (price $150.38) — trailing 10%, HWM $155.29, stop $139.76. Above -7% cut floor. No action.
+- No earnings exits (NVDA earnings May 20, exit pre-market May 19). No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No unfilled limit buys.
