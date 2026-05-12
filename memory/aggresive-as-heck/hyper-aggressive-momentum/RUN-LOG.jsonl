@@ -14,3 +14,5 @@
 {"ts":"2026-05-12T13:52:41Z","routine":"market-open","action":"end","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T15:10:41Z","routine":"mid-morning","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T15:14:05Z","routine":"mid-morning","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T16:10:25Z","routine":"late-morning","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T16:18:08Z","routine":"late-morning","action":"end","status":"ok","git_sha":"4fc6450"}

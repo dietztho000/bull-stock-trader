@@ -206,11 +206,16 @@
 
 ---
 
-### May 12 10:12 CT — Mid-morning scan
+### May 12 10:14 CT — AMKR Trailing Stop Auto-Executed (exchange)
+- AMKR: trailing stop fired ~$71.06 (HWM $78.96, 10% trail → stop $71.064)
+  - Day opened $75.65 (below HWM; stop unchanged at $71.064), declined through stop at ~10:14 AM CT; day low $70.40
+  - 220 shares, entry $68.14, realized gain: ~+$642.40 (+4.29%)
+  - exit: GTC trailing-stop executed by exchange (no routine intervention)
 
-- AMKR: +5.0% (price $71.55) — trailing 10%, HWM $78.96, stop $71.06. Near-stop caution ($0.49 above stop) — Alpaca tracking. Below +15% tighten threshold. No action.
-- BA: -2.0% (price $232.71) — trailing 10%, HWM $240.15, stop $216.14. Above -7% cut floor. No action.
-- GOOGL: +1.3% (price $387.64) — trailing 10%, HWM $401.98, stop $361.78. Below +15% tighten threshold. No action.
-- NVDA: +4.0% (price $217.61) — trailing 10%, HWM $223.75, stop $201.38. Earnings exit required May 19 (rule #13). No action today.
-- XOM: -1.4% (price $150.38) — trailing 10%, HWM $155.29, stop $139.76. Above -7% cut floor. No action.
-- No earnings exits (NVDA earnings May 20, exit pre-market May 19). No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No unfilled limit buys.
+### May 12 11:00 CT — Late-morning scan
+- AMKR: exit reconciled above (trailing stop fired pre-scan at ~10:14 AM CT)
+- BA: -1.70% ($233.40), trailing 10%, HWM $240.15, stop $216.14 — no action
+- GOOGL: +0.75% ($385.64), trailing 10%, HWM $401.98, stop $361.78 — no action
+- NVDA: +3.93% ($217.47), trailing 10%, HWM $223.75, stop $201.38 — no action; earnings May 20
+- XOM: -0.70% ($151.45), trailing 10%, HWM $155.29, stop $139.76 — no action
+- No earnings exits, promotions, tightenings, or take-profit triggers. All stops active.
