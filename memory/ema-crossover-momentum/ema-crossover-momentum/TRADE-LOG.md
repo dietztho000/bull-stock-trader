@@ -1,20 +1,22 @@
-# Trade Log (ema-crossover-momentum Bot)
+# Trade Log (EMA-Crossover-Momentum Bot)
 
 ---
 
 ### May 12 — AMD Entry
 
-**BUY AMD — 2 shares @ $456.39** (market order, filled May 12)
-- Stop: stop-limit GTC — trigger $424.44 / limit $417.60 (-7%/-8.45% from entry)
+**BUY AMD — 2 shares @ $456.39** (market order, filled 2026-05-12T13:49:23Z)
+- Strategy: EMA crossover signal; allocation budget $10,000.
+- Stop: stop-limit GTC stop $424.44 / limit $417.60 (order ema-crossover-momentum-bsl-1778593797-4dacd2d9)
 - Sector: Information Technology
-- Week trades: 1/3
-- Order ID: ema-crossover-momentum-bsl-1778593797-4dacd2d9
 
 ---
 
-### May 12 12:00 CT — Midday Scan
+### May 12 — EOD Snapshot (Day 1, Tuesday)
+**Portfolio:** $9,983.18 | **Cash:** $9,087.22 (91.0%) | **Day P&L:** -$16.82 (-0.17%) | **Phase P&L:** -$16.82 (-0.17%)
+**vs SPY:** day +0.05% alpha (SPY -0.22%) | phase +0.05% alpha
 
-**Open Positions:**
-- AMD: $433.07 (-5.11%) — stop-limit GTC at $424.44/$417.60. Not at -7% cut floor ($424.44). No action.
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| AMD | 2 | $456.39 | $447.98 | -2.36% | -$16.82 (-1.84%) | $424.44 |
 
-No earnings exits today. No promotion needed (stop-limit active, unrealized < +1%). No tighten triggers. No take-profit triggers. No thesis breaks detected.
+**Notes:** First day live. AMD opened at $456.39 (2 shares, $912.78 deployed = 9.1% of allocation). AMD -2.36% intraday to $447.98; stop-limit at $424.44/$417.60. 1 position, 9.1% deployed.

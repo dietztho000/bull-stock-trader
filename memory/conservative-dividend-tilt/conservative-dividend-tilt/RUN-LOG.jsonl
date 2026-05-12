@@ -25,3 +25,5 @@
 {"ts":"2026-05-12T19:02:51Z","routine":"afternoon:preflight:conservative-dividend-tilt","action":"end","status":"fail","git_sha":"4fc6450"}
 {"ts":"2026-05-12T19:02:51Z","routine":"afternoon:preflight:conservative-dividend-tilt","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T19:03:06Z","routine":"afternoon","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T20:04:38Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-12T20:19:57Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"4fc6450"}

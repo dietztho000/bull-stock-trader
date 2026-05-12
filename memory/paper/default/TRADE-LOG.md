@@ -206,19 +206,24 @@
 
 ---
 
-### May 12 12:00 CT — Midday Scan
+### May 12 — AMKR Stop-Out
 
-**AMKR — Stopped Out (trailing stop triggered)**
-- Exit: ~$71.00/share (trailing stop $71.06 hit, paper fill ~$71.00)
-- Entry: $68.14, 220 shares
-- Realized P&L: +$629 (+4.20%)
-- Reason: trailing 10% stop triggered (HWM $78.96 → stop $71.06); position not further tightened from 10%
-- Sector: Information Technology — outcome: W
+**SELL AMKR — 220 shares @ $71.00** (trailing stop triggered, filled 2026-05-12T15:14:26Z)
+- Trailing stop (10%, HWM $78.96) triggered at $71.06; filled at $71.00.
+- Realized gain: +$629.20 (+4.20% from entry $68.14) over 12 days.
+- Position closed. Sector: Information Technology (now 1 → 0 IT positions).
 
-**Remaining Positions:**
-- BA: $233.40 (-1.70%) — trailing 10%, HWM $240.15, stop $216.14. Above -7% floor. No action.
-- GOOGL: $383.68 (+0.23%) — trailing 10%, HWM $401.98, stop $361.78. No action.
-- NVDA: $216.42 (+3.43%) — trailing 10%, HWM $223.75, stop $201.38. Earnings exit required May 19 (rule #13). No action today.
-- XOM: $150.97 (-1.01%) — trailing 10%, HWM $155.29, stop $139.76. No action.
+---
 
-No earnings exits today. No fixed stops to promote (all trailing). No tighten triggers (<+15% all). No take-profit triggers (<+20% all). No unfilled limit buys. No thesis breaks.
+### May 12 — EOD Snapshot (Day 9, Tuesday)
+**Portfolio:** $101,599.78 | **Cash:** $37,561.27 (37.0%) | **Day P&L:** -$1,240.14 (-1.21%) | **Phase P&L:** +$1,599.78 (+1.60%)
+**vs SPY:** day -0.99% alpha (SPY -0.22%) | phase -4.77% alpha
+
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| BA | 51 | $237.44 | $236.77 | -0.61% | -$34.17 (-0.28%) | $216.14 |
+| GOOGL | 31 | $382.79 | $386.01 | -0.68% | +$99.82 (+0.84%) | $361.78 |
+| NVDA | 95 | $209.24 | $220.18 | +0.34% | +$1,039.13 (+5.23%) | $201.38 |
+| XOM | 120 | $152.51 | $150.51 | +0.55% | -$240.26 (-1.31%) | $139.76 |
+
+**Notes:** AMKR stopped out at $71.00 (trailing 10%, HWM $78.96); +$629.20 realized gain (+4.20%) from entry — held 12 days. Portfolio -1.21% vs SPY -0.22%, -0.99% daily alpha on a quiet down day. NVDA +0.34% to $220.18, +5.23% unrealized (HWM $223.75, stop $201.38); earnings exit required by May 19 (rule #13). XOM +0.55% to $150.51, still -1.31% unrealized; stop $139.76 (HWM $155.29). GOOGL -0.68% to $386.01, +0.84% unrealized; stop $361.78 (HWM $401.98). BA -0.61% to $236.77, -0.28% unrealized; stop $216.14 (HWM $240.15). 4 positions, 63.0% deployed — slightly below 75% floor; consider new setup. 1 trade this week (1/3 cap).
