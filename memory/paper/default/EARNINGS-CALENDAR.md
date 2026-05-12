@@ -20,6 +20,7 @@ hand-edits a row.
 | Symbol | Next Earnings Date | BMO/AMC | Source | Date refreshed |
 |--------|--------------------|---------|--------|----------------|
 | AMKR | 2026-07-27 | AMC | Perplexity | 2026-05-05 |
+| BA | 2026-07-28 | BMO | Perplexity | 2026-05-12 |
 | GOOGL | 2026-07-23 | AMC | Perplexity | 2026-05-05 |
 | NVDA | 2026-05-20 | AMC | Perplexity | 2026-05-05 |
 | XOM | 2026-07-30 | BMO | Perplexity | 2026-05-05 |

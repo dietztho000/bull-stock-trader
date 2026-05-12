@@ -344,3 +344,16 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-11 08:40 CT | sonar | May 11 2026: US-China tariff truce weekend trade deal - which specific stocks benefit most? Focus on: (1) Boeing BA - 500-plane China order details, current price, next earnings date, technical setup; |
 | 2026-05-11 08:41 CT | sonar | May 11 2026: Boeing BA stock - (1) What was the May 8 2026 closing price? (2) What is the latest analyst consensus price target (not estimate, just the 12-month price target)? (3) Is the 600-plane Chi |
 | 2026-05-11 08:41 CT | sonar | Boeing BA stock analyst consensus price target May 2026. What is the Wall Street analyst 12-month consensus price target for Boeing? Has any major bank (Goldman, JPMorgan, Morgan Stanley, BofA) issued |
+| 2026-05-12 06:11 CT | sonar | WTI and Brent oil price right now |
+| 2026-05-12 06:11 CT | sonar | S&P 500 futures premarket today 2026-05-12 |
+| 2026-05-12 06:11 CT | sonar | VIX level today 2026-05-12 |
+| 2026-05-12 06:11 CT | sonar | Top stock market catalysts today 2026-05-12 |
+| 2026-05-12 06:11 CT | sonar | Earnings reports today before market open May 12 2026 |
+| 2026-05-12 06:11 CT | sonar | Economic calendar today May 12 2026 CPI PPI FOMC jobs data |
+| 2026-05-12 06:11 CT | sonar | S&P 500 sector momentum YTD 2026 which sectors outperforming |
+| 2026-05-12 06:12 CT | sonar | AMKR Amkor Technology stock news today May 12 2026 |
+| 2026-05-12 06:12 CT | sonar | BA Boeing stock news today May 12 2026 |
+| 2026-05-12 06:12 CT | sonar | NVDA Nvidia stock news today May 12 2026 earnings date |
+| 2026-05-12 06:12 CT | sonar | XOM ExxonMobil stock news today May 12 2026 |
+| 2026-05-12 06:12 CT | sonar | GOOGL Google Alphabet stock news today May 12 2026 |
+| 2026-05-12 06:13 CT | sonar | When is the next earnings report for BA Boeing? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
