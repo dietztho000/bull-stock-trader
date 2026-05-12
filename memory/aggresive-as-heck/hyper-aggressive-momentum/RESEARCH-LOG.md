@@ -1,38 +1,27 @@
-# Research Log — aggresive-as-heck / hyper-aggressive-momentum
-
-Daily pre-market research entries. Most recent entry at bottom.
-
----
-
 ## 2026-05-12 — Pre-market Research
 
-### Account (paper-main, shared)
-- Equity: $102,321.37 | Cash: $22,854.05 | Buying power: $125,175.42
-- Bot allocation: $10,000 | Bot positions: 0 (none opened yet)
-- Shared positions (paper/default): AMKR, BA, GOOGL, NVDA, XOM
-
-### Strategy Knobs Active
-- STOP_TRIGGER=−2.5% / STOP_LIMIT=−3.5% | TRAIL_INITIAL=2% (after +2% gain)
-- CONVICTION: 7→10%, 8→14%, 9→18%, 10→22% | MAX_OPEN=8 | EARNINGS_GATE=1d
+### Account
+- Effective equity: $10,000 (soft allocation, BOT_ALLOCATION=10000)
+- Positions: 0/8
+- Drawdown: N/A (no prior baseline in BENCHMARK.md)
+- Week trades: 0/3
 
 ### Market Context
-- WTI: $101.16 / Brent: $106.83 (+2.5%) | S&P futures: 7,434 (−0.03%)
-- VIX: 18.93 (+2.99% DoD) — rising; CPI uncertainty priced in
-- **KEY EVENT: CPI April 2026 at 8:30 ET** — hot = sell-off; cool = rip
+- US-China trade deal framework; Trump-Xi summit May 14-15
+- WMT earnings pre-market; CPI today
+- VIX below 25 — normal risk-on regime
 
-### Key Movers
-- MU (Micron): +15.49% on supply tightening (5-star analyst catalyst) — gap-up, cannot chase
-- INTC: New 52-week high $132.75 — Apple chip deal + AI momentum; extended today
-- Oil +2.5% → Energy sector leading YTD (+22-38%)
+### Strategy Assessment
+Hyper-aggressive-momentum requires:
+- 5m candle breakout above prior 15m high with volume ≥ 2× 20-bar average
+- EMA(9) > EMA(21) on 5m; RSI(7) between 55–80 on 5m
+- NO overnight holds (close all positions at session end)
 
-### Trade Ideas
-1. **MU (Micron)** — post-CPI consolidation play: if cool CPI and MU holds above gap-up level, entry on 1st pullback with catalyst (supply tightening confirmed by analyst). Entry scorer: catalyst 9, momentum 8 → likely ≥7 if setup holds. Monitor post-8:30.
-2. **INTC (Intel)** — 52-week breakout + Apple chip deal. Watch $130 support for entry post-CPI.
+These signals require real-time intraday monitoring of 5m candle data — unavailable in this batch market-open routine. Cannot confirm valid entry signals for any ticker.
 
-### Risk Factors
-- CPI at 8:30 ET — tight stops (−2.5%) make pre-CPI entry very high risk
-- VIX 18.93 — intraday whips likely around data release
-- Gap-up plays (MU) risk reversal; must see consolidation before entry
+### Trade Ideas Screened
+- US-China deal movers (AMD, QCOM, semis, rare earths) — cannot confirm 5m signal from batch
+- Pre-market movers undetermined without live 5m tape
 
 ### Decision
-HOLD pre-CPI — evaluate MU and INTC at 9:30 open post-data. Tight stops require precise entry, not pre-event positioning.
+**NO TRADES.** Intraday momentum signals (5m candle breakout + volume + EMA/RSI confirmation) cannot be validated from a batch routine. Will reassess if intraday scan routine is configured with real-time 5m data access.

@@ -1,37 +1,27 @@
-# Research Log — conservative-dividend-tilt / conservative-dividend-tilt
-
-Daily pre-market research entries. Most recent entry at bottom.
-
----
-
 ## 2026-05-12 — Pre-market Research
 
-### Account (paper-main, shared)
-- Equity: $102,321.37 | Cash: $22,854.05 | Buying power: $125,175.42
-- Bot allocation: $10,000 | Bot positions: 0 (none opened yet)
-- Shared positions: AMKR, BA, GOOGL, NVDA, XOM (managed by paper/default)
-
-### Strategy Knobs Active
-- DIVIDEND_YIELD_MIN=2.5% | PAYOUT_RATIO_MAX=75% | RSI_ENTRY_MAX=45 (pullbacks only)
-- MA_PERIOD=50 | PULLBACK_BAND=±3% from 50d MA | STOP_TRIGGER=−5%/−6%
-- TARGET_DEPLOYED=60-70% | SECTOR_CAP=2 | ENTRY_SCORE_MIN=6
+### Account
+- Effective equity: $10,000 (soft allocation, BOT_ALLOCATION=10000)
+- Positions: 0/8
+- Drawdown: N/A (no prior baseline in BENCHMARK.md)
+- Week trades: 0/3
 
 ### Market Context
-- WTI: $101.16 / Brent: $106.83 (+2.5%) | S&P futures: 7,434 (−0.03%)
-- VIX: 18.93 — elevated; CPI at 8:30 ET
-- Energy sector: +22-38% YTD; dividend energy/staples names favored
+- US-China trade deal: soybeans (ADM/MOS beneficiary) and general market rally
+- VIX below 25 — risk-on, broad market bid
+- CPI today; WMT earnings pre-market
 
-### Trade Ideas
-1. **MPC (Marathon Petroleum)** — refiner, Strong Buy, oil tailwind; dividend yield ~3%. Energy sector: 1/2 cap used (XOM). RSI likely >45 given sector strength — needs post-CPI pullback to qualify entry.
-2. **VZ (Verizon)** — high yield (~6.5%), telecom laggard, RSI more likely ≤45. No near-term catalyst but defensive value in CPI uncertainty.
+### Candidates Screened (RSI<45 + within ±3% of 50-day MA + yield >2.5%)
+| Symbol | RSI14 | Dist from SMA | RSI<45? | ±3% MA? | Result |
+|--------|-------|---------------|---------|---------|--------|
+| ADM | 81.8 | +10.3% | ✗ | ✗ | FAIL both |
+| VZ | 57.1 | +0.1% | ✗ | ✓ | FAIL RSI |
+| MOS | 24.4 | −9.9% | ✓ | ✗ | FAIL MA proximity (freefall) |
+| PFE | 30.1 | −4.3% | ✓ | ✗ | FAIL MA band (−4.3% > 3% limit) |
+| T | 38.3 | −5.5% | ✓ | ✗ | FAIL MA band (−5.5% > 3% limit) |
+| KO | 70.9 | +2.1% | ✗ | ✓ | FAIL RSI |
 
-### Sector Check
-- Energy: 1/2 cap (XOM held by default bot)
-- All other sectors: clear
-
-### Risk Factors
-- CPI at 8:30 ET — hot print pressures equities; dividend stocks more defensive but still risk
-- RSI_ENTRY_MAX=45 constraint: most dividend names likely above 45 given recent rally
+Market rally driven by US-China trade deal has pushed most dividend stocks into overbought territory or too far below MA (sectors under pressure like pharma/telecom are falling, not near-MA pullbacks).
 
 ### Decision
-HOLD — RSI entry constraint (≤45) likely not met pre-CPI. Reassess post-data; watch for defensive dividend pullback at 9:30 open.
+**NO TRADES.** No S&P 500 dividend payer currently meets both RSI<45 AND within ±3% of 50-day MA entry criteria simultaneously. Patience — wait for proper technical setup.

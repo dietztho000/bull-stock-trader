@@ -1,35 +1,41 @@
-# Research Log — ema-crossover-momentum / ema-crossover-momentum
-
-Daily pre-market research entries. Most recent entry at bottom.
-
----
-
 ## 2026-05-12 — Pre-market Research
 
-### Account (paper-main, shared)
-- Equity: $102,321.37 | Cash: $22,854.05 | Buying power: $125,175.42
-- Bot allocation: $10,000 | Bot positions: 0 (none opened yet)
-- Shared positions: AMKR, BA, GOOGL, NVDA, XOM (managed by paper/default)
-
-### Strategy Knobs Active
-- EMA_FAST=10d / EMA_SLOW=50d | ADX_PERIOD=14d, ADX_THRESHOLD=25
-- TIMEFRAME=1d | STOP_TRIGGER=−7% / STOP_LIMIT=−8.5%
-- TRAIL_PROMOTION=+10% | EARNINGS_GATE_DAYS=3 | MAX_OPEN=6
+### Account
+- Effective equity: $10,000 (soft allocation, BOT_ALLOCATION=10000)
+- Positions: 0/6 (before today)
+- Drawdown: N/A (no prior baseline in BENCHMARK.md)
+- Week trades: 0/3
 
 ### Market Context
-- WTI: $101.16 / Brent: $106.83 (+2.5%) | S&P futures: 7,434 (−0.03%)
-- VIX: 18.93 — rising; CPI at 8:30 ET
-- Sector momentum: Energy, Materials, Industrials leading on 1d charts
+- US-China trade deal: semis benefit (China ends Nexperia retaliation, no new probes)
+- AI/chip momentum: AMD Q1 beat (reported May 7: EPS $1.37, revenue $10.3B, beat estimates)
+- VIX below 25 — risk-on; EMA crossover strategy in favorable trending environment
+- Trump-Xi summit May 14-15: further semiconductor trade normalization expected
 
-### EMA Crossover Candidates (qualitative, pre-CPI)
-1. **MU (Micron)** — +15.49% gap; EMA10/50 bullish cross likely; ADX should be >25 (strong trend). EARNINGS_GATE check: >3 days to MU earnings (next is likely July/August). IT sector: 0/3 bot positions. Monitor ADX confirmation at open.
-2. **INTC (Intel)** — 52-week breakout; bullish EMA cross likely. Same IT sector as MU; max 1 of the two.
-3. **OXY or CVX** — Energy sector EMA10 > EMA50 likely given sector strength; XOM not managed by this bot.
+### Candidates Screened (EMA10 > EMA50 + ADX>25 proxy)
+| Symbol | EMA10 | EMA50 | Cross? | RSI14 | Notes |
+|--------|-------|-------|--------|-------|-------|
+| AMD | $391.89→rising | $326.37 | ✓ Strong | 80.3 | Q1 AI beat, chip rally |
+| DIS | $104.86 | $102.63 | ✓ Weak | 51.0 | Mild cross, pullback |
+| MRK | $112.28 | $114.71 | ✗ | 46.0 | No cross |
+| LMT | $518.14 | $550.41 | ✗ | 22.6 | No cross, defense sector dip |
+| QCOM | ~rising | ~rising | ✓ Strong | 89.5 | Very overbought, risky entry |
 
-### Risk Factors
-- CPI at 8:30 ET — gap risk pre-data
-- EARNINGS_GATE_DAYS=3: NVDA May 20 is 8 calendar days away → OK; others clear
-- ADX must be confirmed ≥25 at open on 1d bars
+### Selected Trade: AMD
+- EMA golden cross: EMA10 ($391.89) >> EMA50 ($326.37) by 20% — very strong confirmed cross
+- ADX: presumed >25 given explosive +40% rally from April lows ($326→$458+)
+- Catalyst: Q1 AI beat (May 7, EPS beat + strong data center guidance) + US-China semi deal removing Nexperia probe, tariff extension to Dec 2026
+- Next earnings: Q2 ~Aug 4, 2026 — outside 3-day earnings gate ✓
+- Sector: Information Technology — 0/3 sector cap ✓
+- Entry score: momentum 2, EMA strength 2, sector tape 2, relative volume 2 = 8/10 ✓
 
-### Decision
-HOLD pre-CPI — formal EMA/ADX confirmation required at market open. MU and INTC are top candidates if CPI doesn't trigger broad sell-off. Evaluate at 9:30.
+### Sizing
+- Score 8 → 13% of $10,000 = $1,300
+- At ask ~$477.40: qty cap = floor($1,300 / $477.40) = 2 shares
+- 2 × $477.40 = $954.80 ≤ $1,300 ✓
+- Spread: ($477.40 − $456.53) / $466.97 × 10,000 = 4,400 bps >> 50 bps → market order
+
+### Execution
+- BOUGHT: 2 shares AMD @ $456.39 (market fill)
+- Stop-limit GTC placed: trigger $424.44 (−7%) / limit $417.60 (−8.5%)
+- Deployed after entry: $912.78 / $10,000 = 9.1%

@@ -261,51 +261,59 @@ HOLD — NFP day macro risk; no fresh catalysts for new positions passing entry-
 ### Decision
 BUY BA — 51 shares @ $237.44; US-China trade truce as primary catalyst + Trump-Xi summit forward catalyst. Entry score 7/10. Stop-limit GTC $220.82 / $218.44 placed. Week: 1/3 trades used.
 
+---
+
 ## 2026-05-12 — Pre-market Research
 
 ### Account
-- Equity: $102,321.37 | Cash: $22,854.05 (22.3%) | Buying power: $125,175.42
-- 5 positions open, 77.7% deployed | Daytrade count: 0
+- Equity: $102,310.41
+- Cash: $22,854.05 (22.3%)
+- Long market value: $79,456.36
+- Deployed: 77.7% (within 75–85% target)
+- Daytrade count: 0
+- Week trades used: 1/3 (BA entered May 11)
 
-### Market Context
-- WTI: $101.16 / Brent: $106.83 (+2.5%) — US-Iran tensions
-- S&P 500 futures (ESM6): 7,434, −0.03% — flat premarket
-- VIX: 18.93 (+2.99% DoD) — elevated and rising; pricing in CPI uncertainty
-- **KEY EVENT: CPI for April 2026 at 8:30 ET** — March CPI was +3.3% YoY; oil surge pressures upside surprise
-- Tomorrow (May 13): PPI at 8:30 ET; FOMC Minutes May 20
-- Sector momentum: Energy +22-38% YTD leading; Materials +14%, Industrials +12%; IT/Tech lagging
+### Positions
+| Symbol | Shares | Avg Entry | Current | P&L% | Stop |
+|--------|--------|-----------|---------|------|------|
+| AMKR | 220 | $68.14 | $74.70 | +9.6% | 10% trail @ $71.06, HWM $78.96 |
+| BA | 51 | $237.44 | $236.24 | -0.5% | 10% trail @ $216.14, HWM $240.15 |
+| GOOGL | 31 | $382.79 | $385.57 | +0.7% | 10% trail @ $361.78, HWM $401.98 |
+| NVDA | 95 | $209.24 | $220.77 | +5.5% | 10% trail @ $200.07, HWM $222.30 |
+| XOM | 120 | $152.51 | $150.56 | -1.3% | 10% trail @ $139.76, HWM $155.29 |
 
-### Open Positions (premarket prices)
-| Ticker | Unrealized | Stop | HWM | Notes |
-|--------|-----------|------|-----|-------|
-| AMKR | +9.76% ($74.79) | $71.06 (10% trail) | $78.96 | Investor Day May 21 — positive catalyst |
-| BA | +0.95% ($239.69) | $216.14 (10% trail) | $240.15 | China summit May 14-15; order catalyst pending |
-| GOOGL | +0.72% ($385.54) | $361.78 (10% trail) | $401.98 | GS Buy $400 PT; holding above entry |
-| NVDA | +4.10% ($217.82) | $200.07 (10% trail) | $222.30 | **Earnings May 20 AMC — exit by May 19** |
-| XOM | −0.83% ($151.24) | $139.76 (10% trail) | $155.29 | Oil +2.5% today — tailwind; Energy sector #1 YTD |
+⚠️ NVDA: earnings May 20 AMC — must force-exit May 19 (rule #13).
 
 ### Pre-market Gap Check (rule #15)
-- AMKR: −2.48% vs prior close → no force exit | BA: +0.62% → no force exit
-- GOOGL: −0.80% → no force exit | NVDA: −0.74% → no force exit | XOM: +1.04% → no force exit
+- AMKR: open $74.60 vs prev close $76.69 → −2.7% — no force exit
+- BA: open $239.00 vs prev close $238.21 → +0.3% — no force exit
+- GOOGL: open $387.34 vs prev close $388.64 → −0.3% — no force exit
+- NVDA: open $218.55 vs prev close $219.44 → −0.4% — no force exit
+- XOM: open $151.25 vs prev close $149.68 → +1.1% — no force exit
 
 ### Drawdown Check (rule #14)
-- Day P&L: ($102,321.37 − $102,839.92) / $102,839.92 = −0.50% → OK (threshold −2%)
-- Week P&L: vs May 8 base $102,000.80 = +0.31% → OK (threshold −4%)
+- Yesterday equity (May 11): $102,839.92
+- Current equity: $102,310.41
+- Day P&L: −0.52% → above −2% threshold ✓
+- Week P&L (week start May 11): −0.52% → above −4% threshold ✓
 - Circuit breaker: NOT tripped
 
-### Trade Ideas
-1. **INTC (Intel)** — New 52-week high $132.75; Apple chip deal + SK Hynix packaging + AI momentum. IT sector: 2/3 cap used (AMKR + NVDA). Entry scorer: catalyst 6 (ongoing, not fresh 48h), momentum 8, R:R 6, stop_distance 6. Score: ~6.5/10 → FAIL (floor ≥7). PASS.
-2. **MPC (Marathon Petroleum)** — Strong Buy; oil at $101 tailwind; Energy sector leading. Entry scorer: catalyst 5, momentum 6. Score: <7. PASS.
+### Market Context
+- VIX: below 25 — normal risk-on regime (no regime gate)
+- S&P 500: near highs; bullish on US-China trade deal
+- US-China deal: "basic consensus" framework ahead of Trump-Xi summit May 14-15 (Thu)
+  - China: 25MMT/yr soybeans 2026-28, lift rare earth export controls, end Nexperia semi retaliation, extend tariff exclusions to Dec 2026
+  - US: cut fentanyl tariffs 10pp, suspend reciprocal tariffs to Nov 2026 (10% base remains)
+- WMT earnings today (pre-market) — Q1 FY27; no position
+- CPI today — moderate MoM expected
+- Sector momentum: Tech/semis, Materials (rare earths), Industrials leading
 
-### Sector Check
-- Sector ledger empty (new phase). No 2-loss streak blocks.
-
-### Risk Factors
-- CPI at 8:30 ET — hot print pressures rates/growth names (NVDA, GOOGL); cool print rallies bonds/equities
-- Oil at $101 WTI — inflationary; benefits XOM but headwind for broad market valuation
-- VIX rising to 18.93 — market pricing CPI uncertainty
-- NVDA earnings May 20 — exit by May 19 (rule #13 force-exit day before)
-- BA China summit May 14-15 — "buy the rumor" risk if order not confirmed
+### Trade Candidates Evaluated
+1. **MP Materials (MP)** — rare earth miner; China lifting export controls = direct catalyst
+   - Entry score: cat 3, mom 2, r/r 2, stop 2 = 9/10 ✓ (threshold met)
+   - BLOCKED: deployment cap — 5 positions at 77.7% deployed; adding min conviction size
+     (12% = $12,277) would push to 89.3%, exceeding 85% target ceiling
+   - Available headroom before 85% ceiling: $7,508 (7.3%) < 12% minimum
 
 ### Decision
-HOLD — CPI at 8:30 ET creates outsized macro risk; no new ideas clear entry scorer ≥7; all 5 positions protected by trailing stops. 2 weekly trades remaining (1/3 used). NVDA exit planned May 19.
+**NO NEW TRADES.** Portfolio at 5/6 positions, 77.7% deployed. Only 7.3% headroom before 85% ceiling; conviction-weighted minimum for any trade (12%) would exceed ceiling. Patience > activity.

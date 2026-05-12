@@ -26,3 +26,5 @@ Use the 11 standard GICS sectors:
 | AMKR | Information Technology | Perplexity | 2026-04-30 |
 | GOOGL | Communication Services | Perplexity | 2026-05-05 |
 | BA | Industrials | Perplexity | 2026-05-11 |
+| AMD | Information Technology | Perplexity | 2026-05-12 |
+| MP | Materials | Perplexity | 2026-05-12 |
