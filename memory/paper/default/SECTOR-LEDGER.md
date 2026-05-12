@@ -1,11 +1,9 @@
-# Sector Ledger — paper/default
+# Sector Ledger (Paper Bot — default strategy)
 
-Tracks closed-trade outcomes per GICS sector to enforce rule #10 (exit a
-sector after 2 consecutive failures) and rule #20 (re-entry guard: no
-re-entry within 3 trading days of a stop-out unless fresh catalyst).
+Tracks last 2 closed-trade outcomes per GICS sector.
+Rule #10: exit a sector after 2 consecutive failed trades.
+Outcome: W = profit vs entry | L = loss vs entry | B = breakeven (within ±0.5%)
 
-Outcomes: **W** = profitable exit | **L** = stop-out / loss | **B** = breakeven
-
-| Date | Symbol | Sector | Entry | Exit | Realized P&L | Outcome |
+| Date | Ticker | Sector | Entry | Exit | Realized P&L | Outcome |
 |------|--------|--------|-------|------|--------------|---------|
-| 2026-05-12 | AMKR | Information Technology | $68.14 | ~$71.06 | +4.29% (+$642) | W |
+| 2026-05-12 | AMKR | Information Technology | $68.14 | ~$71.00 | +$629 (+4.2%) | W |
