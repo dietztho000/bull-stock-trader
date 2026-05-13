@@ -41,3 +41,7 @@
 {"ts":"2026-05-13T11:38:00Z","routine":"pre-market","action":"end","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-13T13:39:22Z","routine":"market-open","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-13T13:48:56Z","routine":"market-open","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T15:07:49Z","routine":"mid-morning","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T15:08:07Z","routine":"mid-morning:preflight:aggresive-as-heck","action":"end","status":"fail","git_sha":"4fc6450"}
+{"ts":"2026-05-13T15:08:07Z","routine":"mid-morning:preflight:aggresive-as-heck","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T15:08:21Z","routine":"mid-morning","action":"end","status":"ok","git_sha":"4fc6450"}
