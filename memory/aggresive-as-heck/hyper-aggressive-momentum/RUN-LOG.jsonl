@@ -49,3 +49,7 @@
 {"ts":"2026-05-13T16:07:06Z","routine":"late-morning","action":"end","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-13T17:01:50Z","routine":"midday","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-13T17:07:04Z","routine":"midday","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T18:39:22Z","routine":"stops","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T18:40:30Z","routine":"stops","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T19:08:52Z","routine":"afternoon","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T19:14:32Z","routine":"afternoon","action":"end","status":"ok","git_sha":"4fc6450"}
