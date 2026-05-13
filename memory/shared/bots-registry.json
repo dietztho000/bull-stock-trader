@@ -1,71 +1,7 @@
 {
   "_comment": "Cloud-side fallback for scripts/bots.sh when memory/shared/dashboard-settings.json is missing (fresh cloud clone). Regenerate via `bash scripts/sync-bots-registry.sh` after editing bots in the dashboard.",
-  "accounts": [
-    {
-      "id": "live-main",
-      "mode": "live"
-    },
-    {
-      "id": "paper-main",
-      "mode": "paper"
-    }
-  ],
-  "bots": [
-    {
-      "id": "paper",
-      "name": "Bot 1",
-      "accountId": "paper-main",
-      "strategySlug": "default",
-      "allocation": null,
-      "enabled": true,
-      "routineFilter": null
-    },
-    {
-      "id": "aggresive-as-heck",
-      "name": "Hyper-Aggressive Momentum",
-      "accountId": "paper-main",
-      "strategySlug": "hyper-aggressive-momentum",
-      "allocation": 10000,
-      "enabled": false,
-      "routineFilter": null
-    },
-    {
-      "id": "conservative-dividend-tilt",
-      "name": "Conservative Dividend Tilt",
-      "accountId": "paper-main",
-      "strategySlug": "conservative-dividend-tilt",
-      "allocation": 10000,
-      "enabled": false,
-      "routineFilter": null
-    },
-    {
-      "id": "volatility-breakout-midcap",
-      "name": "[1st] Volatility Breakout Mid-Cap",
-      "accountId": "paper-main",
-      "strategySlug": "volatility-breakout-midcap",
-      "allocation": 10000,
-      "enabled": false,
-      "routineFilter": null
-    },
-    {
-      "id": "ema-crossover-momentum",
-      "name": "EMA Crossover Momentum",
-      "accountId": "paper-main",
-      "strategySlug": "ema-crossover-momentum",
-      "allocation": 10000,
-      "enabled": false,
-      "routineFilter": null
-    },
-    {
-      "id": "mean-reversion-1h-rsi",
-      "name": "Mean Reversion 1H RSI",
-      "accountId": "paper-main",
-      "strategySlug": "aggressive",
-      "allocation": 10000,
-      "enabled": false,
-      "routineFilter": null
-    }
-  ],
+  "accounts": [],
+  "bots": [],
   "strategies": [
     {
       "slug": "default",

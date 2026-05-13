@@ -1,4 +1,0 @@
-# Earnings Calendar — ema-crossover-momentum / ema-crossover-momentum
-
-| Symbol | Next Earnings Date | BMO/AMC | Source | Date refreshed |
-|--------|--------------------|---------|--------|----------------|
