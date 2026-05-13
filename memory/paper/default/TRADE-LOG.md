@@ -206,22 +206,10 @@
 
 ---
 
-### May 12 — Retroactive: AMKR trailing stop fired (logged May 13)
+### May 12 — AMKR Trailing Stop Exit
 
-- **AMKR exit**: trailing 10% GTC stop triggered ~May 12 — exchange fired autonomously
-  - Entry $68.14 (220 shares) → Exit ~$71.06 (trailing stop trigger, HWM $78.96)
-  - Realized P&L: ~+$642 (+4.3%) | Outcome: **W**
-  - Position confirmed absent from account on May 13 late-morning scan
-  - Not captured by prior daily-summary; retroactively logged here
-  - SECTOR-LEDGER updated: Information Technology — W
-
----
-
-### May 13 11:05 CT — Late-morning scan
-
-- BA: +1.3% ($240.41) — trailing 10%, stop $218.04 (HWM $242.27). Below +15% tighten threshold. No action.
-- GOOGL: +4.1% ($398.31) — trailing 10%, stop $361.78 (HWM $401.98). No action.
-- NVDA: +8.5% ($227.11) — trailing 10%, stop $204.81 (HWM $227.57). No action. Earnings exit required May 19 (rule #13).
-- XOM: -1.1% ($150.79) — trailing 10%, stop $139.76 (HWM $155.29). Above -7% floor. No action.
-
-No earnings exits today (NVDA May 20 → force-exit May 19). No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No cuts (all above -7%). No thesis breaks.
+**SELL AMKR — 220 shares @ ~$71.06** (trailing stop GTC, exchange-executed between May 11 EOD and May 13 midday)
+- exit: trailing 10% stop fired — price crossed $71.06 (90% of HWM $78.96); stock dipped and recovered (current ~$72.80)
+- Realized P&L: +$642.40 (+4.3%) | entry $68.14 × 220
+- Sector: Information Technology (trade #1 of last 2 tracked)
+- Note: stop executed autonomously by Alpaca GTC order; first captured at May 13 midday scan
