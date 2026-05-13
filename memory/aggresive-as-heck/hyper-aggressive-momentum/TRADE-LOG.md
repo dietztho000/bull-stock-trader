@@ -1,12 +1,11 @@
-# Trade Log (Aggresive-As-Heck Bot — Hyper-Aggressive Momentum)
+# Trade Log — aggresive-as-heck / hyper-aggressive-momentum
 
----
+Format: one entry per trade + intraday scan notes + EOD snapshots.
 
-### May 12 — EOD Snapshot (Day 1, Tuesday)
-**Portfolio:** $10,000.00 | **Cash:** $10,000.00 (100%) | **Day P&L:** $0.00 (0.00%) | **Phase P&L:** $0.00 (0.00%)
-**vs SPY:** day +0.22% alpha (SPY -0.22%) | phase 0.00% alpha
+## Open Positions
 
-| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
-|--------|--------|-------|-------|---------|----------------|------|
+*None — bot initialized 2026-05-13.*
 
-**Notes:** First day live. No positions — monitoring for hyper-aggressive momentum entries.
+## Trade History
+
+*No trades yet.*

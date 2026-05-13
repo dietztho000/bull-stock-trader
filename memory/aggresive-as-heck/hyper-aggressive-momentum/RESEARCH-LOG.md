@@ -1,27 +1,19 @@
-## 2026-05-12 — Pre-market Research
+# Research Log — aggresive-as-heck / hyper-aggressive-momentum
+
+## 2026-05-13 — Market-Open Research (first run / inline fallback)
 
 ### Account
-- Effective equity: $10,000 (soft allocation, BOT_ALLOCATION=10000)
-- Positions: 0/8
-- Drawdown: N/A (no prior baseline in BENCHMARK.md)
-- Week trades: 0/3
+- Effective equity: $10,000.00 (soft allocation on paper-main)
+- No prior positions tagged to this bot.
+
+### Strategy Requirements
+- Intraday 5m/15m candle breakout signals
+- Volume ≥ 2× 20-bar average; EMA(9) > EMA(21) on 5m; RSI(7) 55–80
+- No overnight holds
 
 ### Market Context
-- US-China trade deal framework; Trump-Xi summit May 14-15
-- WMT earnings pre-market; CPI today
-- VIX below 25 — normal risk-on regime
-
-### Strategy Assessment
-Hyper-aggressive-momentum requires:
-- 5m candle breakout above prior 15m high with volume ≥ 2× 20-bar average
-- EMA(9) > EMA(21) on 5m; RSI(7) between 55–80 on 5m
-- NO overnight holds (close all positions at session end)
-
-These signals require real-time intraday monitoring of 5m candle data — unavailable in this batch market-open routine. Cannot confirm valid entry signals for any ticker.
-
-### Trade Ideas Screened
-- US-China deal movers (AMD, QCOM, semis, rare earths) — cannot confirm 5m signal from batch
-- Pre-market movers undetermined without live 5m tape
+- CPI May 12 3.8% (hot) — risk-off for momentum; elevated volatility caution
+- No established pre-market watchlist (first run — no prior RESEARCH-LOG)
 
 ### Decision
-**NO TRADES.** Intraday momentum signals (5m candle breakout + volume + EMA/RSI confirmation) cannot be validated from a batch routine. Will reassess if intraday scan routine is configured with real-time 5m data access.
+**NO TRADE** — no pre-market watchlist established (first run). Intraday strategy requires real-time 5m scanning; without a pre-market candidate list this routine cannot safely identify breakout entries. Initialize watchlist in pre-market routine before next market-open.

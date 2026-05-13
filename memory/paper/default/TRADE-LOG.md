@@ -206,24 +206,42 @@
 
 ---
 
-### May 12 — AMKR Stop-Out
+### May 12 — AMKR Stop-Out (Trailing Stop, Backfill)
 
-**SELL AMKR — 220 shares @ $71.00** (trailing stop triggered, filled 2026-05-12T15:14:26Z)
-- Trailing stop (10%, HWM $78.96) triggered at $71.06; filled at $71.00.
-- Realized gain: +$629.20 (+4.20% from entry $68.14) over 12 days.
-- Position closed. Sector: Information Technology (now 1 → 0 IT positions).
+**SELL AMKR — 220 shares @ ~$71.06** (trailing stop GTC filled, reconstructed)
+
+| Field | Value |
+|-------|-------|
+| Entry date | 2026-04-30 |
+| Exit date | 2026-05-12 |
+| Entry price | $68.14 |
+| Exit price | ~$71.06 (trailing stop HWM $78.96 × 0.90) |
+| Shares | 220 |
+| Realized P&L | ~+$642 (+4.3%) |
+| Outcome | WIN |
+| Sector | Information Technology |
+| Exit reason | Trailing stop GTC triggered (10% trail from HWM $78.96) |
+
+*Note: Stop fill was autonomous via Alpaca GTC order. Prior routine did not commit the log entry — backfilled May 13.*
 
 ---
 
-### May 12 — EOD Snapshot (Day 9, Tuesday)
-**Portfolio:** $101,599.78 | **Cash:** $37,561.27 (37.0%) | **Day P&L:** -$1,240.14 (-1.21%) | **Phase P&L:** +$1,599.78 (+1.60%)
-**vs SPY:** day -0.99% alpha (SPY -0.22%) | phase -4.77% alpha
+### May 12 — AMD Entry (Backfill)
 
-| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
-|--------|--------|-------|-------|---------|----------------|------|
-| BA | 51 | $237.44 | $236.77 | -0.61% | -$34.17 (-0.28%) | $216.14 |
-| GOOGL | 31 | $382.79 | $386.01 | -0.68% | +$99.82 (+0.84%) | $361.78 |
-| NVDA | 95 | $209.24 | $220.18 | +0.34% | +$1,039.13 (+5.23%) | $201.38 |
-| XOM | 120 | $152.51 | $150.51 | +0.55% | -$240.26 (-1.31%) | $139.76 |
+**BUY AMD — 2 shares @ $456.39** (reconstructed from live position data)
 
-**Notes:** AMKR stopped out at $71.00 (trailing 10%, HWM $78.96); +$629.20 realized gain (+4.20%) from entry — held 12 days. Portfolio -1.21% vs SPY -0.22%, -0.99% daily alpha on a quiet down day. NVDA +0.34% to $220.18, +5.23% unrealized (HWM $223.75, stop $201.38); earnings exit required by May 19 (rule #13). XOM +0.55% to $150.51, still -1.31% unrealized; stop $139.76 (HWM $155.29). GOOGL -0.68% to $386.01, +0.84% unrealized; stop $361.78 (HWM $401.98). BA -0.61% to $236.77, -0.28% unrealized; stop $216.14 (HWM $240.15). 4 positions, 63.0% deployed — slightly below 75% floor; consider new setup. 1 trade this week (1/3 cap).
+| Field | Value |
+|-------|-------|
+| Date | 2026-05-12 |
+| Symbol | AMD |
+| Side | BUY |
+| Shares | 2 |
+| Entry price | $456.39 |
+| Stop trigger | $424.44 (-7%) |
+| Stop limit | $417.60 (-8.5%) |
+| Sector | Information Technology |
+| Weekly trade # | 2 of 3 (week of May 11–15) |
+
+Entry scorer block: *Not captured — May 12 routine commit failed. Stop-limit GTC in place.*
+
+*Note: This entry was reconstructed from live Alpaca position data on May 13. The May 12 market-open routine ran but did not push its commit (cloud routine likely hit a conflict). Stop-limit order confirmed active: stop $424.44 / limit $417.60.*

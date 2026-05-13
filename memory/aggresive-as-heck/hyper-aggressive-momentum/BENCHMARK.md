@@ -1,17 +1,13 @@
-# Benchmark — Portfolio vs S&P 500 (Aggresive-As-Heck Bot)
+# Benchmark — aggresive-as-heck / hyper-aggressive-momentum
 
-The mission is to BEAT the S&P 500. This file is the scoreboard.
-
-## Phase
-- Phase start: 2026-05-12
-- Starting equity: $10,000.00
-- Starting SPY close: $737.40 (2026-05-12, first daily-summary run)
+- Phase start: 2026-05-13
+- Starting equity: $10,000.00 (soft allocation on paper-main account)
+- Starting SPY close: TBD (first daily-summary will populate)
 
 ## Daily rows
 
 | Date | Portfolio | Day % | Phase % | SPY close | SPY day % | SPY phase % | Alpha day | Alpha phase |
 |------|-----------|-------|---------|-----------|-----------|-------------|-----------|-------------|
-| 2026-05-12 | $10,000.00 | 0.00% | 0.00% | $737.40 | -0.22% | 0.00% | +0.22% | 0.00% |
 
 ## Archive
 

@@ -261,59 +261,58 @@ HOLD — NFP day macro risk; no fresh catalysts for new positions passing entry-
 ### Decision
 BUY BA — 51 shares @ $237.44; US-China trade truce as primary catalyst + Trump-Xi summit forward catalyst. Entry score 7/10. Stop-limit GTC $220.82 / $218.44 placed. Week: 1/3 trades used.
 
----
-
-## 2026-05-12 — Pre-market Research
+## 2026-05-13 — Market-Open Research (inline fallback)
 
 ### Account
-- Equity: $102,310.41
-- Cash: $22,854.05 (22.3%)
-- Long market value: $79,456.36
-- Deployed: 77.7% (within 75–85% target)
+- Equity: $101,901.55
+- Cash: $37,561.23 (36.9% — elevated due to AMKR stop-out May 12; 5/6 positions open)
 - Daytrade count: 0
-- Week trades used: 1/3 (BA entered May 11)
 
-### Positions
-| Symbol | Shares | Avg Entry | Current | P&L% | Stop |
-|--------|--------|-----------|---------|------|------|
-| AMKR | 220 | $68.14 | $74.70 | +9.6% | 10% trail @ $71.06, HWM $78.96 |
-| BA | 51 | $237.44 | $236.24 | -0.5% | 10% trail @ $216.14, HWM $240.15 |
-| GOOGL | 31 | $382.79 | $385.57 | +0.7% | 10% trail @ $361.78, HWM $401.98 |
-| NVDA | 95 | $209.24 | $220.77 | +5.5% | 10% trail @ $200.07, HWM $222.30 |
-| XOM | 120 | $152.51 | $150.56 | -1.3% | 10% trail @ $139.76, HWM $155.29 |
+### Market Context (Perplexity — limited May 13 data)
+- **CPI May 12:** annual 3.8% (hotter than expected); Core CPI +0.4% monthly, +2.8% YoY — pressures rate-cut timeline, headwind for growth names
+- **NVDA:** Wells Fargo raised PT to $315 (from $265); Susquehanna raised PT to $275 (from $250) — both overweight. Earnings May 20 AMC (force-exit required May 19 per rule #13).
+- S&P 500 / VIX: moderate 15–20 VIX range; market cautious post-CPI
+- Oil: elevated ~$101 — positive for XOM thesis
 
-⚠️ NVDA: earnings May 20 AMC — must force-exit May 19 (rule #13).
+### May 12 Reconstructed Activity (not logged by prior routine)
+- **AMKR stopped out:** trailing stop at $71.06 (HWM $78.96, 10% trail) triggered; 220 shares exited ≈$71.06; proceeds ~$15,633 → WIN (+4.3%)
+- **AMD opened:** 2 shares @ $456.39; stop-limit placed $424.44/$417.60 (-7%/-8.5%)
+- Backfill entries appended to TRADE-LOG below.
+
+### Open Position Status (live)
+- AMD: 2 shares @ $456.39, current $444.42, -2.62% unrealized — stop-limit $424.44/$417.60
+- BA: 51 shares @ $237.44, current $234.455, -1.26% unrealized — trailing 10% stop $216.135
+- GOOGL: 31 shares @ $382.79, current $386.78, +1.04% unrealized — trailing 10% stop $361.78
+- NVDA: 95 shares @ $209.24, current $225.459, +7.75% unrealized — trailing 10% stop $204.444
+- XOM: 120 shares @ $152.51, current $150.265, -1.47% unrealized — trailing 10% stop $139.761
 
 ### Pre-market Gap Check (rule #15)
-- AMKR: open $74.60 vs prev close $76.69 → −2.7% — no force exit
-- BA: open $239.00 vs prev close $238.21 → +0.3% — no force exit
-- GOOGL: open $387.34 vs prev close $388.64 → −0.3% — no force exit
-- NVDA: open $218.55 vs prev close $219.44 → −0.4% — no force exit
-- XOM: open $151.25 vs prev close $149.68 → +1.1% — no force exit
+- AMD: open $457.04 vs prev close $448.29 → +1.95% — no force exit
+- BA: open $237.23 vs prev close $236.87 → +0.15% — no force exit
+- GOOGL: open $385.60 vs prev close $387.35 → -0.45% — no force exit
+- NVDA: open $224.93 vs prev close $220.78 → +1.88% — no force exit
+- XOM: open $150.06 vs prev close $150.63 → -0.38% — no force exit
+→ No forced exits.
 
 ### Drawdown Check (rule #14)
-- Yesterday equity (May 11): $102,839.92
-- Current equity: $102,310.41
-- Day P&L: −0.52% → above −2% threshold ✓
-- Week P&L (week start May 11): −0.52% → above −4% threshold ✓
+- current_equity: $101,901.55 | yesterday_equity (May 11 BENCHMARK): $102,839.92
+- day_pl: -0.91% → threshold -2% → OK
+- week_pl (week start May 11): -0.91% → threshold -4% → OK
 - Circuit breaker: NOT tripped
 
-### Market Context
-- VIX: below 25 — normal risk-on regime (no regime gate)
-- S&P 500: near highs; bullish on US-China trade deal
-- US-China deal: "basic consensus" framework ahead of Trump-Xi summit May 14-15 (Thu)
-  - China: 25MMT/yr soybeans 2026-28, lift rare earth export controls, end Nexperia semi retaliation, extend tariff exclusions to Dec 2026
-  - US: cut fentanyl tariffs 10pp, suspend reciprocal tariffs to Nov 2026 (10% base remains)
-- WMT earnings today (pre-market) — Q1 FY27; no position
-- CPI today — moderate MoM expected
-- Sector momentum: Tech/semis, Materials (rare earths), Industrials leading
+### Earnings Gate (rule #13)
+- AMD: next earnings ~2026-07-29 AMC — OK
+- BA: next earnings 2026-07-29 BMO — OK
+- GOOGL: next earnings 2026-07-23 AMC — OK
+- NVDA: next earnings 2026-05-20 AMC — 5 trading days away. Force-exit required May 19.
+- XOM: next earnings 2026-07-30 BMO — OK
 
-### Trade Candidates Evaluated
-1. **MP Materials (MP)** — rare earth miner; China lifting export controls = direct catalyst
-   - Entry score: cat 3, mom 2, r/r 2, stop 2 = 9/10 ✓ (threshold met)
-   - BLOCKED: deployment cap — 5 positions at 77.7% deployed; adding min conviction size
-     (12% = $12,277) would push to 89.3%, exceeding 85% target ceiling
-   - Available headroom before 85% ceiling: $7,508 (7.3%) < 12% minimum
+### Trade Ideas
+- No fresh (<48h) catalysts found for new names passing entry-scorer ≥7.
+- NVDA PT upgrades (Wells Fargo $315, Susquehanna $275) support existing hold — not a new-entry signal.
+- Hot CPI 3.8% = rate-uncertainty headwind for new tech entries.
+- 5/6 positions open; 1 slot available but no high-conviction setup identified.
+- Weekly trades: BA May 11 + AMD May 12 = 2 used; 1 remaining.
 
 ### Decision
-**NO NEW TRADES.** Portfolio at 5/6 positions, 77.7% deployed. Only 7.3% headroom before 85% ceiling; conviction-weighted minimum for any trade (12%) would exceed ceiling. Patience > activity.
+**NO TRADE** — no actionable plan. Hot CPI environment, no fresh catalysts, 5/6 positions at target deployment. Monitor NVDA for May 19 force-exit.

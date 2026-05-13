@@ -1,27 +1,20 @@
-## 2026-05-12 — Pre-market Research
+# Research Log — mean-reversion-1h-rsi / aggressive
+
+## 2026-05-13 — Market-Open Research (first run / inline fallback)
 
 ### Account
-- Effective equity: $10,000 (soft allocation, BOT_ALLOCATION=10000)
-- Positions: 0/5
-- Drawdown: N/A (no prior baseline in BENCHMARK.md)
-- Week trades: 0/3
-
-### Market Context
-- US-China trade deal rally; VIX below 25; risk-on
-- Market at elevated levels after broad recovery from April lows
-- Mean reversion setups less common in strong uptrend environments
+- Effective equity: $10,000.00 (soft allocation on paper-main)
+- No prior positions tagged to this bot.
 
 ### Strategy Requirements
-1h RSI(14) crosses UP through 30 from below + price above 200-day MA
+- 1h RSI(14) crosses up through 30 from below
+- Price above 200-day SMA
+- S&P 500 components only
+- Entry score ≥ 7/10
 
-### Candidates Screened (daily RSI as proxy)
-| Symbol | Daily RSI14 | Direction | Notes |
-|--------|-------------|-----------|-------|
-| RTX | 36.9 | Recovering | $172→$178, defense sector recovering |
-| LMT | 22.6 | Very oversold | But defense sector mixed |
-| PFE | 30.1 | Near trigger | Pharma weakness |
-
-RTX daily RSI 36.9 — possible 1h oversold setup, but requires confirmed 1h RSI(14) cross up through 30 (full candle close required by strategy rule 1). Cannot confirm without live 1h candle data in batch routine.
+### Market Context
+- CPI May 12 3.8% (hot) — potential oversold bounces in defensives if market sells off
+- No established pre-market watchlist (first run)
 
 ### Decision
-**NO TRADES.** Strategy requires confirmed 1h RSI(14) cross up through 30 — cannot verify from daily bar data in batch routine. Nearest candidate RTX (daily RSI 36.9) needs real-time 1h confirmation before entry.
+**NO TRADE** — no 1h RSI oversold scan performed (first run). Pre-market routine must screen S&P 500 components for RSI(14) < 30 on 1h bars before market-open. Will populate watchlist tomorrow.

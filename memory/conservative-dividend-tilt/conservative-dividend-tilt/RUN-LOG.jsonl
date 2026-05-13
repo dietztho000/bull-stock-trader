@@ -27,3 +27,17 @@
 {"ts":"2026-05-12T19:03:06Z","routine":"afternoon","action":"end","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T20:04:38Z","routine":"daily-summary","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-12T20:19:57Z","routine":"daily-summary","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T04:31:57Z","routine":"refresh-market-earnings","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T04:37:36Z","routine":"refresh-market-earnings","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T04:45:24Z","routine":"refresh-economic-events","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T04:47:29Z","routine":"refresh-economic-events","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T05:02:51Z","routine":"refresh-earnings-results","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T05:03:14Z","routine":"refresh-earnings-results","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T08:34:20Z","routine":"auth-canary","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T08:34:50Z","routine":"auth-canary:preflight:conservative-dividend-tilt","action":"end","status":"fail","git_sha":"4fc6450"}
+{"ts":"2026-05-13T08:34:50Z","routine":"auth-canary:preflight:conservative-dividend-tilt","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T08:37:08Z","routine":"auth-canary","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T11:26:38Z","routine":"pre-market","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T11:38:00Z","routine":"pre-market","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T13:39:22Z","routine":"market-open","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T13:48:56Z","routine":"market-open","action":"end","status":"ok","git_sha":"4fc6450"}
