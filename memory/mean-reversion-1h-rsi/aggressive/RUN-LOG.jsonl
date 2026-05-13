@@ -45,3 +45,5 @@
 {"ts":"2026-05-13T15:08:08Z","routine":"mid-morning:preflight:mean-reversion-1h-rsi","action":"end","status":"fail","git_sha":"4fc6450"}
 {"ts":"2026-05-13T15:08:08Z","routine":"mid-morning:preflight:mean-reversion-1h-rsi","action":"start","status":"ok","git_sha":"4fc6450"}
 {"ts":"2026-05-13T15:08:21Z","routine":"mid-morning","action":"end","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T16:02:24Z","routine":"late-morning","action":"start","status":"ok","git_sha":"4fc6450"}
+{"ts":"2026-05-13T16:07:06Z","routine":"late-morning","action":"end","status":"ok","git_sha":"4fc6450"}

@@ -206,42 +206,22 @@
 
 ---
 
-### May 12 — AMKR Stop-Out (Trailing Stop, Backfill)
+### May 12 — Retroactive: AMKR trailing stop fired (logged May 13)
 
-**SELL AMKR — 220 shares @ ~$71.06** (trailing stop GTC filled, reconstructed)
-
-| Field | Value |
-|-------|-------|
-| Entry date | 2026-04-30 |
-| Exit date | 2026-05-12 |
-| Entry price | $68.14 |
-| Exit price | ~$71.06 (trailing stop HWM $78.96 × 0.90) |
-| Shares | 220 |
-| Realized P&L | ~+$642 (+4.3%) |
-| Outcome | WIN |
-| Sector | Information Technology |
-| Exit reason | Trailing stop GTC triggered (10% trail from HWM $78.96) |
-
-*Note: Stop fill was autonomous via Alpaca GTC order. Prior routine did not commit the log entry — backfilled May 13.*
+- **AMKR exit**: trailing 10% GTC stop triggered ~May 12 — exchange fired autonomously
+  - Entry $68.14 (220 shares) → Exit ~$71.06 (trailing stop trigger, HWM $78.96)
+  - Realized P&L: ~+$642 (+4.3%) | Outcome: **W**
+  - Position confirmed absent from account on May 13 late-morning scan
+  - Not captured by prior daily-summary; retroactively logged here
+  - SECTOR-LEDGER updated: Information Technology — W
 
 ---
 
-### May 12 — AMD Entry (Backfill)
+### May 13 11:05 CT — Late-morning scan
 
-**BUY AMD — 2 shares @ $456.39** (reconstructed from live position data)
+- BA: +1.3% ($240.41) — trailing 10%, stop $218.04 (HWM $242.27). Below +15% tighten threshold. No action.
+- GOOGL: +4.1% ($398.31) — trailing 10%, stop $361.78 (HWM $401.98). No action.
+- NVDA: +8.5% ($227.11) — trailing 10%, stop $204.81 (HWM $227.57). No action. Earnings exit required May 19 (rule #13).
+- XOM: -1.1% ($150.79) — trailing 10%, stop $139.76 (HWM $155.29). Above -7% floor. No action.
 
-| Field | Value |
-|-------|-------|
-| Date | 2026-05-12 |
-| Symbol | AMD |
-| Side | BUY |
-| Shares | 2 |
-| Entry price | $456.39 |
-| Stop trigger | $424.44 (-7%) |
-| Stop limit | $417.60 (-8.5%) |
-| Sector | Information Technology |
-| Weekly trade # | 2 of 3 (week of May 11–15) |
-
-Entry scorer block: *Not captured — May 12 routine commit failed. Stop-limit GTC in place.*
-
-*Note: This entry was reconstructed from live Alpaca position data on May 13. The May 12 market-open routine ran but did not push its commit (cloud routine likely hit a conflict). Stop-limit order confirmed active: stop $424.44 / limit $417.60.*
+No earnings exits today (NVDA May 20 → force-exit May 19). No fixed stops to promote (all trailing). No tighten triggers (<+15%). No take-profit triggers (<+20%). No cuts (all above -7%). No thesis breaks.

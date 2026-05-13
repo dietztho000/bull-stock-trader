@@ -1,7 +1,8 @@
-# Sector Ledger — paper/default
+# Sector Ledger — Paper Bot / default strategy
 
-Tracks last 2 closed-trade outcomes per GICS sector. Two consecutive losses (`L`) in a sector block new entries (rule #10). Outcomes: `W` = win, `L` = loss.
+Tracks the last 2 closed-trade outcomes per GICS sector.
+Rule #10: exit a sector after 2 consecutive failed (L) trades.
 
-| Date | Ticker | Sector | Outcome | Notes |
-|------|--------|--------|---------|-------|
-| 2026-05-12 | AMKR | Information Technology | W | Trailing stop exit +4.3% ($68.14→~$71.06, 220 shares) |
+| Sector | # | Ticker | Date | Entry | Exit | P&L% | W/L |
+|--------|---|--------|------|-------|------|------|-----|
+| Information Technology | 1 | AMKR | 2026-05-12 | $68.14 | ~$71.06 | +4.3% | W |
