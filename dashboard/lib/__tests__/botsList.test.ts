@@ -117,24 +117,34 @@ describe("scripts/bots.sh list — Phase 4 contract", () => {
 
 describe("scripts/_routine-header.sh — _routine_export_strategy_params", () => {
   it("exports STRATEGY_<KEY> env vars from the params JSON", () => {
-    // Synthesize a row through the same pipeline a routine would use.
+    // Hermetic: synthesize a params JSON covering all 4 kinds so the test
+    // is decoupled from whichever bot/strategy happens to be in the live
+    // registry today. The earlier version of this test piped from
+    // `bots.sh list` and broke whenever the first registry bot's strategy
+    // changed (e.g. after a fresh-start reset).
+    const paramsJson = JSON.stringify([
+      { kind: "number", key: "SECTOR_CAP", label: "Max per sector", value: 3 },
+      { kind: "number", key: "MAX_OPEN_POSITIONS", label: "Max open", value: 6 },
+      { kind: "percent", key: "DAY_BREAKER_PCT", label: "Day breaker", value: -2, min: -20, max: 0 },
+      { kind: "number", key: "ENTRY_SCORE_MIN", label: "Entry score floor", value: 7 },
+      { kind: "enum", key: "TIMEFRAME", label: "Bar timeframe", value: "1h", options: ["15m", "1h", "1d"] },
+      { kind: "table", key: "CONVICTION_TABLE", label: "Score → size", rows: [{ k: 7, v: 12 }, { k: 10, v: 20 }] },
+    ]);
+
     const out = execFileSync(
       "bash",
       [
         "-c",
         `
           source scripts/_routine-header.sh
-          while IFS=$'\\t' read -r BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME; do
-            [[ "$BOT_ALLOCATION" == "null" ]] && BOT_ALLOCATION=""
-            export BOT_ID ACCOUNT_ID STRATEGY BOT_ALLOCATION BOT_MODE STRATEGY_PARAMS_JSON BOT_NAME
-            _routine_export_strategy_params
-            echo "SECTOR_CAP=\${STRATEGY_SECTOR_CAP:-MISSING}"
-            echo "MAX_OPEN=\${STRATEGY_MAX_OPEN_POSITIONS:-MISSING}"
-            echo "DAY_BREAKER=\${STRATEGY_DAY_BREAKER_PCT:-MISSING}"
-            echo "ENTRY_SCORE_MIN=\${STRATEGY_ENTRY_SCORE_MIN:-MISSING}"
-            echo "TABLE=\${STRATEGY_CONVICTION_TABLE_JSON:-MISSING}"
-            break
-          done < <(bash scripts/bots.sh list --include-disabled)
+          export STRATEGY_PARAMS_JSON='${paramsJson}'
+          _routine_export_strategy_params
+          echo "SECTOR_CAP=\${STRATEGY_SECTOR_CAP:-MISSING}"
+          echo "MAX_OPEN=\${STRATEGY_MAX_OPEN_POSITIONS:-MISSING}"
+          echo "DAY_BREAKER=\${STRATEGY_DAY_BREAKER_PCT:-MISSING}"
+          echo "ENTRY_SCORE_MIN=\${STRATEGY_ENTRY_SCORE_MIN:-MISSING}"
+          echo "TIMEFRAME=\${STRATEGY_TIMEFRAME:-MISSING}"
+          echo "TABLE=\${STRATEGY_CONVICTION_TABLE_JSON:-MISSING}"
         `,
       ],
       { cwd: REPO_ROOT, encoding: "utf8" }
@@ -148,14 +158,18 @@ describe("scripts/_routine-header.sh — _routine_export_strategy_params", () =>
           return [l.slice(0, i), l.slice(i + 1)];
         })
     );
-    // Default strategy values from the seed.
+    // Scalars: number → bare value
     expect(lines.SECTOR_CAP).toBe("3");
     expect(lines.MAX_OPEN).toBe("6");
+    // Scalars: percent → bare value (preserves negative sign)
     expect(lines.DAY_BREAKER).toBe("-2");
     expect(lines.ENTRY_SCORE_MIN).toBe("7");
-    // Conviction table: shape is [{k,v}, …]
+    // Scalars: enum → bare value (string)
+    expect(lines.TIMEFRAME).toBe("1h");
+    // Tables: rows → compact JSON in a _JSON-suffixed variable
     const table = JSON.parse(lines.TABLE);
     expect(Array.isArray(table)).toBe(true);
     expect(table[0]).toEqual({ k: 7, v: 12 });
+    expect(table[1]).toEqual({ k: 10, v: 20 });
   });
 });
