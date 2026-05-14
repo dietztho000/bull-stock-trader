@@ -346,3 +346,5 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-11 08:41 CT | sonar | Boeing BA stock analyst consensus price target May 2026. What is the Wall Street analyst 12-month consensus price target for Boeing? Has any major bank (Goldman, JPMorgan, Morgan Stanley, BofA) issued |
 | 2026-05-13 08:41 CT | sonar | Today is 2026-05-13 (Wednesday). Provide pre-market research for a US stock trading bot: 1) Key macro events/catalysts today and this week, 2) S&P 500 and VIX levels/sentiment, 3) Sector momentum lead |
 | 2026-05-13 08:42 CT | sonar | What are the key market events and stock news on May 13 2026? Specifically: What is the S&P 500 doing today? What is VIX? Any news on AMD, Boeing BA, Alphabet GOOGL, Nvidia NVDA, Exxon XOM in the last |
+| 2026-05-14 12:06 CT | sonar | MOD Modine Manufacturing stock today May 14 2026 — what is driving the +4% intraday move? Any news, earnings, analyst actions? |
+| 2026-05-14 12:07 CT | sonar | HWM Howmet Aerospace stock earnings date 2026 next quarterly report — when is the next earnings announcement? |
