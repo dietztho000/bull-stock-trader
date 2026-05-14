@@ -1,7 +1,48 @@
 {
   "_comment": "Cloud-side fallback for scripts/bots.sh when memory/shared/dashboard-settings.json is missing (fresh cloud clone). Regenerate via `bash scripts/sync-bots-registry.sh` after editing bots in the dashboard.",
-  "accounts": [],
-  "bots": [],
+  "accounts": [
+    {
+      "id": "1st-bot-10k",
+      "mode": "paper"
+    },
+    {
+      "id": "2nd-bot-10k",
+      "mode": "paper"
+    },
+    {
+      "id": "3rd-bot-10k",
+      "mode": "paper"
+    }
+  ],
+  "bots": [
+    {
+      "id": "hyper-aggressive",
+      "name": "Hyper Aggressive Bot",
+      "accountId": "1st-bot-10k",
+      "strategySlug": "hyper-aggressive-momentum",
+      "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "ema-crossover",
+      "name": "EMA Crossover",
+      "accountId": "2nd-bot-10k",
+      "strategySlug": "ema-crossover-momentum",
+      "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    },
+    {
+      "id": "volatility-breakout",
+      "name": "Volatility Breakout",
+      "accountId": "3rd-bot-10k",
+      "strategySlug": "volatility-breakout-midcap",
+      "allocation": null,
+      "enabled": true,
+      "routineFilter": null
+    }
+  ],
   "strategies": [
     {
       "slug": "default",
