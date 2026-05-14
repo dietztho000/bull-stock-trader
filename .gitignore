@@ -35,3 +35,5 @@ memory/dashboard-settings.json
 # Per-machine state — never commit.
 .cron-sync-status.json
 .cron-sync-status.json.tmp
+*.env.bak
+.env.*.bak
