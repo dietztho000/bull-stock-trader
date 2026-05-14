@@ -346,3 +346,27 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-11 08:41 CT | sonar | Boeing BA stock analyst consensus price target May 2026. What is the Wall Street analyst 12-month consensus price target for Boeing? Has any major bank (Goldman, JPMorgan, Morgan Stanley, BofA) issued |
 | 2026-05-13 08:41 CT | sonar | Today is 2026-05-13 (Wednesday). Provide pre-market research for a US stock trading bot: 1) Key macro events/catalysts today and this week, 2) S&P 500 and VIX levels/sentiment, 3) Sector momentum lead |
 | 2026-05-13 08:42 CT | sonar | What are the key market events and stock news on May 13 2026? Specifically: What is the S&P 500 doing today? What is VIX? Any news on AMD, Boeing BA, Alphabet GOOGL, Nvidia NVDA, Exxon XOM in the last |
+| 2026-05-14 06:09 CT | sonar | WTI and Brent oil price right now |
+| 2026-05-14 06:10 CT | sonar | S&P 500 futures premarket today May 14 2026 |
+| 2026-05-14 06:10 CT | sonar | VIX level today May 14 2026 |
+| 2026-05-14 06:10 CT | sonar | Top stock market catalysts today May 14 2026 |
+| 2026-05-14 06:10 CT | sonar | Earnings reports today May 14 2026 before market open |
+| 2026-05-14 06:10 CT | sonar | Economic calendar today May 14 2026 CPI PPI FOMC jobs data |
+| 2026-05-14 06:10 CT | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors |
+| 2026-05-14 06:10 CT | sonar | VIX CBOE volatility index level May 14 2026 current |
+| 2026-05-14 06:10 CT | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-14. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for NVDA NVIDIA? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for FANG Diamondback Energy? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for PLTR Palantir Technologies? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for XOM ExxonMobil? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for OXY Occidental Petroleum? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for GNRC Generac Holdings? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:12 CT | sonar | When is the next earnings report for HON Honeywell International? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-14 06:13 CT | sonar | Current stock prices today May 14 2026: NVDA NVIDIA, FANG Diamondback Energy, PLTR Palantir, XOM ExxonMobil, OXY Occidental, GNRC Generac, HON Honeywell. List each ticker and approximate price. |
+| 2026-05-14 06:13 CT | sonar | Stock price history May 2026: FANG Diamondback Energy, PLTR Palantir, XOM ExxonMobil, OXY Occidental Petroleum, GNRC Generac, HON Honeywell. Most recent close price. |
+| 2026-05-14 06:13 CT | sonar | PLTR Palantir stock price May 13 2026 close. XOM ExxonMobil stock price May 13 2026 close. OXY Occidental stock price May 13 2026. HON Honeywell stock price May 13 2026. |
+| 2026-05-14 06:13 CT | sonar | GNRC Generac Holdings stock price May 13 2026 close current |
+| 2026-05-14 06:13 CT | sonar | XOM ExxonMobil stock price close May 13 2026. HON Honeywell stock price close May 13 2026. OXY Occidental stock price close May 13 2026. |
+| 2026-05-14 06:13 CT | sonar | HON Honeywell International stock price close May 2026 historical |
+| 2026-05-14 06:13 CT | sonar | OXY Occidental Petroleum stock price close May 13 2026 recent |
+| 2026-05-14 06:15 CT | sonar | When is the next earnings report for DVN Devon Energy? Return date YYYY-MM-DD and BMO or AMC. |
