@@ -21,6 +21,9 @@ Use the 11 standard GICS sectors:
 | Symbol | Sector | Source | Date added |
 |--------|--------|--------|------------|
 | _first row appended on first ticker lookup_ | | | |
+| CSCO | Information Technology | Perplexity | 2026-05-14 |
+| HWM | Industrials | Perplexity | 2026-05-14 |
+| MOD | Industrials | Perplexity | 2026-05-14 |
 | NVDA | Information Technology | Perplexity | 2026-04-30 |
 | XOM | Energy | Perplexity | 2026-04-30 |
 | AMKR | Information Technology | Perplexity | 2026-04-30 |
