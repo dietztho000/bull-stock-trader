@@ -92,3 +92,19 @@ _Populated by daily-summary routine. Dashboard Journal "Daily" tab source._
 **Routines:** 0/12 fired today (missing: auth-canary, pre-market, market-open, mid-morning, late-morning, midday, stops, afternoon, refresh-market-earnings, refresh-economic-events, refresh-earnings-results) — watchdog alert posted
 
 ---
+
+## 2026-05-15 — Daily Summary
+
+**Total portfolio:** $29,873.79 across 3 bots
+**Day P&L:** -$98.76 (-0.33% weighted)
+**Phase P&L:** -$126.21 (-0.42% weighted)
+**vs SPY:** day N/A / phase N/A (Alpaca bars API 403 — subscription limit)
+
+### Per bot
+- **hyper-aggressive** (null): $9,967.03 equity, +0.00% day, -0.33% phase, 0 open
+- **ema-crossover** (null): $9,957.61 equity, -0.36% day, -0.42% phase, 1 open (HWM)
+- **volatility-breakout** (null): $9,949.15 equity, -0.63% day, -0.51% phase, 1 open (MOD)
+
+**Routines:** 0/12 fired today (missing: auth-canary, pre-market, market-open, mid-morning, late-morning, midday, stops, afternoon, refresh-market-earnings, refresh-economic-events, refresh-earnings-results) — watchdog alert posted. First day of RUN-LOG tracking for this fleet; prior routine runs not captured.
+
+---
