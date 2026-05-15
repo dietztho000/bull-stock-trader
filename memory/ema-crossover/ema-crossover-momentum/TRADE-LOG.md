@@ -1,18 +1,8 @@
-# Trade Log — EMA Crossover Bot
+### May 14 — EOD Snapshot (Day 1, Wednesday)
+**Portfolio:** $9,993.67 | **Cash:** $9,176.56 (91.8%) | **Day P&L:** -$6.33 (-0.063%) | **Phase P&L:** -$6.33 (-0.063%)
+**vs SPY:** day N/A (restricted feed) | phase N/A
+| Ticker | Shares | Entry | Close | Day Chg | Unrealized P&L | Stop |
+|--------|--------|-------|-------|---------|----------------|------|
+| HWM | 3 | $274.48 | $272.37 | -0.27% | -$6.33 (-0.77%) | SL $255.27 / lmt $251.15 |
+**Notes:** One position open: HWM (Howmet Aerospace), 3 shares entered at $274.48 today. Day-end at $272.37, down -0.77%. GTC stop-limit order active at $255.27 trigger / $251.15 limit. 8.2% capital deployed. No additional trades today.
 
----
-
-### May 13 — HWM Entry
-
-**BUY HWM — 3 shares @ $274.48** (market order, filled May 13)
-- Thesis: Howmet Aerospace EMA(10) golden cross above EMA(50). ADX trending. Q1 2026 reported May 7 (recent catalyst). Aerospace/defense demand tailwind.
-- Stop: stop-limit GTC stop $255.27 / limit $251.15 (order cbaf2ba8) — -7% trigger, -8.5% floor
-- Sector: Industrials (position 1 of max 3)
-- Next earnings: est. 2026-07-30 BMO (well outside gate)
-
----
-
-### May 14 12:00 CT — Midday scan
-
-- HWM: -1.44% ($270.54) — within rules, stop intact at $255.27. No action.
-  Stop order cbaf2ba8: stop_limit type, not yet eligible for trail promotion (need +10%).
