@@ -346,3 +346,14 @@ by this bot. Update this header if the model or pricing changes.
 | 2026-05-11 08:41 CT | sonar | Boeing BA stock analyst consensus price target May 2026. What is the Wall Street analyst 12-month consensus price target for Boeing? Has any major bank (Goldman, JPMorgan, Morgan Stanley, BofA) issued |
 | 2026-05-13 08:41 CT | sonar | Today is 2026-05-13 (Wednesday). Provide pre-market research for a US stock trading bot: 1) Key macro events/catalysts today and this week, 2) S&P 500 and VIX levels/sentiment, 3) Sector momentum lead |
 | 2026-05-13 08:42 CT | sonar | What are the key market events and stock news on May 13 2026? Specifically: What is the S&P 500 doing today? What is VIX? Any news on AMD, Boeing BA, Alphabet GOOGL, Nvidia NVDA, Exxon XOM in the last |
+| 2026-05-15 06:07 CT | sonar | WTI and Brent oil price right now |
+| 2026-05-15 06:07 CT | sonar | Top stock market catalysts today May 15 2026 |
+| 2026-05-15 06:07 CT | sonar | S&P 500 futures premarket today May 15 2026 |
+| 2026-05-15 06:07 CT | sonar | VIX level today May 15 2026 |
+| 2026-05-15 06:07 CT | sonar | Economic calendar today May 15 2026 CPI PPI FOMC jobs data |
+| 2026-05-15 06:07 CT | sonar | S&P 500 sector momentum YTD May 2026 best worst sectors |
+| 2026-05-15 06:07 CT | sonar | Earnings reports today May 15 2026 before market open BMO |
+| 2026-05-15 06:08 CT | sonar | HWM Howmet Aerospace stock news May 2026 earnings catalyst |
+| 2026-05-15 06:08 CT | sonar | MOD Modine Manufacturing stock news May 2026 earnings catalyst |
+| 2026-05-15 06:08 CT | sonar | When is the next earnings report for HWM Howmet Aerospace? Return the date in YYYY-MM-DD format and whether it is BMO (before market open) or AMC (after market close). |
+| 2026-05-15 06:08 CT | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-15. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In |
