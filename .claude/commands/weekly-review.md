@@ -28,7 +28,23 @@ _routine_emit_end weekly-review ok
 
 <!-- STEPS-BEGIN -->
 
-STEP 1 — Read memory for full week context:
+NOTE: STEP 6 stashes a per-bot weekly digest block into the $FLEET_DIGEST
+accumulator instead of posting to Discord. STEP 7 runs ONCE, AFTER the
+per-bot fan-out loop completes, and sends a single consolidated weekly
+recap covering every bot — a multi-bot fleet must never fire one weekly
+post per bot. STEPS 1-6 run inside the loop for every enabled bot.
+
+STEP 1 — Read memory for full week context. First, lazily create the
+per-run fleet-digest accumulator — `:=` makes this idempotent across the
+per-bot loop (first bot creates the temp file, the rest reuse it; it
+lives in $TMPDIR, never under memory/, and is removed in STEP 7):
+
+```bash
+: "${FLEET_DIGEST:=$(mktemp -t fleet-digest-weekly-review.XXXXXX)}"
+export FLEET_DIGEST
+```
+
+Then read:
 - memory/$BOT_ID/$STRATEGY/WEEKLY-REVIEW.md (match existing template exactly)
 - ALL this week's entries in memory/$BOT_ID/$STRATEGY/TRADE-LOG.md
 - ALL this week's entries in memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md
@@ -76,10 +92,12 @@ STEP 5 — If a rule needs to change (proven out for 2+ weeks, or failed
 badly), also update memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md and call out the change
 in the review.
 
-STEP 6 — Send ONE Discord weekly message. Preserve format exactly:
-  bash scripts/discord.sh --type=weekly "📋 Week ending $DATE
+STEP 6 — Stash this bot's weekly digest block into the fleet
+accumulator (the consolidated Discord post goes out once in STEP 7,
+AFTER the per-bot loop). Preserve the body format exactly:
 
-💰 Portfolio: \$X (±X.X% week, ±X.X% phase)
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "💰 Portfolio: \$X (±X.X% week, ±X.X% phase)
 📊 vs SPY: ±X.X% week, ±X.X% phase
 
 Trades: N (W:X / L:Y / open:Z)
@@ -91,9 +109,30 @@ Sector ledger:
 • Healthcare: 0W / 1L
 
 Takeaway: <one-liner>
-Grade: <A-F>"
+Grade: <A-F>"; } >> "$FLEET_DIGEST"
 
 Render the sector ledger as one bullet per sector that traded this week
 (omit sectors with zero activity). If no trades closed this week, write
 "No closed trades this week." in place of the sector ledger bullets.
+
+STEP 7 — Send ONE consolidated weekly recap to the weekly channel (runs
+ONCE, AFTER the per-bot fan-out loop completes). Read $FLEET_DIGEST —
+each bot wrote one `\x1e`-prefixed `BOT_ID<TAB>BOT_NAME` header line
+followed by its weekly body — and emit a single message:
+
+  bash scripts/discord.sh --type=weekly "📋 Week ending $DATE
+
+── [<bot-name-1>] ──
+<bot 1 weekly body>
+
+── [<bot-name-2>] ──
+<bot 2 weekly body>"
+
+Do NOT export BOT_ID/BOT_NAME for this call — it is a fleet post, so it
+must not get a per-bot [bot-name] prefix. If $FLEET_DIGEST is missing or
+empty (every bot skipped preflight), send the one-liner "📋 Week ending
+$DATE: all bots skipped (see preflight errors)" instead. If the
+assembled message approaches ~1800 chars (Discord limit), trim the
+longest per-bot bodies first — the per-bot WEEKLY-REVIEW.md files hold
+the full detail. Finally: `rm -f "$FLEET_DIGEST"`.
 <!-- STEPS-END -->

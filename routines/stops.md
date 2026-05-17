@@ -93,6 +93,14 @@ mandatory — it emits the routine-completed heartbeat and commits + pushes
 all per-bot writes in a single batch).
 
 
+NOTE: STEP 1's early-exit and STEP 7 both stash a per-bot digest block
+into the $FLEET_DIGEST accumulator instead of posting to Discord. STEP 8
+runs ONCE, AFTER the per-bot fan-out loop completes, and sends a single
+consolidated recap covering every bot — a multi-bot fleet must never
+fire one reconciliation post per bot. The CRITICAL per-bot error posts
+in STEP 3 / STEP 5 are intentionally NOT consolidated (see STEP 8's
+note). STEPS 0-7 run inside the loop for every enabled bot.
+
 STEP 0 — **Active stop-management parameters**.
 
 ```bash
@@ -110,11 +118,23 @@ TAKE_PROFIT_LADDER_DEC=$(awk -v p="${STRATEGY_TAKE_PROFIT_LADDER_PCT:-20}" 'BEGI
 echo "[$BOT_ID] strategy=$STRATEGY stop_trigger=${STOP_TRIGGER_PCT}% stop_limit=${STOP_LIMIT_PCT}% trail_promote=$TRAIL_PROMOTION_DEC trail_initial=${TRAIL_INITIAL}% trail_15=${TRAIL_TIGHTEN_15}%@$TRAIL_TIGHTEN_15_TRIGGER_DEC trail_20=${TRAIL_TIGHTEN_20}%@$TRAIL_TIGHTEN_20_TRIGGER_DEC take_profit=$TAKE_PROFIT_LADDER_DEC"
 ```
 
-STEP 1 — Confirm the market is open and >5 min from close:
+STEP 1 — Confirm the market is open and >5 min from close. First, lazily
+create the per-run fleet-digest accumulator — `:=` makes this idempotent
+across the per-bot loop (first bot creates the temp file, the rest reuse
+it; it lives in $TMPDIR, never under memory/, and is removed in STEP 8):
+
+```bash
+: "${FLEET_DIGEST:=$(mktemp -t fleet-digest-stops.XXXXXX)}"
+export FLEET_DIGEST
+```
+
+Then check the clock:
   bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" clock
-If `is_open` is false, exit silently (nothing to reconcile).
-If now is within 5 min of `next_close`, exit with a Discord error
-notification "stops: skipped — too close to close".
+If `is_open` is false OR now is within 5 min of `next_close`, this bot
+has nothing safe to reconcile — stash a skipped block and `continue` to
+the next bot (do NOT post per-bot; STEP 8 sends the consolidated recap):
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "Skipped: <market closed | within 5 min of close — order replacement unsafe in low-liquidity windows>"; } >> "$FLEET_DIGEST"
 
 STEP 2 — Pull the state to reconcile:
   bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" positions
@@ -167,36 +187,57 @@ if any stops were modified, placed, or canceled. Format:
   - SYM: missing stop placed (10%)
   - SYM: skipped (would move down)
 
-STEP 7 — ALWAYS post a stop-reconciliation summary to the stops channel.
+STEP 7 — ALWAYS stash this bot's stop-reconciliation digest block into
+the fleet accumulator (the consolidated Discord post goes out once in
+STEP 8, AFTER the per-bot loop).
 
 If any stop was placed/modified/canceled (build a bullet per change):
-  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
-
-Stops checked: N
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "Stops checked: N
 • SYM: promoted fixed -7% → trail 10% (at +X.X%)
 • SYM: trail 10% → 7% (at +X.X%)
 • SYM: missing stop placed (-7% stop-limit | trail 10%)
 • SYM: skipped (would move down)
 
-✓ All positions stopped correctly."
+✓ All positions stopped correctly."; } >> "$FLEET_DIGEST"
 
 If everything was already correct (no changes made):
-  bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
-
-Stops checked: N
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "Stops checked: N
 • SYM: stop-limit -7% (no change, X.X%)
 • SYM: trail 10% (no change, +X.X%)
 • SYM: trail 7% (no change, +16.2%)
 
-✓ All positions stopped correctly."
+✓ All positions stopped correctly."; } >> "$FLEET_DIGEST"
 
-If the routine exited early (market closed or within 5 min of close):
+(Bots that early-exited in STEP 1 already stashed their own "Skipped:"
+block and never reach this step.) The stash is mandatory — every bot
+that ran STEP 1..7 gets a section.
+
+STEP 8 — Send ONE consolidated stop-reconciliation recap to the stops
+channel (runs ONCE, AFTER the per-bot fan-out loop completes). Read
+$FLEET_DIGEST — each bot wrote one `\x1e`-prefixed `BOT_ID<TAB>BOT_NAME`
+header line followed by its digest body — and emit a single message:
+
   bash scripts/discord.sh --type=stops "🛡️ Stop reconciliation — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
-Skipped: <market closed | within 5 min of close — order replacement unsafe in low-liquidity windows>"
+── [<bot-name-1>] ──
+<bot 1 digest body>
 
-The post is mandatory — even on early exit, the user gets confirmation
-the routine ran.
+── [<bot-name-2>] ──
+<bot 2 digest body>"
+
+Do NOT export BOT_ID/BOT_NAME for this call — it is a fleet post, so it
+must not get a per-bot [bot-name] prefix. If $FLEET_DIGEST is missing or
+empty (every bot skipped preflight), send the one-liner "🛡️ Stop
+reconciliation — $DATE: all bots skipped (see preflight errors)"
+instead. If the assembled message approaches ~1800 chars, trim the
+longest per-bot bodies first. Finally: `rm -f "$FLEET_DIGEST"`.
+
+NOTE: the CRITICAL per-bot Discord error posts in STEP 3 (missing stop
+placed) and STEP 5 (short position with no stop rule) are NOT
+consolidated — they are urgent, route to the error channel, and must
+surface per-bot the instant they happen. Leave them exactly as-is.
 
 ## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
 

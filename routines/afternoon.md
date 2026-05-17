@@ -93,7 +93,23 @@ mandatory — it emits the routine-completed heartbeat and commits + pushes
 all per-bot writes in a single batch).
 
 
-STEP 1 — Read memory so you know what's open and why:
+NOTE: STEP 6 stashes a per-bot digest block into the $FLEET_DIGEST
+accumulator instead of posting to Discord. STEP 7 runs ONCE, AFTER the
+per-bot fan-out loop completes, and sends a single consolidated message
+covering every bot — a multi-bot fleet must never fire one scan post per
+bot. STEPS 1-6 run inside the loop for every enabled bot.
+
+STEP 1 — Read memory so you know what's open and why. First, lazily
+create the per-run fleet-digest accumulator — `:=` makes this idempotent
+across the per-bot loop (first bot creates the temp file, the rest reuse
+it; it lives in $TMPDIR, never under memory/, and is removed in STEP 7):
+
+```bash
+: "${FLEET_DIGEST:=$(mktemp -t fleet-digest-afternoon.XXXXXX)}"
+export FLEET_DIGEST
+```
+
+Then read:
 - memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md (exit rules)
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (entries, original thesis per position, stops)
 - today's memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md entry
@@ -154,31 +170,51 @@ STEP 5 — Thesis check. If a thesis broke intraday or the position has
 moved sharply with no catalyst, cut even if not at -7%. Document
 reasoning in TRADE-LOG and update SECTOR-LEDGER.
 
-STEP 6 — ALWAYS post an afternoon summary to the midday channel.
+STEP 6 — ALWAYS stash this bot's afternoon digest block into the fleet
+accumulator (the consolidated Discord post goes out once in STEP 7, AFTER
+the per-bot loop).
 
 If actions fired (earnings exits, cuts, promotions, tightens, thesis breaks):
-  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
-
-Actions: N
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "Actions: N
 • Earnings-exit SYM @ \$X.XX — pre-print forced-close (BMO|AMC today)
 • Cut SYM @ -X.X% (-\$XXX) — exchange stop missed, safety-net close
 • Promoted SYM stop → trailing 10% (at +X.X%)
 • Tightened SYM trail 10% → 7% (at +X.X%)
 • Cut SYM (thesis break: <one-liner>)
 
-📊 Open: N positions | 💰 Cash: \$X"
+📊 Open: N positions | 💰 Cash: \$X"; } >> "$FLEET_DIGEST"
 
 If no actions were taken:
-  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
-
-No actions taken — all positions within rules.
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "No actions taken — all positions within rules.
 • SYM ±X.X% (stop \$X.XX)
-• SYM ±X.X% (stop \$X.XX)"
+• SYM ±X.X% (stop \$X.XX)"; } >> "$FLEET_DIGEST"
 
 If there are no open positions at all, end the second template with
 "No open positions." instead of the bullet list.
 
-The post is mandatory either way — no silent runs.
+The stash is mandatory either way — no silent runs.
+
+STEP 7 — Send ONE consolidated afternoon scan to the midday channel
+(runs ONCE, AFTER the per-bot fan-out loop completes). Read $FLEET_DIGEST
+— each bot wrote one `\x1e`-prefixed `BOT_ID<TAB>BOT_NAME` header line
+followed by its digest body — and emit a single message:
+
+  bash scripts/discord.sh --type=midday "🎯 Afternoon scan — $DATE $(TZ=America/Chicago date +%H:%M) CT
+
+── [<bot-name-1>] ──
+<bot 1 digest body>
+
+── [<bot-name-2>] ──
+<bot 2 digest body>"
+
+Do NOT export BOT_ID/BOT_NAME for this call — it is a fleet post, so it
+must not get a per-bot [bot-name] prefix. If $FLEET_DIGEST is missing or
+empty (every bot skipped preflight), send the one-liner "🎯 Afternoon
+scan — $DATE: all bots skipped (see preflight errors)" instead. If the
+assembled message approaches ~1800 chars, trim the longest per-bot bodies
+first. Finally: `rm -f "$FLEET_DIGEST"`.
 
 ## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
 

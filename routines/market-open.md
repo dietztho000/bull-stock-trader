@@ -93,6 +93,13 @@ mandatory — it emits the routine-completed heartbeat and commits + pushes
 all per-bot writes in a single batch).
 
 
+NOTE: STEP 3a (circuit breaker) and STEP 7 stash a per-bot digest block
+into the $FLEET_DIGEST accumulator instead of posting to Discord. STEP 8
+runs ONCE, AFTER the per-bot fan-out loop completes, and sends a single
+consolidated market-open summary covering every bot — a multi-bot fleet
+must never fire one fill post per bot. STEPS 0-7 run inside the loop for
+every enabled bot.
+
 STEP 0 — **Active strategy parameters** (multi-strategy upgrade, Phase 4).
 Resolve the per-bot strategy values from env vars exported by the
 fan-out loop. Defaults are byte-for-byte the legacy literals — a `default`-
@@ -137,7 +144,17 @@ conviction_pct() {
 }
 ```
 
-STEP 1 — Read memory for today's plan:
+STEP 1 — Read memory for today's plan. First, lazily create the per-run
+fleet-digest accumulator — `:=` makes this idempotent across the per-bot
+loop (first bot creates the temp file, the rest reuse it; it lives in
+$TMPDIR, never under memory/, and is removed in STEP 8):
+
+```bash
+: "${FLEET_DIGEST:=$(mktemp -t fleet-digest-market-open.XXXXXX)}"
+export FLEET_DIGEST
+```
+
+Then read:
 - memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
 - TODAY's entry in memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md. If missing, run pre-market
   STEPS 1-4 inline — STEP 4 is critical: write the dated entry to
@@ -182,7 +199,7 @@ Force-exit at market BEFORE placing any new entries:
   bash scripts/alpaca.sh --account-id="$ACCOUNT_ID" --bot-id="$BOT_ID" cancel ORDER_ID   # cancel its stop
 Log to TRADE-LOG: "exit: pre-market gap ($gap_pct%) — stop-limit didn't fire".
 Append a closed-trade row to memory/$BOT_ID/$STRATEGY/SECTOR-LEDGER.md with realized outcome.
-Note these exits in the Discord post for STEP 7 alongside any new fills.
+Note these exits in this bot's STEP 7 digest block alongside any new fills.
 
 STEP 3a — Drawdown circuit breaker (rule #14). Compute:
   current_equity = $effective_equity (from STEP 2c)
@@ -195,11 +212,13 @@ STEP 3a — Drawdown circuit breaker (rule #14). Compute:
   day_pl = (current_equity - yesterday_equity) / yesterday_equity
   week_pl = (current_equity - week_start_equity) / week_start_equity
 If day_pl < $DAY_BREAKER_DEC OR week_pl < $WEEK_BREAKER_DEC (resolved in
-STEP 0; defaults -0.02 / -0.04), REFUSE all entries today. Post Discord
-error and skip to FINAL STEP:
-  bash scripts/discord.sh --type=fill "🛑 Drawdown circuit breaker tripped — day $(printf '%.2f' day_pl_pct)%, week $(printf '%.2f' week_pl_pct)%. No new entries today (rule #14)."
-Then jump to STEP 7's NO-TRADES branch with reason 'drawdown circuit breaker
-tripped'.
+STEP 0; defaults -0.02 / -0.04), REFUSE all entries today. Do NOT post to
+Discord here — instead record the trip in shell vars so STEP 7/8 fold it
+into the one consolidated post:
+  BREAKER_TRIPPED=1
+  BREAKER_DETAIL="day $(printf '%.2f' day_pl_pct)%, week $(printf '%.2f' week_pl_pct)%"
+Then jump to STEP 7's NO-TRADES branch with reason 'drawdown circuit
+breaker tripped'.
 
 STEP 3 — Hard-check rules BEFORE every order. Skip any trade that fails
 and log the reason:
@@ -285,28 +304,61 @@ STEP 6 — Append each trade to memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (matching 
 Date, ticker, side, shares, entry price, stop level, thesis, target, R:R,
 sector, entry-scorer JSON block.
 
-STEP 7 — ALWAYS post a market-open summary to the fill channel. Branch
-the format on whether any trades fired.
+STEP 7 — ALWAYS stash this bot's market-open digest block into the fleet
+accumulator (the consolidated Discord post goes out once in STEP 8,
+AFTER the per-bot loop). Branch the body on whether any trades fired.
 
 If trades fired (preserve format exactly — emojis, blank lines, bullets):
-  bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(TZ=America/Chicago date +%H:%M) CT
-
-Trades placed: N
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    [[ -n "${BREAKER_TRIPPED:-}" ]] && printf 'BREAKER: %s\n' "$BREAKER_DETAIL"
+    printf '%s\n' "Trades placed: N
 • SYM: BUY N @ \$X.XX (market|limit) — stop \$X.XX / limit \$Y.YY (fixed -7% stop-limit)
   Catalyst: <one-liner>
   Entry score: X/10 (cat:X mom:X r/r:X stop:X)
+• Gap-exit SYM @ \$X.XX (rule #15 — pre-market gap, stop-limit didn't fire)
 
-💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS | Trades this week: X/3"
+💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS | Trades this week: X/3"; } >> "$FLEET_DIGEST"
 
-If NO trades fired, post a short reason-coded confirmation:
+If NO trades fired, stash a short reason-coded confirmation:
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    [[ -n "${BREAKER_TRIPPED:-}" ]] && printf 'BREAKER: %s\n' "$BREAKER_DETAIL"
+    printf '%s\n' "No trades fired.
+Reason: <pick the most specific match: 'drawdown circuit breaker tripped' | 'no actionable plan in RESEARCH-LOG' | 'VIX XX.X (>=25 regime gate)' | 'sector rotation block on SYM' | 'sector concentration cap (3/3 in SECTOR)' | 'earnings within 2 trading days on all ideas' | 'all ideas failed entry-scorer (<7)' | 'position cap reached (6/6)' | 'weekly trade cap reached (3/3)' | 'PDT block'>
+• Gap-exit SYM @ \$X.XX (rule #15 — pre-market gap, stop-limit didn't fire)
+
+💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS"; } >> "$FLEET_DIGEST"
+
+The `BREAKER:` line (when STEP 3a tripped the drawdown circuit breaker)
+and any STEP 2b gap-exit bullets ride inside this bot's section — drop
+the gap-exit bullet when there were none. The stash is mandatory either
+way — no silent runs.
+
+STEP 8 — Send ONE consolidated market-open summary to the fill channel
+(runs ONCE, AFTER the per-bot fan-out loop completes). Read $FLEET_DIGEST
+— each bot wrote one `\x1e`-prefixed `BOT_ID<TAB>BOT_NAME` header line,
+an optional `BREAKER: …` line, then its digest body. Hoist every bot
+whose section carries a `BREAKER:` line into a prominent top summary
+line, keeping the detail inline in that bot's section too. Emit a single
+message:
+
   bash scripts/discord.sh --type=fill "🟢 Market-open — $DATE $(TZ=America/Chicago date +%H:%M) CT
 
-No trades fired.
-Reason: <pick the most specific match: 'drawdown circuit breaker tripped' | 'no actionable plan in RESEARCH-LOG' | 'VIX XX.X (>=25 regime gate)' | 'sector rotation block on SYM' | 'sector concentration cap (3/3 in SECTOR)' | 'earnings within 2 trading days on all ideas' | 'all ideas failed entry-scorer (<7)' | 'position cap reached (6/6)' | 'weekly trade cap reached (3/3)' | 'PDT block'>
+🛑 Circuit breakers: <comma-separated bot-names that tripped — OMIT this whole line if none tripped>
 
-💰 Cash: \$X | Positions: N/$MAX_OPEN_POSITIONS"
+── [<bot-name-1>] ──
+<bot 1 digest body>
 
-The post is mandatory either way — no silent runs.
+── [<bot-name-2>] ──
+<bot 2 digest body>
+
+Fleet: N trades placed across M bots"
+
+Do NOT export BOT_ID/BOT_NAME for this call — it is a fleet post, so it
+must not get a per-bot [bot-name] prefix. If $FLEET_DIGEST is missing or
+empty (every bot skipped preflight), send the one-liner "🟢 Market-open
+— $DATE: all bots skipped (see preflight errors)" instead. If the
+assembled message approaches ~1800 chars, trim the longest per-bot
+bodies first. Finally: `rm -f "$FLEET_DIGEST"`.
 
 ## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
 

@@ -51,23 +51,28 @@ else
   cache_key="$(printf '%s\n%s' "$MODEL" "$query" | sha256sum | awk '{print $1}')"
 fi
 
-# Cache hit? Replay the stored response and log a row tagged "(cached)" in
-# the model column so the markdown table schema stays 3-column.
+# PERPLEXITY-LOG.md row schema (4-column, see the file's own header):
+#   | <ts CT> | <model> | <query, ≤200 chars> | <cost USD> |
+# A cache hit and a hard error both cost $0.0000 (no billed call); a fresh
+# call logs the real billed cost from the API's usage.cost.total_cost
+# field. Legacy 3-column rows predate this column — eod-health.sh treats
+# them as a $0.0005 estimate. The row is written AFTER the call returns so
+# the cost column is always populated; a hard failure still appends an
+# `(error)` row so the ledger never silently drops an attempt.
+
+# Cache hit? Replay the stored response and log a $0 row tagged "(cached)".
 if [[ -f "$PPLX_CACHE" ]]; then
   cached="$(jq -c -r --arg d "$today" --arg k "$cache_key" \
     'select(.date == $d and .key == $k) | .response' "$PPLX_CACHE" 2>/dev/null \
     | head -n 1 || true)"
   if [[ -n "$cached" ]]; then
-    printf '| %s | %s (cached) | %s |\n' "$ts" "$MODEL" "$qline" >> "$PPLX_LOG"
+    printf '| %s | %s (cached) | %s | %s |\n' "$ts" "$MODEL" "$qline" "0.0000" >> "$PPLX_LOG"
     printf '%s\n' "$cached"
     exit 0
   fi
 fi
 
-# Cache miss — log the attempt before firing so failed calls are still
-# visible in the cost ledger.
-printf '| %s | %s | %s |\n' "$ts" "$MODEL" "$qline" >> "$PPLX_LOG"
-
+# Cache miss — fire the call, then log a row carrying the real billed cost.
 payload="$(jq -n --arg m "$MODEL" --arg q "$query" '{
   model: $m,
   messages: [
@@ -79,18 +84,34 @@ payload="$(jq -n --arg m "$MODEL" --arg q "$query" '{
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-_curl_retry POST 'https://api.perplexity.ai/chat/completions' \
+# A hard failure (network, 4xx, exhausted retries) still gets an `(error)`
+# row so the cost ledger never silently drops an attempt.
+if ! _curl_retry POST 'https://api.perplexity.ai/chat/completions' \
   -H "Authorization: Bearer $PERPLEXITY_API_KEY" \
   -H 'Content-Type: application/json' \
-  --data-raw "$payload" > "$tmp"
+  --data-raw "$payload" > "$tmp"; then
+  printf '| %s | %s (error) | %s | %s |\n' "$ts" "$MODEL" "$qline" "0.0000" >> "$PPLX_LOG"
+  exit 2
+fi
 
 # Persist only valid JSON responses so a transient HTML error page never
-# poisons the cache.
+# poisons the cache. Same guard decides whether we trust the usage block.
 if jq -e . >/dev/null 2>&1 < "$tmp"; then
   jq -c -n --arg d "$today" --arg k "$cache_key" --arg m "$MODEL" \
     --slurpfile r "$tmp" '{date:$d, key:$k, model:$m, response:$r[0]}' \
     >> "$PPLX_CACHE"
+  # Real billed cost from the API. Older models / responses without a usage
+  # block fall back to the legacy $0.0005 flat estimate.
+  cost="$(jq -r '.usage.cost.total_cost // empty' "$tmp")"
+  [[ -z "$cost" ]] && cost="0.0005"
+  cost="$(awk -v c="$cost" 'BEGIN { printf "%.6f", c }')"
+  printf '| %s | %s | %s | %s |\n' "$ts" "$MODEL" "$qline" "$cost" >> "$PPLX_LOG"
+  cat "$tmp"
+  echo
+else
+  # Valid HTTP 2xx but non-JSON body — log an error row, do not cache.
+  printf '| %s | %s (error) | %s | %s |\n' "$ts" "$MODEL" "$qline" "0.0000" >> "$PPLX_LOG"
+  cat "$tmp"
+  echo
+  exit 2
 fi
-
-cat "$tmp"
-echo

@@ -93,7 +93,25 @@ mandatory — it emits the routine-completed heartbeat and commits + pushes
 all per-bot writes in a single batch).
 
 
-STEP 1 — Read memory for context:
+NOTE: STEP 5 stashes a per-bot research digest block into the
+$FLEET_DIGEST accumulator instead of posting to Discord. STEP 7 runs
+ONCE, AFTER the per-bot fan-out loop completes, and sends a single
+consolidated research message covering every bot — a multi-bot fleet
+must never fire one research post per bot. STEP 6 (fleet earnings ping)
+is a separate once-after-loop post and is already consolidated. STEPS
+1-5 run inside the loop for every enabled bot.
+
+STEP 1 — Read memory for context. First, lazily create the per-run
+fleet-digest accumulator — `:=` makes this idempotent across the per-bot
+loop (first bot creates the temp file, the rest reuse it; it lives in
+$TMPDIR, never under memory/, and is removed in STEP 7):
+
+```bash
+: "${FLEET_DIGEST:=$(mktemp -t fleet-digest-pre-market.XXXXXX)}"
+export FLEET_DIGEST
+```
+
+Then read:
 - memory/$BOT_ID/$STRATEGY/TRADING-STRATEGY.md
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md
 - tail of memory/$BOT_ID/$STRATEGY/RESEARCH-LOG.md
@@ -203,12 +221,13 @@ The dated entry should include:
 - Risk factors for the day
 - Decision: trade or HOLD (default HOLD — patience > activity)
 
-STEP 5 — ALWAYS post a research summary to the research channel.
-Use this exact format (preserve emojis, blank line, and bullets):
+STEP 5 — ALWAYS stash this bot's research digest block into the fleet
+accumulator (the consolidated Discord post goes out once in STEP 7,
+AFTER the per-bot loop). Preserve the exact body format (emojis, blank
+line, bullets):
 
-  bash scripts/discord.sh --type=research "🔬 Pre-market — $DATE
-
-📊 Market context:
+  { printf '\x1e%s\t%s\n' "$BOT_ID" "$BOT_NAME"
+    printf '%s\n' "📊 Market context:
 • WTI: \$X / Brent: \$Y
 • S&P futures: ±X.X% | VIX: XX.X
 • Catalysts: <one-liner of today's biggest>
@@ -219,12 +238,13 @@ Use this exact format (preserve emojis, blank line, and bullets):
 
 ⚠️ Risk factors: <one-liner>
 
-Decision: HOLD"
+Decision: HOLD"; } >> "$FLEET_DIGEST"
 
 If the decision is TRADE, write "Decision: TRADE — see market-open at 8:30 CT".
 If a Perplexity query exits 3 (key missing), append a final line "Note:
 Perplexity unavailable — used WebSearch fallback." before the Decision line.
-Truncate any section to keep the total under ~1800 chars (Discord limit).
+Keep each bot's body compact — STEP 7 trims if the assembled fleet
+message would exceed Discord's limit.
 
 STEP 6 — Fleet-wide held-position earnings ping (runs ONCE, AFTER the
 per-bot fan-out completes). Single Discord post listing each ticker
@@ -264,6 +284,27 @@ idempotent shape: append to a NEW shared file
 If `memory/shared/EARNINGS-PINGS.md` doesn't exist, create it with header
 `# Earnings ping log — fleet-wide held-position earnings reminders` then
 the dated section. The dashboard ignores this file (informational only).
+
+STEP 7 — Send ONE consolidated pre-market research message to the
+research channel (runs ONCE, AFTER the per-bot fan-out loop completes).
+Read $FLEET_DIGEST — each bot wrote one `\x1e`-prefixed
+`BOT_ID<TAB>BOT_NAME` header line followed by its research body — and
+emit a single message:
+
+  bash scripts/discord.sh --type=research "🔬 Pre-market — $DATE
+
+── [<bot-name-1>] ──
+<bot 1 research body>
+
+── [<bot-name-2>] ──
+<bot 2 research body>"
+
+Do NOT export BOT_ID/BOT_NAME for this call — it is a fleet post, so it
+must not get a per-bot [bot-name] prefix. If $FLEET_DIGEST is missing or
+empty (every bot skipped preflight), send the one-liner "🔬 Pre-market —
+$DATE: all bots skipped (see preflight errors)" instead. If the
+assembled message approaches ~1800 chars (Discord limit), trim the
+longest per-bot bodies first. Finally: `rm -f "$FLEET_DIGEST"`.
 
 ## MANDATORY — FINAL STEP (run after the per-bot fan-out loop completes)
 

@@ -96,9 +96,11 @@ all per-bot writes in a single batch).
 NOTE: STEP 8 (Discord EOD) and STEP 9 (DAILY-SUMMARY.md aggregate) run
 ONCE AFTER the per-bot loop completes — they reduce per-bot memory writes
 (STEPs 1-5) into a single unified post and a single shared digest, so a
-multi-bot fleet doesn't fire one Discord recap per bot. STEPS 6 and 7
-(watchdog + perplexity tally) also run once after the loop for the same
-reason. STEPS 1-5 run inside the loop for every enabled bot.
+multi-bot fleet doesn't fire one Discord recap per bot. STEP 6 (EOD
+health) also runs once after the loop — it shells out to the deterministic
+`scripts/eod-health.sh` for the run-log watchdog + Perplexity tally and
+exports the results for STEPS 8-9. STEP 7 is retired (folded into STEP 6).
+STEPS 1-5 run inside the loop for every enabled bot.
 
 STEP 1 — Read memory for continuity:
 - tail of memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (find most recent EOD snapshot -> yesterday's
@@ -142,62 +144,40 @@ the file:
 Cap the table at 365 rows by archiving older rows under a "## Archive"
 section at the bottom of the same file.
 
-STEP 6 — Run-log watchdog (runs ONCE, AFTER the per-bot fan-out
-completes). Pick any one bot's memory/$BOT_ID/$STRATEGY/RUN-LOG.jsonl —
-the EXPECTED routine set is fleet-wide (the same routines fire for every
-bot), so reading any single bot's run log is sufficient to compute
-fired-vs-expected. Stash both counts (|FIRED| / |EXPECTED|) for STEP 8.
-  EXPECTED = {auth-canary, pre-market, market-open, mid-morning, late-morning,
-              midday, stops, afternoon, daily-summary,
-              refresh-market-earnings, refresh-economic-events,
-              refresh-earnings-results}
-            (all weekdays; add `weekly-review` to EXPECTED on Fridays)
-  FIRED    = set of routines with at least one {"action":"end","status":"ok"}
-            row whose timestamp starts with $DATE
-  MISSING  = EXPECTED - FIRED
-
-If MISSING is non-empty, fire BEFORE the EOD post (preserve format):
-  bash scripts/discord.sh --type=auth-canary "⚠️ Watchdog — $DATE
-
-Missing routines: <comma-separated list>
-Fired routines: <comma-separated list>
-
-Action: check the cloud Routines UI run logs for the missing ones."
-
-This goes to the auth-canary (bot-health) channel so it sits alongside
-the morning auth checks instead of mixing with in-flight workflow errors.
-This catches silent no-ops that look identical to legitimate quiet days.
-
-STEP 7 — Perplexity cost tally (runs ONCE, AFTER the per-bot fan-out).
-Run this bash block VERBATIM — do not paraphrase. PERPLEXITY-LOG rows
-start with `| YYYY-MM-DD HH:MM <TZ> | …`, so the grep prefix MUST be
-`^| $DATE ` (note the trailing space) — anchoring to the leading `|`
-and trailing space avoids both header-row matches and prefix collisions
-like `2026-05-061`. Date is forced to CT regardless of host TZ.
+STEP 6 — EOD health (runs ONCE, AFTER the per-bot fan-out completes).
+Run this VERBATIM — do not paraphrase, do not re-grep the logs by hand:
 
 ```bash
-DATE=$(TZ=America/Chicago date '+%Y-%m-%d')
-COUNT=$(grep -c "^| $DATE " memory/shared/PERPLEXITY-LOG.md 2>/dev/null || echo 0)
-COST=$(awk -v c="$COUNT" 'BEGIN { printf "%.4f", c * 0.0005 }')
-# Rolling 14-day median: per-day counts for the prior 14 CT dates.
-# `date -v-Nd` is BSD/macOS; `date -d "N days ago"` is GNU/Linux. Try both.
-MEDIAN=$(for i in $(seq 1 14); do
-  D=$(TZ=America/Chicago date -v -"${i}"d '+%Y-%m-%d' 2>/dev/null \
-      || TZ=America/Chicago date -d "$i days ago" '+%Y-%m-%d')
-  grep -c "^| $D " memory/shared/PERPLEXITY-LOG.md 2>/dev/null || echo 0
-done | sort -n | awk 'NR==7 {print; exit}')
-export COUNT COST MEDIAN
+eval "$(bash scripts/eod-health.sh --post)"
 ```
 
-Stash COUNT, COST, MEDIAN for STEP 8's EOD post.
-If today's count > 2x median, ALSO fire (preserve format):
-  bash scripts/discord.sh --type=error "⚠️ Perplexity cost spike — $DATE
+`scripts/eod-health.sh` deterministically computes the run-log watchdog
+and the Perplexity tally. It reads any one bot's RUN-LOG.jsonl (the
+EXPECTED routine set is fleet-wide), compares fired-vs-expected for today
+— matching the UTC calendar date the run log stamps in, NOT CT, so the
+early refresh routines aren't dropped — reads memory/shared/PERPLEXITY-LOG.md
+for today's call count + real billed cost + the rolling 14-day median,
+and with `--post` fires the watchdog (--type=auth-canary, bot-health
+channel) and the Perplexity cost-spike (--type=error) Discord posts
+itself when their thresholds trip. The `eval` then exports these shell
+vars for STEPS 8-9:
 
-Calls today: $COUNT (~\$$COST)
-Rolling 14-day median: $MEDIAN
-Threshold: >2× median
+  ROUTINES_FIRED  ROUTINES_EXPECTED  ROUTINES_MISSING   (csv, empty if none)
+  PERPLEXITY_COUNT  PERPLEXITY_COST  PERPLEXITY_MEDIAN
 
-Possible prompt regression — check today's RESEARCH-LOG and routine logs."
+EXPECTED is {auth-canary, pre-market, market-open, mid-morning,
+late-morning, midday, stops, afternoon, daily-summary,
+refresh-market-earnings, refresh-economic-events, refresh-earnings-results}
+plus `weekly-review` on Fridays — encoded in the script. This replaces
+the old hand-grepped watchdog + cost tally, which silently miscounted
+(reported "0/12 fired" and "$0" on 2026-05-14 despite correct source
+data) because it relied on the agent to grep, count, and carry values
+across steps by hand.
+
+STEP 7 — retired. The Perplexity cost tally and its >2×-median cost-spike
+post are now handled deterministically by `scripts/eod-health.sh` inside
+STEP 6; PERPLEXITY_COUNT / PERPLEXITY_COST / PERPLEXITY_MEDIAN are already
+exported. Nothing to do here.
 
 STEP 8 — Send ONE unified Discord EOD message across the whole fleet
 (runs ONCE, AFTER the per-bot fan-out). For each enabled bot
@@ -221,13 +201,15 @@ Per bot:
 Trades today across fleet: <comma-separated list of SYM-bot tags, or 'none'>
 
 🩺 Health:
-• Routines: N/M fired<if MISSING non-empty: ' (missing: <list>)'>
-• Perplexity: N calls (~\$X.XX)
+• Routines: $ROUTINES_FIRED/$ROUTINES_EXPECTED fired<if $ROUTINES_MISSING non-empty: ' (missing: '$ROUTINES_MISSING')'>
+• Perplexity: $PERPLEXITY_COUNT calls (~\$$PERPLEXITY_COST)
 
 Tomorrow: <one-line plan>"
 
-The Health section's "Routines:" line remains the all-clear signal —
-without it, no-news-is-good-news collides with cron itself being broken.
+Use the ROUTINES_* / PERPLEXITY_* vars exported by STEP 6 verbatim — do
+not recompute them. The Health section's "Routines:" line remains the
+all-clear signal — without it, no-news-is-good-news collides with cron
+itself being broken.
 If "Trades today" is empty across all bots, write "none".
 
 STEP 9 — AGGREGATE (runs ONCE, AFTER the per-bot fan-out completes).
@@ -247,10 +229,10 @@ most recent `### MMM DD — EOD Snapshot` block from
 memory/$BOT_ID/$STRATEGY/TRADE-LOG.md (you just wrote it in STEP 4) and
 extract: portfolio, day P&L $/%, phase P&L $/%, day-vs-SPY %, position
 count. Sum portfolio across bots; compute aggregate day P&L $ and the
-weighted-by-portfolio day P&L %. Reuse the routine watchdog's |FIRED|
-/ |EXPECTED| count from STEP 6 — if multiple bots ran STEP 6, take the
-worst (lowest fired ratio) since any single missing routine indicates
-a scheduler hiccup affecting the whole fleet.
+weighted-by-portfolio day P&L %. Reuse the ROUTINES_FIRED /
+ROUTINES_EXPECTED / ROUTINES_MISSING vars exported by STEP 6's
+eod-health.sh call — STEP 6 runs once for the whole fleet, so there is a
+single authoritative count.
 
 Format the appended section EXACTLY:
 
@@ -265,7 +247,7 @@ Format the appended section EXACTLY:
   - **bot-id-1** ($BOT_ALLOCATION): $X equity, ±X.X% day, ±X.X% phase, P open
   - **bot-id-2** ($BOT_ALLOCATION): $X equity, ±X.X% day, ±X.X% phase, P open
 
-  **Routines:** N/M fired today<if MISSING non-empty: ' (missing: <list>)'>
+  **Routines:** $ROUTINES_FIRED/$ROUTINES_EXPECTED fired today<if $ROUTINES_MISSING non-empty: ' (missing: '$ROUTINES_MISSING')'>
 
   ---
 
