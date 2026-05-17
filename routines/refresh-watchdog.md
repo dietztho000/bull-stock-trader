@@ -97,35 +97,31 @@ NOTE: This routine has NO per-bot work — STEP 1 runs ONCE per invocation,
 OUTSIDE the per-bot fan-out loop in the cloud header. Skip the
 `while … done < <(bash scripts/bots.sh list ...)` block entirely.
 
-STEP 1 — Run-log watchdog (weekend variant).
+STEP 1 — Run-log watchdog (weekend variant). Run this VERBATIM — do not
+paraphrase, do not re-grep the logs by hand:
 
-Pick any one bot's `memory/$BOT_ID/$STRATEGY/RUN-LOG.jsonl` (use
-`bash scripts/bots.sh list` and take the first row).
+```bash
+eval "$(bash scripts/eod-health.sh --mode=refresh --post)"
+```
 
-  EXPECTED = {refresh-market-earnings, refresh-economic-events,
-              refresh-earnings-results}
-  FIRED    = set of routines with at least one
-             `{"action":"end","status":"ok"}` row whose timestamp starts
-             with $DATE
-  MISSING  = EXPECTED - FIRED
-
-If MISSING is non-empty, fire (preserve format):
-
-  bash scripts/discord.sh --type=auth-canary "⚠️ Refresh watchdog — $DATE (weekend)
-
-Missing refresh routines: <comma-separated list>
-Fired refresh routines: <comma-separated list>
-
-Action: check the cloud Routines UI for the missing ones — Sat/Sun runs
-have no daily-summary watchdog so this catches silent no-ops."
-
-This goes to the auth-canary (bot-health) channel so it sits alongside
-the morning auth checks instead of mixing with in-flight workflow errors.
-
-If MISSING is empty, exit silently — no news is good news, but the
+`scripts/eod-health.sh --mode=refresh` deterministically checks that the
+3 daily refresh routines (refresh-market-earnings, refresh-economic-events,
+refresh-earnings-results) all have at least one `{"action":"end","status":"ok"}`
+row in any one bot's RUN-LOG.jsonl whose timestamp starts with today's
+UTC date. The expected set is hard-coded; the date frame is UTC to match
+how scripts/run-log.sh stamps timestamps. With `--post` and a non-empty
+MISSING set, it fires the `⚠️ Refresh watchdog — $DATE (weekend)`
+Discord post (--type=auth-canary, the bot-health channel) itself; with
+an empty MISSING set it exits silently — no news is good news, and the
 heartbeat in RUN-LOG.jsonl (emitted by the cloud-header SETUP block) is
 the all-clear signal for any future "did refresh-watchdog itself run?"
-checks.
+checks. The `eval` exports `ROUTINES_FIRED`, `ROUTINES_EXPECTED`, and
+`ROUTINES_MISSING` for any downstream STEP that wants to inspect them.
+
+This replaces the old hand-grepped watchdog — same prose-bug class that
+caused daily-summary to silently miscount on 2026-05-14 ("0/12 fired")
+and refresh-watchdog to claim "Fired refresh routines: (none)" on
+2026-05-17 despite the source data being correct.
 
 ## MANDATORY — FINAL STEP
 
