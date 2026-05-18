@@ -37,7 +37,7 @@ close. `EPS Estimate` is a string ("$5.42", "$1.87", "—" when unknown).
 | MCD | McDonald's | 2026-05-07 | BMO | $2.74 | Perplexity | 2026-05-07 | $2.83 | -0.14% |
 | NET | Cloudflare | 2026-05-07 | AMC | $0.23 | Perplexity | 2026-05-07 | $0.25 | -23.46% |
 | CSCO | Cisco Systems | 2026-05-13 | BMO | $1.02 | Perplexity | 2026-05-11 | $1.06 | +2.6% |
-| AMAT | Applied Materials | 2026-05-14 | AMC | $2.44 | Perplexity | 2026-05-13 |  |  |
+| AMAT | Applied Materials | 2026-05-14 | AMC | $2.44 | Perplexity | 2026-05-13 | $2.86 | +18.02% |
 | HD | Home Depot | 2026-05-19 | BMO |  | Perplexity | 2026-05-13 |  |  |
 | INTU | Intuit | 2026-05-20 | AMC | $12.48 | Perplexity | 2026-05-13 |  |  |
 | LOW | Lowe's | 2026-05-20 | BMO |  | Perplexity | 2026-05-13 |  |  |
