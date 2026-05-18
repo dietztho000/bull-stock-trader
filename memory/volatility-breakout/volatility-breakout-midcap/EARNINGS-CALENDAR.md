@@ -5,4 +5,4 @@ Exit any held position before earnings; no entry within EARNINGS_GATE_DAYS tradi
 
 | Ticker | Company | Next Earnings Date | BMO/AMC | Source | Date Added |
 |--------|---------|--------------------|---------|--------|------------|
-| MOD | Modine Manufacturing | 2026-05-26 | BMO | Perplexity | 2026-05-14 |
+| MOD | Modine Manufacturing | 2026-05-26 | AMC | Perplexity | 2026-05-18 |

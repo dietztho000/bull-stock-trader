@@ -350,3 +350,14 @@ the API response's `usage.cost.total_cost`. Cache hits and hard errors log
 | 2026-05-13 08:42 CT | sonar | What are the key market events and stock news on May 13 2026? Specifically: What is the S&P 500 doing today? What is VIX? Any news on AMD, Boeing BA, Alphabet GOOGL, Nvidia NVDA, Exxon XOM in the last |
 | 2026-05-14 12:06 CT | sonar | MOD Modine Manufacturing stock today May 14 2026 — what is driving the +4% intraday move? Any news, earnings, analyst actions? |
 | 2026-05-14 12:07 CT | sonar | HWM Howmet Aerospace stock earnings date 2026 next quarterly report — when is the next earnings announcement? |
+| 2026-05-18 06:05 CT | sonar | WTI and Brent oil price right now | 0.005140 |
+| 2026-05-18 06:05 CT | sonar | S&P 500 futures premarket today May 18 2026 | 0.005290 |
+| 2026-05-18 06:05 CT | sonar | VIX level today May 18 2026 | 0.005200 |
+| 2026-05-18 06:05 CT | sonar | Top stock market catalysts today May 18 2026 | 0.005370 |
+| 2026-05-18 06:05 CT | sonar | Earnings reports today before market open May 18 2026 | 0.005150 |
+| 2026-05-18 06:05 CT | sonar | Economic calendar today May 18 2026 CPI PPI FOMC jobs data scheduled releases | 0.005400 |
+| 2026-05-18 06:05 CT | sonar | S&P 500 sector momentum YTD 2026 best performing sectors | 0.005260 |
+| 2026-05-18 06:05 CT | sonar | HWM Howmet Aerospace stock news May 2026 price catalyst | 0.005440 |
+| 2026-05-18 06:05 CT | sonar | MOD Modine Manufacturing stock news May 2026 price catalyst earnings | 0.005380 |
+| 2026-05-18 06:06 CT | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-18. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In | 0.005120 |
+| 2026-05-18 06:07 CT | sonar | US economic events this week May 18-22 2026: FOMC minutes, housing, Fed speeches, jobs claims. List event names and dates. | 0.005260 |
