@@ -1,3 +1,34 @@
+## 2026-05-18 — Pre-Market Research (inline fallback)
+
+### Macro Context
+- No major US data today (Monday). Quiet open to a busy week.
+- Key week-ahead events: HD earnings tomorrow BMO; NVDA/LOW/TGT/INTU Wednesday; FOMC Minutes Wednesday 14:00 ET; WMT/DE Thursday BMO.
+- IT sector strength pre-market: NOW +4.83% (~$98-99), LRCX +2.73% (~$292). Broad tape constructive.
+
+### Watchlist Research
+**NOW (ServiceNow) — Primary candidate**
+- Q1 2026 earnings April 21: EPS $0.97 vs $0.80 est (beat), subscription revenue +19% YoY.
+- Pre-market ~$98-99, up ~4.83% vs prior close $95.07. Sector: Information Technology.
+- Earnings gate (1d EARNINGS_GATE_DAYS): Q1 reported April 21 — >15 trading days ago → PASS
+- Entry condition: requires 5m EMA(9) > EMA(21), RSI(7) 55-80, volume ≥ 2× average — cannot verify pre-market
+- Pre-market spread: ~170 bps (market order required per strategy rule, >50 bps threshold)
+
+**LRCX (Lam Research) — Secondary candidate**
+- Pre-market ~$292, up 2.73%. Sector: Information Technology. Strong chip-equipment momentum.
+- Same 5m signal requirement — needs post-open confirmation.
+
+### Screened Out
+- Micro/small-cap pre-market gainers (MRNO +53%, CVV -23%, YMAT +28% etc.): sub-$5 or ADV << 1M → fail universe filter
+- NVDA: earnings Wednesday AMC → 1-day earnings gate fires today (within 1 trading day of Wednesday open) — BLOCKED
+- PPG: Materials sector, +3.27% but no identifiable intraday momentum catalyst; lower conviction
+
+### Plan
+- **No trades at market-open**: entry signals (5m EMA, RSI, volume above 20-bar avg) require ≥5 min + 1 full candle post-open.
+- Watchlist: NOW (primary), LRCX (secondary) — reassess at mid-morning (10 AM CT) once tape develops.
+- No overnight holds per hard rule.
+
+---
+
 ## 2026-05-14 — Pre-Market Research (inline fallback)
 
 ### Macro Context

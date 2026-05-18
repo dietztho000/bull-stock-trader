@@ -28,5 +28,6 @@ Use the 11 standard GICS sectors:
 | XOM | Energy | Perplexity | 2026-04-30 |
 | AMKR | Information Technology | Perplexity | 2026-04-30 |
 | GOOGL | Communication Services | Perplexity | 2026-05-05 |
-| HWM | Industrials | Perplexity | 2026-05-14 |
-| MOD | Industrials | Perplexity | 2026-05-14 |
+| NOW | Information Technology | Perplexity | 2026-05-18 |
+| LRCX | Information Technology | Perplexity | 2026-05-18 |
+| PPG | Materials | Perplexity | 2026-05-18 |
