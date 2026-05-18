@@ -6,3 +6,9 @@
 | MOD | 3 | $288.21 | $292.16 | +4.64% | +$11.85 (+1.37%) | Trail 10%, HWM $293.89, stop ~$264.50 |
 **Notes:** One position open: MOD (Modine Manufacturing), 3 shares entered at $288.21 today. Day-end at $292.16, up +4.64%. Trailing stop GTC (10%) active with HWM $293.89. 8.8% capital deployed. 1 trade today (MOD buy). Bot in profit on Day 1.
 
+### ~May 15 — Trailing Stop Fired (MOD closed)
+- MOD: trailing stop (10% from HWM $293.89 → stop ~$264.50) filled ~$264.09
+- Realized P&L: -$72.36 (-8.36%) on 3 shares
+- Exit reason: trailing stop hit autonomously on Alpaca exchange (trailing stop, not safety-net)
+- Account equity post-close: $9,927.64 (all cash)
+
