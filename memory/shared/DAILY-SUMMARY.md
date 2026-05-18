@@ -107,3 +107,19 @@ _Populated by daily-summary routine. Dashboard Journal "Daily" tab source._
 **Routines:** 0/12 fired today (missing: auth-canary, pre-market, market-open, mid-morning, late-morning, midday, stops, afternoon, refresh-market-earnings, refresh-economic-events, refresh-earnings-results)
 
 ---
+
+## 2026-05-18 — Daily Summary
+
+**Total portfolio:** $29,842.20 across 3 bots
+**Day P&L:** -$31.59 (-0.11% weighted)
+**Phase P&L:** -$157.80 (-0.53% weighted)
+**vs SPY:** day N/A (restricted feed) / phase +0.61% (fleet -0.53% vs SPY ~-1.14%)
+
+### Per bot
+- **hyper-aggressive** (paper/hyper-aggressive-momentum): $9,967.03 equity, 0.00% day, -0.33% phase, 0 open
+- **ema-crossover** (paper/ema-crossover-momentum): $9,947.53 equity, -0.10% day, -0.52% phase, 1 open (HWM ⚠️ near stop)
+- **volatility-breakout** (paper/volatility-breakout-midcap): $9,927.64 equity, -0.22% day, -0.72% phase, 0 open (MOD stopped out)
+
+**Routines:** 0/12 fired today (missing: auth-canary, pre-market, market-open, mid-morning, late-morning, midday, stops, afternoon, refresh-market-earnings, refresh-economic-events, refresh-earnings-results) — watchdog alert posted
+
+---
