@@ -1,3 +1,9 @@
+### May 15–18 — HWM Stop-Out Reconciliation
+- **exit: GTC stop-limit filled** | HWM | SELL 3 @ ~$252.86 | Est. fill date: May 15–16
+- Entry: $274.48 | Stop trigger: $255.27 | Stop limit: $251.15 | Fill: ~$252.86
+- P&L: -$64.87 (-7.86%) | Sector: Industrials | Rule #4 stop-limit executed
+- Account equity: $9,993.67 → $9,935.13
+
 ### May 14 — EOD Snapshot (Day 1, Wednesday)
 **Portfolio:** $9,993.67 | **Cash:** $9,176.56 (91.8%) | **Day P&L:** -$6.33 (-0.063%) | **Phase P&L:** -$6.33 (-0.063%)
 **vs SPY:** day N/A (restricted feed) | phase N/A

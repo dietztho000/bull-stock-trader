@@ -1,3 +1,41 @@
+## 2026-05-19 — Pre-Market Research (inline fallback)
+
+### Macro Context
+- **VIX**: ~17.8 (well below 25 gate; low-to-moderate volatility)
+- **NVDA earnings**: tomorrow May 20 AMC → IT/semiconductor sector risk; NVDA blocked (earnings gate)
+- **FOMC Minutes**: tomorrow May 20 14:00 CT → macro uncertainty, avoid new overnight swing exposure
+- **S&P 500 context**: up ~35% from April lows; strong tape but extended
+- **VIX May futures expiry today** — minor technical event, no trade impact
+
+### Watchlist Research
+
+**PLTR (Palantir)** — Primary candidate screened out
+- Opened at $135.17, spiked to $137.47 high, then faded back to ~$134
+- Failed momentum: price BELOW open by session midpoint, volume on recent 5m bars 0.3× average
+- No fresh company-specific catalyst; riding AI/tech sentiment only
+- Broad IT sector risk from NVDA earnings tomorrow
+- Entry scorer: cat=1 mom=1 r/r=1 stop=2 → **5/10 — FAIL (min 7)**
+
+**SMCI (Super Micro Computer)** — Screened out
+- Trading in tight $30.10–$30.72 range; beta behavior too muted for hyper-aggressive
+- No catalyst; low-volatility day
+
+**AVGO (Broadcom)** — Screened out
+- Opened $409.81, hit $417.95, pulled back to ~$414; modest +1% from open
+- IT sector (same NVDA earnings risk), beta ~1.1-1.3 (below 1.5 threshold)
+- No fresh catalyst; insufficient entry score
+
+**MSTR (MicroStrategy)** — Screened out
+- Spread: bid=162, ask=175.55 (800+ bps) — way above 50 bps threshold; illiquid open
+
+### Decision
+- **NO TRADE** — no setup clears entry scorer ≥7
+- All ideas failed momentum or sector-risk gate (NVDA earnings tomorrow)
+
+### Plan
+- Monitor post-FOMC-minutes Thursday for fresh momentum setups
+- Watch NVDA reaction pre-market tomorrow for sector direction
+
 ## 2026-05-14 — Pre-Market Research (inline fallback)
 
 ### Macro Context
