@@ -350,3 +350,15 @@ the API response's `usage.cost.total_cost`. Cache hits and hard errors log
 | 2026-05-13 08:42 CT | sonar | What are the key market events and stock news on May 13 2026? Specifically: What is the S&P 500 doing today? What is VIX? Any news on AMD, Boeing BA, Alphabet GOOGL, Nvidia NVDA, Exxon XOM in the last |
 | 2026-05-14 12:06 CT | sonar | MOD Modine Manufacturing stock today May 14 2026 — what is driving the +4% intraday move? Any news, earnings, analyst actions? |
 | 2026-05-14 12:07 CT | sonar | HWM Howmet Aerospace stock earnings date 2026 next quarterly report — when is the next earnings announcement? |
+| 2026-05-19 06:07 CT | sonar | WTI and Brent oil price right now | 0.005120 |
+| 2026-05-19 06:08 CT | sonar | S&P 500 futures premarket today May 19 2026 | 0.005180 |
+| 2026-05-19 06:08 CT | sonar | VIX level today May 19 2026 | 0.005190 |
+| 2026-05-19 06:08 CT | sonar | Top stock market catalysts today May 19 2026 | 0.005460 |
+| 2026-05-19 06:08 CT | sonar | Earnings reports today May 19 2026 before market open | 0.005260 |
+| 2026-05-19 06:08 CT | sonar | Economic calendar today May 19 2026 CPI PPI FOMC jobs data | 0.005340 |
+| 2026-05-19 06:08 CT | sonar | S&P 500 sector momentum YTD May 2026 best performing sectors | 0.005300 |
+| 2026-05-19 06:08 CT | sonar | HWM Howmet Aerospace stock price news May 19 2026 | 0.005260 |
+| 2026-05-19 06:08 CT | sonar | List all scheduled US economic events for the next 14 calendar days starting 2026-05-19. For each event return: date (YYYY-MM-DD), time (Eastern, HH:MM 24h), event name (e.g. CPI YoY, FOMC Minutes, In | 0.005120 |
+| 2026-05-19 06:08 CT | sonar | US economic calendar events week of May 19-30 2026: JOLTS Existing Home Sales New Home Sales jobless claims GDP FOMC minutes Fed speakers. List date time ET event forecast previous. | 0.005810 |
+| 2026-05-19 06:09 CT | sonar | When is the next earnings report for HD Home Depot today May 19 2026 BMO? Return actual EPS if reported today. | 0.005130 |
+| 2026-05-19 06:09 CT | sonar | When is the next earnings report for AMAT Applied Materials Q2 2026? Return actual EPS if reported May 14 2026 AMC. | 0.005140 |

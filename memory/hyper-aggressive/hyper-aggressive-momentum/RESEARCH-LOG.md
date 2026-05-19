@@ -25,3 +25,48 @@
 ### Plan
 - 1 trade: CSCO post-earnings momentum (intraday only, exit EOD per hard rule)
 - Entry scorer: 8/10
+
+## 2026-05-19 — Pre-Market Research
+
+### Account Snapshot
+- **Equity:** $9,967.03 | **Cash:** $9,967.03 (100%) | **Buying power:** $19,934.06
+- **Open positions:** 0 | **Daytrade count:** 1
+
+### Market Context
+- **WTI:** $103.21/bbl | **Brent:** $110.10/bbl (Brent -1.95% today; oil elevated +68% YoY)
+- **S&P 500 futures:** ~6,657.50 (+0.10%) — essentially flat pre-market
+- **VIX:** 17.82 (May 18 close) — moderate, not fearful
+- **Today's releases:** JOLTS Mar 2026 (10:00 ET), NAR Existing Home Sales (10:00 ET), Fed Waller speech (13:00 ET)
+- **Tomorrow (high risk):** FOMC Minutes 14:00 ET + NVDA earnings AMC + LOW/TGT BMO — stay light today
+- **Earnings today BMO:** HD ($3.42 est) — potential gap-and-go if beats
+- **Sector momentum:** Energy YTD leader (+26% through March); Industrials, Consumer Staples next. Tech led April.
+
+### Trade Ideas (Hyper-Aggressive 5m EMA strategy)
+
+1. **HD** — Post-earnings gap-and-go if BMO beat confirmed at open
+   - Earnings today BMO, est $3.42. Watch first 5-min bar for EMA9/21 cross + 2x vol surge
+   - Entry: above open + 5m confirmation ~$340-360 range (estimate), Stop: 2.5% below entry, Target: 4-5% intraday
+   - Earnings gate: CLEARED (already reported BMO today)
+   - Score: 7/10 (catalyst clear, but large-cap slower mover — need vol surge confirm)
+   - Sector: Consumer Discretionary (no ledger streak issues)
+
+2. **OXY (Occidental Petroleum)** — Energy momentum continuation
+   - Oil at $103 WTI, energy sector YTD +26%. Tight-stop scalp on 5m EMA breakout
+   - Entry: 5m EMA9 > EMA21 + RSI > 55 + vol 2x, Stop: 2.5% below, Target: 3-4%
+   - No earnings within 1 day. Re-entry guard: none
+   - Score: 7/10 (sector tailwind, but oil pulling back -2% today — wait for confirm)
+   - Sector: Energy
+
+3. **NVDA** — BLOCKED (earnings AMC tomorrow = 1 trading day gate, rule #13)
+
+### Sector Check vs SECTOR-LEDGER.md
+- Ledger empty (no trades yet). No blocked sectors.
+
+### Risk Factors
+- FOMC minutes tomorrow could reset rate expectations mid-week — avoid overnight risk
+- NVDA AMC tomorrow is a market-wide vol event; all tech trades carry tail risk
+- Oil pulling back -2% today despite elevated levels — energy entry timing critical
+- S&P futures flat = no strong directional signal; momentum setups need intraday confirmation
+
+### Decision: HOLD
+Wait for market-open EMA confirmation before committing. HD post-earnings gap-and-go is the primary watch; no pre-market entry. NVDA event tomorrow keeps risk appetite low.
